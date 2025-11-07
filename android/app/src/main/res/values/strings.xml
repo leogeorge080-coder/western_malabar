@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App name -->
+    <string name="app_name">WM Shop</string>
+
+    <!-- Shortcuts text -->
+    <string name="sc_search_short">Search</string>
+    <string name="sc_search_long">Search products</string>
+
+    <string name="sc_categories_short">Categories</string>
+    <string name="sc_categories_long">Browse categories</string>
+
+    <string name="sc_cart_short">Cart</string>
+    <string name="sc_cart_long">Open cart</string>
+</resources>

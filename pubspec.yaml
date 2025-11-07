@@ -13,6 +13,8 @@ dependencies:
   flutter_hooks: ^0.20.5
   intl: ^0.19.0
   rename: ^3.1.0
+  # NOTE: uni_links temporarily removed to avoid AGP 8+ "namespace not specified" crash.
+  # Add it back later once we patch Gradle (I can give you that when you're ready).
 
 dev_dependencies:
   flutter_test:
@@ -20,50 +22,40 @@ dev_dependencies:
   flutter_launcher_icons: ^0.13.1
   flutter_native_splash: ^2.4.1
 
-# --- Flutter Launcher Icons config ---
+# -------------------- LAUNCHER ICONS --------------------
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: assets/icon/app_icon.png
 
-  # Adaptive icon settings (Android 8+)
-  adaptive_icon_foreground: assets/icon/app_icon.png
-  adaptive_icon_background: "#FDF7E8"
+  # Required by the plugin: give each platform a base image
+  image_path_android: assets/icon/fg.png
+  image_path_ios: assets/icon/fg.png
 
-  # Avoid transparent edges on iOS
+  # Adaptive icon (Android 8+) – keeps your nice look on modern devices
+  adaptive_icon_foreground: assets/icon/fg.png
+  adaptive_icon_background: assets/icon/bg.png
+
   remove_alpha_ios: true
-# --- end launcher icons config ---
-
+# -------------------- FLUTTER --------------------
 flutter:
   uses-material-design: true
   assets:
-    - assets/icon/app_icon.png
+    # ICONS
+    - assets/icon/fg.png
+    - assets/icon/bg.png
 
-# --- Flutter Native Splash config ---
+    # SPLASH  (-> point to /icon/ because that's where your files are)
+    - assets/icon/wm_mark.png
+    - assets/icon/wm_mark_mono.png
+
+# -------------------- NATIVE SPLASH --------------------
 flutter_native_splash:
-  # Brand colors
-  color: "#FDF7E8"        # WM creamy background
-  color_dark: "#1E1B24"   # Safe dark backdrop (very dark purple/charcoal)
+  color: "#FFF7E6"
+  image: assets/icon/wm_mark.png
 
-  # Center image (transparent PNG, 1024x1024 recommended)
-  image: assets/splash/wm_logo.png
-  image_dark: assets/splash/wm_logo_dark.png
-
-  # Optional small “branding” under the logo
-  branding: assets/splash/branding.png
-  branding_dark: assets/splash/branding_dark.png
-
-  # Make layout look good on all devices
-  android_gravity: center
-  ios_content_mode: center
-  fullscreen: true
-
-  # Android 12 requires separate images
   android_12:
-    color: "#FDF7E8"
-    color_dark: "#1E1B24"
-    image: assets/splash/wm_logo_android12.png
-    image_dark: assets/splash/wm_logo_android12_dark.png
-    branding: assets/splash/branding_android12.png
-    branding_dark: assets/splash/branding_android12_dark.png
-# --- end splash config ---
+    color: "#FFF7E6"
+    image: assets/icon/wm_mark_mono.png
+
+  android: true
+  ios: false

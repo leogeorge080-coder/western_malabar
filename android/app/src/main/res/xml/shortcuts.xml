@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Search -->
+    <shortcut
+        android:shortcutId="id_search"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/sc_search_short"
+        android:shortcutLongLabel="@string/sc_search_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="wmshop://search" />
+    </shortcut>
+
+    <!-- Categories -->
+    <shortcut
+        android:shortcutId="id_categories"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/sc_categories_short"
+        android:shortcutLongLabel="@string/sc_categories_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="wmshop://categories" />
+    </shortcut>
+
+    <!-- Cart -->
+    <shortcut
+        android:shortcutId="id_cart"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/sc_cart_short"
+        android:shortcutLongLabel="@string/sc_cart_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="wmshop://cart" />
+    </shortcut>
+
+</shortcuts>
