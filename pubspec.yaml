@@ -12,10 +12,58 @@ dependencies:
   hooks_riverpod: ^2.5.1
   flutter_hooks: ^0.20.5
   intl: ^0.19.0
+  rename: ^3.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.1
+
+# --- Flutter Launcher Icons config ---
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/icon/app_icon.png
+
+  # Adaptive icon settings (Android 8+)
+  adaptive_icon_foreground: assets/icon/app_icon.png
+  adaptive_icon_background: "#FDF7E8"
+
+  # Avoid transparent edges on iOS
+  remove_alpha_ios: true
+# --- end launcher icons config ---
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icon/app_icon.png
+
+# --- Flutter Native Splash config ---
+flutter_native_splash:
+  # Brand colors
+  color: "#FDF7E8"        # WM creamy background
+  color_dark: "#1E1B24"   # Safe dark backdrop (very dark purple/charcoal)
+
+  # Center image (transparent PNG, 1024x1024 recommended)
+  image: assets/splash/wm_logo.png
+  image_dark: assets/splash/wm_logo_dark.png
+
+  # Optional small “branding” under the logo
+  branding: assets/splash/branding.png
+  branding_dark: assets/splash/branding_dark.png
+
+  # Make layout look good on all devices
+  android_gravity: center
+  ios_content_mode: center
+  fullscreen: true
+
+  # Android 12 requires separate images
+  android_12:
+    color: "#FDF7E8"
+    color_dark: "#1E1B24"
+    image: assets/splash/wm_logo_android12.png
+    image_dark: assets/splash/wm_logo_android12_dark.png
+    branding: assets/splash/branding_android12.png
+    branding_dark: assets/splash/branding_android12_dark.png
+# --- end splash config ---
