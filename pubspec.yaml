@@ -2,40 +2,59 @@ name: western_malabar
 description: Western Malabar – Customer App (Flutter + Supabase)
 publish_to: "none"
 
+version: 1.0.0+1
+
 environment:
   sdk: ">=3.4.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
+
+  # 🟣 Supabase backend
   supabase_flutter: ^2.6.0
+
+  # 🪴 Riverpod state management
   hooks_riverpod: ^2.5.1
   flutter_hooks: ^0.20.5
+
+  # 🌍 Internationalization
   intl: ^0.19.0
+
+  # 🖼️ Cached images for banners / product grids
+  cached_network_image: ^3.3.1
+
+  # 🧩 Utils and helpers
+  provider: ^6.1.2
+  shared_preferences: ^2.3.2
+  url_launcher: ^6.3.1
+
+  # 🧠 Rename helper for app id / package name edits
   rename: ^3.1.0
-  # NOTE: uni_links temporarily removed to avoid AGP 8+ "namespace not specified" crash.
-  # Add it back later once we patch Gradle (I can give you that when you're ready).
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+  # ✅ Fix lint issue (analysis_options.yaml)
+  flutter_lints: ^4.0.0
+
+  # 🟡 Launcher icon generator
   flutter_launcher_icons: ^0.13.1
+
+  # 🟢 Native splash generator
   flutter_native_splash: ^2.4.1
 
-# -------------------- LAUNCHER ICONS --------------------
+# -------------------- FLUTTER LAUNCHER ICONS --------------------
 flutter_launcher_icons:
   android: true
   ios: true
-
-  # Required by the plugin: give each platform a base image
   image_path_android: assets/icon/fg.png
   image_path_ios: assets/icon/fg.png
-
-  # Adaptive icon (Android 8+) – keeps your nice look on modern devices
   adaptive_icon_foreground: assets/icon/fg.png
   adaptive_icon_background: assets/icon/bg.png
-
   remove_alpha_ios: true
+
 # -------------------- FLUTTER --------------------
 flutter:
   uses-material-design: true
@@ -44,11 +63,11 @@ flutter:
     - assets/icon/fg.png
     - assets/icon/bg.png
 
-    # SPLASH  (-> point to /icon/ because that's where your files are)
+    # SPLASH (points to your /icon/ directory)
     - assets/icon/wm_mark.png
     - assets/icon/wm_mark_mono.png
 
-# -------------------- NATIVE SPLASH --------------------
+# -------------------- FLUTTER NATIVE SPLASH --------------------
 flutter_native_splash:
   color: "#FFF7E6"
   image: assets/icon/wm_mark.png

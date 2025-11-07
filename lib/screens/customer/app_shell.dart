@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:western_malabar/screens/customer/home_screen.dart';
-import 'package:western_malabar/screens/customer/category_screen.dart';
+// ⬇️ swap to the gallery (compare 6 layouts)
+import 'package:western_malabar/screens/customer/category_gallery.dart';
+// If you want the old single-category screen later, switch the import back:
+// import 'package:western_malabar/screens/customer/category_screen.dart';
 import 'package:western_malabar/screens/customer/favourites_screen.dart';
 import 'package:western_malabar/screens/customer/profile_screen.dart';
 import 'package:western_malabar/screens/customer/cart_screen.dart';
@@ -18,9 +21,10 @@ class _AppShellState extends State<AppShell> {
   int _index = 0;
   bool _isChatOpen = false; // prevents multiple sheets
 
+  // ⬇️ Use CategoryGalleryScreen() in the tab list to compare layouts
   final _screens = const [
     HomeScreen(),
-    CategoryScreen(),
+    CategoryGalleryScreen(), // 🟣 shows 6 category UIs in tabs
     FavouritesScreen(),
     ProfileScreen(),
     CartScreen(),
@@ -55,7 +59,7 @@ class _AppShellState extends State<AppShell> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => _AskMalabarSheet(),
+      builder: (_) => const _AskMalabarSheet(),
     );
 
     // Sheet closed

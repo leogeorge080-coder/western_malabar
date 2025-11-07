@@ -1,225 +1,230 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
+/// Single promo definition used by the carousel.
+class WmPromoItem {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+
+  /// Optional custom gradient (defaults to WM gold -> warm gold).
+  final Color? startColor;
+  final Color? endColor;
+
+  /// Optional tap.
+  final VoidCallback? onTap;
+
+  const WmPromoItem({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    this.startColor,
+    this.endColor,
+    this.onTap,
+  });
+}
+
+/// Auto-scrolling, pill-rounded promo banner with dots.
 class WMPromoCarousel extends StatefulWidget {
   const WMPromoCarousel({
     super.key,
     required this.items,
     this.height = 120,
+    this.autoPlay = true,
     this.interval = const Duration(seconds: 4),
-    this.onTap,
+    this.borderRadius = 24,
+    this.padding = const EdgeInsets.symmetric(vertical: 6),
   });
 
-  /// Each item: icon, title, subtitle
-  final List<_PromoItem> items;
-
-  /// Banner height
+  final List<WmPromoItem> items;
   final double height;
-
-  /// Auto-scroll interval
+  final bool autoPlay;
   final Duration interval;
-
-  /// Tap callback with index
-  final void Function(int index)? onTap;
+  final double borderRadius;
+  final EdgeInsets padding;
 
   @override
   State<WMPromoCarousel> createState() => _WMPromoCarouselState();
 }
 
 class _WMPromoCarouselState extends State<WMPromoCarousel> {
-  late final PageController _controller;
+  late final PageController _pc;
   Timer? _timer;
   int _index = 0;
-  bool _userTouching = false;
 
   @override
   void initState() {
     super.initState();
-    _controller = PageController(viewportFraction: 1);
-    _startTimer();
+    _pc = PageController(viewportFraction: 0.96);
+    _maybeStartTimer();
   }
 
-  void _startTimer() {
+  void _maybeStartTimer() {
+    if (!widget.autoPlay || widget.items.length <= 1) return;
     _timer?.cancel();
     _timer = Timer.periodic(widget.interval, (_) {
-      if (!mounted || _userTouching) return;
+      if (!mounted) return;
       final next = (_index + 1) % widget.items.length;
-      _animateTo(next);
+      _pc.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 380),
+        curve: Curves.easeOut,
+      );
     });
   }
 
-  void _animateTo(int page) {
-    _controller.animateToPage(
-      page,
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeOut,
-    );
+  @override
+  void didUpdateWidget(covariant WMPromoCarousel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.autoPlay != widget.autoPlay ||
+        oldWidget.items.length != widget.items.length ||
+        oldWidget.interval != widget.interval) {
+      _maybeStartTimer();
+    }
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    _controller.dispose();
+    _pc.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final purple = const Color(0xFF5A2D82);
+    if (widget.items.isEmpty) return const SizedBox.shrink();
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Listener(
-          onPointerDown: (_) {
-            _userTouching = true;
-            _timer?.cancel();
-          },
-          onPointerUp: (_) {
-            _userTouching = false;
-            _startTimer();
-          },
-          child: SizedBox(
+    return Padding(
+      padding: widget.padding,
+      child: Column(
+        children: [
+          SizedBox(
             height: widget.height,
             child: PageView.builder(
-              controller: _controller,
+              controller: _pc,
               onPageChanged: (i) => setState(() => _index = i),
               itemCount: widget.items.length,
-              itemBuilder: (context, i) {
-                final it = widget.items[i];
-                return _GradientGoldCard(
-                  icon: it.icon,
-                  title: it.title,
-                  subtitle: it.subtitle,
-                  onTap: () => widget.onTap?.call(i),
-                );
-              },
+              itemBuilder: (context, i) => _PromoCard(
+                item: widget.items[i],
+                borderRadius: widget.borderRadius,
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        // Dots
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(widget.items.length, (i) {
-            final selected = i == _index;
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              height: 6,
-              width: selected ? 18 : 6,
-              decoration: BoxDecoration(
-                color: selected ? purple : purple.withOpacity(0.25),
-                borderRadius: BorderRadius.circular(999),
-              ),
-            );
-          }),
-        ),
-      ],
+          const SizedBox(height: 8),
+          _Dots(count: widget.items.length, index: _index),
+        ],
+      ),
     );
   }
 }
 
-/// Data helper you’ll pass from screen
-class _PromoItem {
-  const _PromoItem(
-      {required this.icon, required this.title, required this.subtitle});
-  final IconData icon;
-  final String title;
-  final String subtitle;
-}
+class _PromoCard extends StatelessWidget {
+  const _PromoCard({required this.item, required this.borderRadius});
 
-/// Export a public factory so you can create items from outside
-List<_PromoItem> wmPromoItems({
-  required IconData i1,
-  required String t1,
-  required String s1,
-  required IconData i2,
-  required String t2,
-  required String s2,
-  required IconData i3,
-  required String t3,
-  required String s3,
-}) =>
-    [
-      _PromoItem(icon: i1, title: t1, subtitle: s1),
-      _PromoItem(icon: i2, title: t2, subtitle: s2),
-      _PromoItem(icon: i3, title: t3, subtitle: s3),
-    ];
-
-/// Card style (matches your brand)
-class _GradientGoldCard extends StatelessWidget {
-  const _GradientGoldCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback? onTap;
+  final WmPromoItem item;
+  final double borderRadius;
 
   @override
   Widget build(BuildContext context) {
-    const purple = Color(0xFF5A2D82);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFF0C53E), Color(0xFFFFD96A), Color(0xFFE4B42F)],
+    final start = item.startColor ?? const Color(0xFFF3C24D); // WM gold
+    final end = item.endColor ?? const Color(0xFFFFE085); // warm gold
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(borderRadius),
+        onTap: item.onTap,
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(borderRadius),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [start, end],
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x18000000),
+                blurRadius: 12,
+                offset: Offset(0, 6),
+              ),
+            ],
           ),
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: const [
-            BoxShadow(
-                color: Color(0x1A000000), blurRadius: 10, offset: Offset(0, 6)),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(Icons.local_fire_department_outlined,
-                  color: purple),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.25),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(item.icon, size: 28, color: Colors.deepOrange),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF5A2D82),
+                          fontWeight: FontWeight.w900,
+                          fontSize: 20,
+                          letterSpacing: .2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        item.subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: Colors.black54),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                        color: purple,
-                      )),
-                  const SizedBox(height: 2),
-                  Text(subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style:
-                          const TextStyle(fontSize: 13, color: Colors.black87)),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right_rounded, color: Colors.black54),
-          ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+class _Dots extends StatelessWidget {
+  const _Dots({required this.count, required this.index});
+  final int count;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(count, (i) {
+        final active = i == index;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          width: active ? 22 : 7,
+          height: 7,
+          decoration: BoxDecoration(
+            color: active ? const Color(0xFF5A2D82) : const Color(0x335A2D82),
+            borderRadius: BorderRadius.circular(999),
+          ),
+        );
+      }),
     );
   }
 }
