@@ -1,5 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'env.dart';
+import 'package:western_malabar/env.dart';
 
 class AppSupabase {
   static Future<void> init() async {

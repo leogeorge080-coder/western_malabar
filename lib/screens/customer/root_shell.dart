@@ -2,18 +2,18 @@
 import 'package:flutter/material.dart';
 
 // Haptics + Ask Malabar overlay (keep these paths as in your project)
-import '../../widgets/ask_malabar_overlay.dart';
-import '../../utils/haptic.dart';
+import 'package:western_malabar/widgets/ask_malabar_overlay.dart';
+import 'package:western_malabar/utils/haptic.dart';
 
 // Screens
-import 'home_screen.dart';
-import 'category_screen.dart';
-import 'favourites_screen.dart';
-import 'profile_screen.dart';
-import 'cart_screen.dart';
+import 'package:western_malabar/screens/customer/home_screen.dart';
+import 'package:western_malabar/screens/customer/category_screen.dart';
+import 'package:western_malabar/screens/customer/favourites_screen.dart';
+import 'package:western_malabar/screens/customer/profile_screen.dart';
+import 'package:western_malabar/screens/customer/cart_screen.dart';
 
 class RootShell extends StatefulWidget {
-  const RootShell({Key? key}) : super(key: key);
+  const RootShell({super.key});
 
   @override
   State<RootShell> createState() => _RootShellState();
@@ -103,7 +103,7 @@ class _RootShellState extends State<RootShell> {
 
 /// Ask Malabar bottom sheet (placeholder UI; hook your chat here)
 class _AskMalabarSheet extends StatelessWidget {
-  const _AskMalabarSheet({Key? key}) : super(key: key);
+  const _AskMalabarSheet();
 
   @override
   Widget build(BuildContext context) {

@@ -95,9 +95,9 @@ class _CatPill extends StatelessWidget {
               height: 36,
               width: 36,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(.22),
+                color: Colors.white.withValues(alpha: .22),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withOpacity(.35)),
+                border: Border.all(color: Colors.white.withValues(alpha: .35)),
               ),
               alignment: Alignment.center,
               child: Icon(icon, color: Colors.white, size: 20),

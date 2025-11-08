@@ -29,11 +29,8 @@ class WMRepo {
         .limit(limit);
 
     final List<ProductLite> out = [];
-    if (rows is! List) return out;
 
     for (final row in rows) {
-      if (row is! Map<String, dynamic>) continue;
-
       final id = _asString(row['id']) ?? '';
       final name = _asString(row['name']) ?? '';
 

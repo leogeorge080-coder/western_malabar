@@ -1,9 +1,9 @@
 // lib/widgets/product_card.dart   ← make sure the file name is product_card.dart
 
 import 'package:flutter/material.dart';
-import '../theme.dart';
-import '../models/product_model.dart';
-import '../utils/haptic.dart';
+import 'package:western_malabar/theme.dart';
+import 'package:western_malabar/models/product_model.dart';
+import 'package:western_malabar/utils/haptic.dart';
 
 class ProductCard extends StatelessWidget {
   final ProductModel p;

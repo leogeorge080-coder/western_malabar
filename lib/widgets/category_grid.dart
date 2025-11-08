@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/category_model.dart';
-import '../theme.dart';
+import 'package:western_malabar/models/category_model.dart';
+import 'package:western_malabar/theme.dart';
 
 class CategoryGrid extends StatelessWidget {
   final List<CategoryModel> categories;
@@ -30,7 +30,7 @@ class CategoryGrid extends StatelessWidget {
               borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
-                    color: Colors.black.withOpacity(.04),
+                    color: Colors.black.withValues(alpha: .04),
                     blurRadius: 8,
                     offset: const Offset(0, 3))
               ],

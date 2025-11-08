@@ -2,7 +2,7 @@ import 'dart:math' show max;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart'; // <-- add this line
-import '../theme.dart'; // for wmPurple, wmGreen, wmGold if you use them
+// for wmPurple, wmGreen, wmGold if you use them
 
 /// Collapsible "location area" delegate
 class LocationHeader extends SliverPersistentHeaderDelegate {
@@ -79,7 +79,8 @@ class _SearchHeaderDelegateState extends State<SearchHeaderDelegate> {
           floating: true,
           snap: true,
           expandedHeight: 168,
-          backgroundColor: Colors.white.withOpacity(_compact ? 0.75 : 0.92),
+          backgroundColor:
+              Colors.white.withValues(alpha: _compact ? 0.75 : 0.92),
           flexibleSpace: ClipRect(
             child: BackdropFilter(
               filter: ImageFilter.blur(
@@ -93,8 +94,8 @@ class _SearchHeaderDelegateState extends State<SearchHeaderDelegate> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.white.withOpacity(0.88),
-                      Colors.white.withOpacity(0.82),
+                      Colors.white.withValues(alpha: 0.88),
+                      Colors.white.withValues(alpha: 0.82),
                     ],
                   ),
                   boxShadow: [
@@ -211,7 +212,7 @@ class _ExpandedSearch extends StatelessWidget {
       height: 48,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: Colors.grey.withOpacity(0.12),
+        color: Colors.grey.withValues(alpha: 0.12),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: const Row(
@@ -234,7 +235,7 @@ class _CompactSearch extends StatelessWidget {
       height: 36,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: Colors.grey.withOpacity(0.12),
+        color: Colors.grey.withValues(alpha: 0.12),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: const Row(

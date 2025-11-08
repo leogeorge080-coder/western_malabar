@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme.dart';
+import 'package:western_malabar/theme.dart';
 
 class WMSearchBar extends StatelessWidget {
   final String hint;

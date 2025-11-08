@@ -101,9 +101,9 @@ class _BubbleLayerState extends State<_BubbleLayer> {
             },
             onTap: widget.onTap,
             child: Draggable<int>(
-              feedback: _CoconutBubbleAnimated(size: bubble),
+              feedback: const _CoconutBubbleAnimated(size: bubble),
               childWhenDragging: const SizedBox(width: bubble, height: bubble),
-              child: _CoconutBubbleAnimated(size: bubble),
+              child: const _CoconutBubbleAnimated(size: bubble),
               onDragStarted: () => HapticFeedback.selectionClick(),
               onDragEnd: (details) {
                 // Convert global end offset to local overlay coords
@@ -193,11 +193,11 @@ class _CoconutBubbleAnimatedState extends State<_CoconutBubbleAnimated>
               alignment: Alignment.center,
               children: [
                 // soft drop shadow
-                Positioned.fill(
+                const Positioned.fill(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      boxShadow: const [
+                      boxShadow: [
                         BoxShadow(
                           color: Color(0x33000000),
                           blurRadius: 16,
@@ -252,7 +252,7 @@ class _CoconutPainter extends CustomPainter {
         Offset(s / 2, s / 2), s * 0.48 - (rim.strokeWidth / 2), rim);
 
     // glossy highlight
-    final gloss = Paint()..color = Colors.white.withOpacity(0.20);
+    final gloss = Paint()..color = Colors.white.withValues(alpha: 0.20);
     final glossRRect = RRect.fromRectAndRadius(
       Rect.fromLTWH(s * 0.18, s * 0.10, s * 0.40, s * 0.20),
       Radius.circular(s),

@@ -145,7 +145,10 @@ class _GlassCard extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [color.withOpacity(0.10), color.withOpacity(0.04)],
+            colors: [
+              color.withValues(alpha: 0.10),
+              color.withValues(alpha: 0.04)
+            ],
           ),
           boxShadow: const [
             BoxShadow(
@@ -240,7 +243,10 @@ class _HeroCard extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           gradient: LinearGradient(
-            colors: [color.withOpacity(0.85), color.withOpacity(0.55)],
+            colors: [
+              color.withValues(alpha: 0.85),
+              color.withValues(alpha: 0.55)
+            ],
           ),
           boxShadow: const [
             BoxShadow(
@@ -307,7 +313,8 @@ class _IconGridWithFiltersState extends State<_IconGridWithFilters> {
                   label: Text(f),
                   selected: selected,
                   onSelected: (_) => setState(() => _filter = f),
-                  selectedColor: const Color(0xFF5A2D82).withOpacity(0.12),
+                  selectedColor:
+                      const Color(0xFF5A2D82).withValues(alpha: 0.12),
                   labelStyle: TextStyle(
                     color: selected ? const Color(0xFF5A2D82) : Colors.black87,
                     fontWeight: FontWeight.w600,
@@ -511,8 +518,8 @@ class _IslandPillState extends State<_IslandPill>
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             gradient: LinearGradient(colors: [
-              widget.color.withOpacity(.18),
-              widget.color.withOpacity(.08)
+              widget.color.withValues(alpha: .18),
+              widget.color.withValues(alpha: .08)
             ]),
             boxShadow: const [
               BoxShadow(
@@ -586,8 +593,10 @@ class _MasonryTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
-          gradient: LinearGradient(
-              colors: [color.withOpacity(.12), color.withOpacity(.06)]),
+          gradient: LinearGradient(colors: [
+            color.withValues(alpha: .12),
+            color.withValues(alpha: .06)
+          ]),
           boxShadow: const [
             BoxShadow(
                 color: Color(0x14000000), blurRadius: 10, offset: Offset(0, 6))
@@ -629,8 +638,8 @@ class _GlassIcon extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
-        color: color.withOpacity(0.18),
-        border: Border.all(color: color.withOpacity(0.2)),
+        color: color.withValues(alpha: 0.18),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       alignment: Alignment.center,
       child: Text(emoji, style: TextStyle(fontSize: big ? 26 : 22)),

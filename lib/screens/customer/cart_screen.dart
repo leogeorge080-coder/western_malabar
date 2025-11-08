@@ -6,11 +6,11 @@ class CartScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return const Scaffold(
       backgroundColor: WMTheme.lightGold,
-      body: const Center(
+      body: Center(
         child: Text(
-          "Cart Screen",
+          'Cart Screen',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
       ),

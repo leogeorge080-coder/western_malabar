@@ -6,11 +6,11 @@ class FavouritesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return const Scaffold(
       backgroundColor: WMTheme.lightGold,
-      body: const Center(
+      body: Center(
         child: Text(
-          "Favourites",
+          'Favourites',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
       ),

@@ -84,7 +84,7 @@ class _GradientGold extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(icon, color: _purple),
@@ -239,7 +239,7 @@ class _Outline extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: _purple.withOpacity(0.08),
+                color: _purple.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: _purple),

@@ -197,8 +197,8 @@ class ProductService {
         .select(_productSelect)
         .eq('slug', slug)
         .limit(1);
-    if (data is List && data.isNotEmpty) {
-      return _mapProductRow(data.first as Map<String, dynamic>);
+    if (data.isNotEmpty) {
+      return _mapProductRow(data.first);
     }
     return null;
   }

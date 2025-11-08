@@ -127,9 +127,9 @@ class _CategoryScreenState extends State<CategoryScreen> {
                         left: 16,
                         right: 16,
                         top: MediaQuery.of(context).padding.top + (t * 8),
-                        child: Row(
+                        child: const Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: const [
+                          children: [
                             Text(
                               'Categories',
                               style: TextStyle(
@@ -356,8 +356,8 @@ class _CategoryCard extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                accentColor.withOpacity(0.10),
-                accentColor.withOpacity(0.04),
+                accentColor.withValues(alpha: 0.10),
+                accentColor.withValues(alpha: 0.04),
               ],
             ),
             boxShadow: const [
@@ -419,8 +419,8 @@ class _GlassIcon extends StatelessWidget {
       height: 44,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
-        color: accentColor.withOpacity(0.18),
-        border: Border.all(color: accentColor.withOpacity(0.2)),
+        color: accentColor.withValues(alpha: 0.18),
+        border: Border.all(color: accentColor.withValues(alpha: 0.2)),
       ),
       alignment: Alignment.center,
       child: Text(emoji, style: const TextStyle(fontSize: 22)),

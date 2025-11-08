@@ -9,8 +9,8 @@ class SafeHomeScreen extends StatelessWidget {
       child: NestedScrollView(
         floatHeaderSlivers: true,
         headerSliverBuilder: (_, __) => [
-          SliverAppBar(
-            backgroundColor: const Color(0xFFFFF6D9),
+          const SliverAppBar(
+            backgroundColor: Color(0xFFFFF6D9),
             elevation: 0,
             pinned: true,
             floating: true,
@@ -19,7 +19,7 @@ class SafeHomeScreen extends StatelessWidget {
             collapsedHeight: 64,
             flexibleSpace: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 SizedBox(height: 8),
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16),
