@@ -1,10 +1,9 @@
+// lib/services/product_service.dart
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// ─────────────────────────────────────────────────────────────────
-/// Data Transfer Objects (DTOs)
-/// These mirror your Supabase schema minimally and are UI-friendly.
+/// DTOs – minimal, UI-friendly shapes mapped from your Supabase rows
 /// ─────────────────────────────────────────────────────────────────
-
 class WmVariantDto {
   final String sku;
   final int priceCents;
@@ -20,13 +19,13 @@ class WmVariantDto {
 }
 
 class WmProductDto {
-  final String id; // uuid in DB → map to String here
+  final String id; // uuid as String
   final String name;
   final String slug;
   final String? description;
   final String categoryId; // uuid
   final String brandId; // uuid
-  final List<dynamic> images; // jsonb array of text urls in your schema
+  final List<dynamic> images; // jsonb array of urls
   final bool isActive;
   final List<WmVariantDto> variants;
 
@@ -42,21 +41,17 @@ class WmProductDto {
     this.description,
   });
 
-  /// First image url or null
+  /// First image or null
   String? get firstImageUrl {
     if (images.isEmpty) return null;
     final v = images.first;
-    if (v is String && v.trim().isNotEmpty) return v;
-    return null;
+    return (v is String && v.trim().isNotEmpty) ? v : null;
   }
 
   /// Price from first variant (fallback 0)
-  int get priceCents {
-    if (variants.isEmpty) return 0;
-    return variants.first.priceCents;
-  }
+  int get priceCents => variants.isEmpty ? 0 : variants.first.priceCents;
 
-  /// Best available price (sale if present)
+  /// Best displayed price (sale if present)
   int get displayPriceCents {
     if (variants.isEmpty) return 0;
     final v = variants.first;
@@ -71,7 +66,6 @@ class CategoryLite {
   final String name;
   final String slug;
   final int sortOrder;
-
   const CategoryLite({
     required this.id,
     required this.name,
@@ -84,7 +78,6 @@ class BrandLite {
   final String id;
   final String name;
   final String slug;
-
   const BrandLite({
     required this.id,
     required this.name,
@@ -98,43 +91,36 @@ class BrandLite {
 class ProductService {
   final SupabaseClient _sb = Supabase.instance.client;
 
-  /// Common select for products with nested variants.
-  /// NOTE: Only columns that exist in your SQL are selected
-  /// (no `currency` column).
+  /// Select with nested variants (matches your schema)
   static const _productSelect =
       'id,name,slug,description,category_id,brand_id,images,is_active,'
       'product_variants(sku,price_cents,sale_price_cents,stock_qty)';
 
-  /// Home: a small curated list. You can later add a boolean flag
-  /// column like `is_featured` and filter on that.
+  /// Home: paged products ordered by newest (acts as "All products" feed)
   Future<List<WmProductDto>> fetchTodaysPicks({
-    int limit = 8,
+    int limit = 24,
     int offset = 0,
   }) async {
     final data = await _sb
         .from('products')
         .select(_productSelect)
         .eq('is_active', true)
-        .order('created_at', ascending: false) // if you have this column
+        .order('created_at', ascending: false) // requires created_at column
         .range(offset, offset + limit - 1);
 
     return _mapProductsList(data);
   }
 
-  /// Products by category slug (e.g. 'masalas-spices')
+  /// Products by category slug (e.g., 'masalas-spices')
   Future<List<WmProductDto>> fetchByCategorySlug(
     String categorySlug, {
     int limit = 24,
     int offset = 0,
     bool onlyInStock = false,
   }) async {
-    // Join via related table filter syntax
-    // category:categories!inner(slug) exposes joined column for filter
     final data = await _sb
         .from('products')
-        .select(
-          '$_productSelect, categories!inner(slug)',
-        )
+        .select('$_productSelect,categories!inner(slug)')
         .eq('categories.slug', categorySlug)
         .eq('is_active', true)
         .range(offset, offset + limit - 1);
@@ -142,20 +128,17 @@ class ProductService {
     final list = _mapProductsList(data);
     if (!onlyInStock) return list;
 
-    return list.where((p) {
-      if (p.variants.isEmpty) return false;
-      return p.variants.any((v) => v.stockQty > 0);
-    }).toList();
+    return list.where((p) => p.variants.any((v) => v.stockQty > 0)).toList();
   }
 
-  /// Simple name/sku search across active products.
+  /// Simple name/sku search
   Future<List<WmProductDto>> searchProducts(
     String query, {
     int limit = 20,
     int offset = 0,
   }) async {
-    if (query.trim().isEmpty) return const <WmProductDto>[];
     final q = query.trim();
+    if (q.isEmpty) return const <WmProductDto>[];
 
     final data = await _sb
         .from('products')
@@ -164,8 +147,6 @@ class ProductService {
         .ilike('name', '%$q%')
         .range(offset, offset + limit - 1);
 
-    // If you want to also search SKU within variants, do a second pass:
-    // (client-side filter after fetching a page)
     final mapped = _mapProductsList(data);
     final qLower = q.toLowerCase();
     return mapped.where((p) {
@@ -175,7 +156,7 @@ class ProductService {
     }).toList();
   }
 
-  /// Lightweight category list for UI menus
+  /// Lightweight categories
   Future<List<CategoryLite>> fetchCategories() async {
     final data = await _sb
         .from('categories')
@@ -193,7 +174,7 @@ class ProductService {
     }).toList();
   }
 
-  /// Lightweight brand list for filters, banners, etc.
+  /// Lightweight brands
   Future<List<BrandLite>> fetchBrands() async {
     final data = await _sb
         .from('brands')
@@ -209,23 +190,20 @@ class ProductService {
     }).toList();
   }
 
-  /// Optional: load a single product by slug (for PDP)
+  /// Single product by slug
   Future<WmProductDto?> fetchProductBySlug(String slug) async {
     final data = await _sb
         .from('products')
         .select(_productSelect)
         .eq('slug', slug)
         .limit(1);
-
     if (data is List && data.isNotEmpty) {
       return _mapProductRow(data.first as Map<String, dynamic>);
     }
     return null;
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // Mappers
-  // ─────────────────────────────────────────────────────────────
+  // ────────────────────────── Mappers ──────────────────────────
 
   List<WmProductDto> _mapProductsList(dynamic data) {
     if (data == null) return const <WmProductDto>[];
@@ -262,9 +240,8 @@ class ProductService {
         isActive: (row['is_active'] as bool?) ?? true,
         variants: variants,
       );
-    } catch (e) {
-      // If a row is malformed, skip it instead of crashing the UI.
-      // You can log to analytics here if you want.
+    } catch (_) {
+      // Skip malformed rows to avoid crashing UI
       return null;
     }
   }

@@ -1,9 +1,12 @@
+// lib/screens/customer/category_gallery.dart
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import '../../services/wm_repo.dart';
 
-/// Open this screen to compare all 6 category UIs.
-/// In AppShell, point a temporary route/tab to CategoryGalleryScreen().
+import 'package:western_malabar/models/category_model.dart';
+import 'package:western_malabar/services/category_service.dart';
+
+/// Compare 6 modern category UIs.
+/// Route to CategoryGalleryScreen() from AppShell when you want to preview.
 class CategoryGalleryScreen extends StatefulWidget {
   const CategoryGalleryScreen({super.key});
   @override
@@ -12,8 +15,7 @@ class CategoryGalleryScreen extends StatefulWidget {
 
 class _CategoryGalleryScreenState extends State<CategoryGalleryScreen>
     with SingleTickerProviderStateMixin {
-  final _repo = WMRepo();
-  late Future<List<CategoryLite>> _catsFut;
+  late Future<List<CategoryModel>> _catsFut;
 
   @override
   void initState() {
@@ -21,32 +23,10 @@ class _CategoryGalleryScreenState extends State<CategoryGalleryScreen>
     _catsFut = _load();
   }
 
-  Future<List<CategoryLite>> _load() async {
-    try {
-      final data = await _repo.fetchCategories();
-      if (data.isNotEmpty) return data;
-    } catch (_) {}
-    // Fallback mock for visual comparison
-    const names = [
-      'Rice',
-      'Masalas & Spices',
-      'Frozen Vegetables',
-      'Frozen Snacks',
-      'Beverages',
-      'Dairy',
-      'Snacks',
-      'Vegetables',
-      'Cooking Oil',
-      'Ready to Eat',
-      'Powders',
-      'Pickles',
-      'Sweets',
-      'Batters',
-      'Coffee'
-    ];
-    return names
-        .map((n) => CategoryLite(id: n, name: n, sortOrder: 0))
-        .toList();
+  Future<List<CategoryModel>> _load() async {
+    // Pull active categories from Supabase
+    final rows = await CategoryService.fetchActive(limit: 200);
+    return rows;
   }
 
   @override
@@ -77,15 +57,36 @@ class _CategoryGalleryScreenState extends State<CategoryGalleryScreen>
             ],
           ),
         ),
-        body: FutureBuilder<List<CategoryLite>>(
+        body: FutureBuilder<List<CategoryModel>>(
           future: _catsFut,
           builder: (context, snap) {
-            if (!snap.hasData) {
+            if (snap.connectionState == ConnectionState.waiting) {
               return const Center(
-                child: CircularProgressIndicator(color: purple),
+                child: CircularProgressIndicator(color: purple, strokeWidth: 2),
               );
             }
-            final cats = snap.data!;
+            if (snap.hasError) {
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.redAccent),
+                    const SizedBox(height: 8),
+                    const Text('Couldn’t load categories'),
+                    const SizedBox(height: 8),
+                    OutlinedButton(
+                      onPressed: () => setState(() =>
+                          _catsFut = CategoryService.fetchActive(limit: 200)),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              );
+            }
+            final cats = snap.data ?? const <CategoryModel>[];
+            if (cats.isEmpty) {
+              return const Center(child: Text('No categories yet'));
+            }
             return TabBarView(
               children: [
                 _GlassGrid(cats: cats),
@@ -103,12 +104,12 @@ class _CategoryGalleryScreenState extends State<CategoryGalleryScreen>
   }
 }
 
-/* ────────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────
  * 1) GLASS GRID
- * ──────────────────────────────────────────────────────────────────── */
+ * ───────────────────────────────────────────────────────────── */
 class _GlassGrid extends StatelessWidget {
   const _GlassGrid({required this.cats});
-  final List<CategoryLite> cats;
+  final List<CategoryModel> cats;
 
   @override
   Widget build(BuildContext context) {
@@ -170,16 +171,16 @@ class _GlassCard extends StatelessWidget {
   }
 }
 
-/* ────────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────
  * 2) CAROUSEL CARDS (Netflix-style)
- * ──────────────────────────────────────────────────────────────────── */
+ * ───────────────────────────────────────────────────────────── */
 class _CarouselCards extends StatelessWidget {
   const _CarouselCards({required this.cats});
-  final List<CategoryLite> cats;
+  final List<CategoryModel> cats;
 
   @override
   Widget build(BuildContext context) {
-    final chunks = <List<CategoryLite>>[];
+    final chunks = <List<CategoryModel>>[];
     for (var i = 0; i < cats.length; i += 6) {
       chunks.add(cats.sublist(i, math.min(i + 6, cats.length)));
     }
@@ -262,12 +263,12 @@ class _HeroCard extends StatelessWidget {
   }
 }
 
-/* ────────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────
  * 3) ICON GRID + FILTERS
- * ──────────────────────────────────────────────────────────────────── */
+ * ───────────────────────────────────────────────────────────── */
 class _IconGridWithFilters extends StatefulWidget {
   const _IconGridWithFilters({required this.cats});
-  final List<CategoryLite> cats;
+  final List<CategoryModel> cats;
 
   @override
   State<_IconGridWithFilters> createState() => _IconGridWithFiltersState();
@@ -308,9 +309,9 @@ class _IconGridWithFiltersState extends State<_IconGridWithFilters> {
                   onSelected: (_) => setState(() => _filter = f),
                   selectedColor: const Color(0xFF5A2D82).withOpacity(0.12),
                   labelStyle: TextStyle(
-                      color:
-                          selected ? const Color(0xFF5A2D82) : Colors.black87,
-                      fontWeight: FontWeight.w600),
+                    color: selected ? const Color(0xFF5A2D82) : Colors.black87,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               );
             }).toList(),
@@ -375,16 +376,16 @@ class _IconTile extends StatelessWidget {
   }
 }
 
-/* ────────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────
  * 4) STICKY A→Z LIST
- * ──────────────────────────────────────────────────────────────────── */
+ * ───────────────────────────────────────────────────────────── */
 class _StickyAZList extends StatelessWidget {
   const _StickyAZList({required this.cats});
-  final List<CategoryLite> cats;
+  final List<CategoryModel> cats;
 
   @override
   Widget build(BuildContext context) {
-    final groups = <String, List<CategoryLite>>{};
+    final groups = <String, List<CategoryModel>>{};
     for (final c in cats) {
       final k = c.name.isEmpty ? '#' : c.name[0].toUpperCase();
       groups.putIfAbsent(k, () => []).add(c);
@@ -447,12 +448,12 @@ class _HeaderDelegate extends SliverPersistentHeaderDelegate {
       oldDelegate.height != height || oldDelegate.child != child;
 }
 
-/* ────────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────
  * 5) ISLAND BUTTONS (3D pills)
- * ──────────────────────────────────────────────────────────────────── */
+ * ───────────────────────────────────────────────────────────── */
 class _IslandButtons extends StatelessWidget {
   const _IslandButtons({required this.cats});
-  final List<CategoryLite> cats;
+  final List<CategoryModel> cats;
 
   @override
   Widget build(BuildContext context) {
@@ -535,18 +536,18 @@ class _IslandPillState extends State<_IslandPill>
   }
 }
 
-/* ────────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────
  * 6) MASONRY GRID (2-column manual)
- * ──────────────────────────────────────────────────────────────────── */
+ * ───────────────────────────────────────────────────────────── */
 class _MasonryGrid extends StatelessWidget {
   const _MasonryGrid({required this.cats});
-  final List<CategoryLite> cats;
+  final List<CategoryModel> cats;
 
   @override
   Widget build(BuildContext context) {
     // simple 2-column waterfall: alternate heights using title length
-    final left = <CategoryLite>[];
-    final right = <CategoryLite>[];
+    final left = <CategoryModel>[];
+    final right = <CategoryModel>[];
     for (var i = 0; i < cats.length; i++) {
       (i % 2 == 0 ? left : right).add(cats[i]);
     }
@@ -572,7 +573,7 @@ class _MasonryGrid extends StatelessWidget {
 
 class _MasonryTile extends StatelessWidget {
   const _MasonryTile({required this.c});
-  final CategoryLite c;
+  final CategoryModel c;
 
   @override
   Widget build(BuildContext context) {
@@ -610,9 +611,9 @@ class _MasonryTile extends StatelessWidget {
   }
 }
 
-/* ────────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────
  * Shared bits
- * ──────────────────────────────────────────────────────────────────── */
+ * ───────────────────────────────────────────────────────────── */
 class _GlassIcon extends StatelessWidget {
   const _GlassIcon(
       {required this.color, required this.emoji, this.big = false});
@@ -643,8 +644,9 @@ String _emojiFor(String name) {
   if (n.contains('masala') || n.contains('spice')) return '🫚';
   if (n.contains('frozen')) return '❄️';
   if (n.contains('snack')) return '🍘';
-  if (n.contains('beverage') || n.contains('coffee') || n.contains('tea'))
+  if (n.contains('beverage') || n.contains('coffee') || n.contains('tea')) {
     return '☕️';
+  }
   if (n.contains('dairy')) return '🥛';
   if (n.contains('vegetable') || n.contains('veg')) return '🥦';
   if (n.contains('oil')) return '🫙';

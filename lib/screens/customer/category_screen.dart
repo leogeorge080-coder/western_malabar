@@ -1,6 +1,8 @@
 // lib/screens/customer/category_screen.dart
 import 'package:flutter/material.dart';
-import '../../services/wm_repo.dart';
+
+import 'package:western_malabar/models/category_model.dart';
+import 'package:western_malabar/services/category_service.dart';
 
 class CategoryScreen extends StatefulWidget {
   const CategoryScreen({super.key});
@@ -10,11 +12,10 @@ class CategoryScreen extends StatefulWidget {
 }
 
 class _CategoryScreenState extends State<CategoryScreen> {
-  final _repo = WMRepo();
   final _scroll = ScrollController();
   final _search = TextEditingController();
 
-  List<CategoryLite> _all = [];
+  List<CategoryModel> _all = [];
   bool _loading = true;
   String _query = '';
   final Map<String, int> _letterIndex = {}; // letter -> list index
@@ -36,14 +37,15 @@ class _CategoryScreenState extends State<CategoryScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final data = await _repo.fetchCategories();
+      final data = await CategoryService.fetchActive(limit: 200);
       data.sort((a, b) {
         final so = (a.sortOrder ?? 0).compareTo(b.sortOrder ?? 0);
         return so != 0
             ? so
-            : a.name.toLowerCase().compareTo(b.name.toLowerCase());
+            : (a.name).toLowerCase().compareTo((b.name).toLowerCase());
       });
       _buildLetterIndex(data);
+      if (!mounted) return;
       setState(() {
         _all = data;
         _loading = false;
@@ -57,24 +59,25 @@ class _CategoryScreenState extends State<CategoryScreen> {
     }
   }
 
-  void _buildLetterIndex(List<CategoryLite> data) {
+  void _buildLetterIndex(List<CategoryModel> data) {
     _letterIndex.clear();
     for (int i = 0; i < data.length; i++) {
-      final letter =
-          data[i].name.trim().isEmpty ? '#' : data[i].name[0].toUpperCase();
+      final name = (data[i].name).trim();
+      final letter = name.isEmpty ? '#' : name[0].toUpperCase();
       _letterIndex.putIfAbsent(letter, () => i);
     }
   }
 
-  List<CategoryLite> get _filtered {
+  List<CategoryModel> get _filtered {
     if (_query.isEmpty) return _all;
     final q = _query.toLowerCase();
     return _all.where((c) => c.name.toLowerCase().contains(q)).toList();
   }
 
   void _jumpToLetter(String letter) {
-    if (_filtered.isEmpty) return;
-    final idx = _filtered.indexWhere(
+    final items = _filtered;
+    if (items.isEmpty) return;
+    final idx = items.indexWhere(
       (c) => c.name.isNotEmpty && c.name[0].toUpperCase() == letter,
     );
     if (idx <= 0) {
@@ -83,7 +86,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
     } else {
       final row = (idx / 2).floor(); // 2 columns
       final maxOff = _scroll.position.maxScrollExtent;
-      final offset = ((row * 140.0)).clamp(0.0, maxOff).toDouble(); // ✅ double
+      final offset = ((row * 140.0)).clamp(0.0, maxOff).toDouble();
       _scroll.animateTo(offset,
           duration: const Duration(milliseconds: 280), curve: Curves.easeOut);
     }
@@ -116,7 +119,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                   final t = _clamp01(
                     (c.biggest.height - kToolbarHeight) /
                         (120 - kToolbarHeight),
-                  ); // ✅ double
+                  );
                   return Stack(
                     fit: StackFit.expand,
                     children: [
@@ -249,7 +252,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
     return palette[h % palette.length];
   }
 
-  void _onCategoryTap(CategoryLite c) {
+  void _onCategoryTap(CategoryModel c) {
     // TODO: navigate to your Category → Product listing
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Open "${c.name}"')),
@@ -393,8 +396,9 @@ class _CategoryCard extends StatelessWidget {
     if (n.contains('masala') || n.contains('spice')) return '🫚';
     if (n.contains('frozen')) return '❄️';
     if (n.contains('snack')) return '🍘';
-    if (n.contains('beverage') || n.contains('coffee') || n.contains('tea'))
+    if (n.contains('beverage') || n.contains('coffee') || n.contains('tea')) {
       return '☕';
+    }
     if (n.contains('dairy')) return '🥛';
     if (n.contains('vegetable') || n.contains('veg')) return '🥦';
     if (n.contains('oil')) return '🫙';
