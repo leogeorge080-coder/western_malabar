@@ -1,14 +1,18 @@
+// lib/screens/customer/app_shell.dart
 import 'package:flutter/material.dart';
+
+// Screens
 import 'package:western_malabar/screens/customer/home_screen.dart';
-// ⬇️ swap to the gallery (compare 6 layouts)
-import 'package:western_malabar/screens/customer/category_gallery.dart';
-// If you want the old single-category screen later, switch the import back:
-// import 'package:western_malabar/screens/customer/category_screen.dart';
-import 'package:western_malabar/screens/customer/favourites_screen.dart';
+import 'package:western_malabar/screens/customer/category_screen.dart';
 import 'package:western_malabar/screens/customer/profile_screen.dart';
 import 'package:western_malabar/screens/customer/cart_screen.dart';
-import 'package:western_malabar/widgets/ask_malabar_overlay.dart';
+
+// Virtual Store feature
+import 'package:western_malabar/features/virtual_store/virtual_store.dart';
+
+// Utilities & overlay
 import 'package:western_malabar/utils/haptic.dart';
+import 'package:western_malabar/widgets/ask_malabar_overlay.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -18,37 +22,42 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  int _index = 0;
-  bool _isChatOpen = false; // prevents multiple sheets
+  final PageStorageBucket _bucket = PageStorageBucket();
 
-  // ⬇️ Use CategoryGalleryScreen() in the tab list to compare layouts
-  final _screens = const [
-    HomeScreen(),
-    CategoryGalleryScreen(), // 🟣 shows 6 category UIs in tabs
-    FavouritesScreen(),
-    ProfileScreen(),
-    CartScreen(),
+  // Order must match BottomNavigationBar items
+  late final List<Widget> _screens = <Widget>[
+    const HomeScreen(),
+    const CategoryScreen(),
+    const VirtualStoreScreen(), // 🟣 Virtual Store tab
+    const ProfileScreen(),
+    const CartScreen(),
   ];
 
+  int _index = 0;
+  bool _isChatOpen = false; // guard: prevent multiple sheets
+
+  // If you later wire cart count from state/provider, bind here.
+  int get _cartCount => 0;
+
+  // ─────────────────────────────────────────────────────────────
+  // Ask Malabar bubble
+  // ─────────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
-    // Show floating bubble after first layout
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 200), () {
-        if (!mounted) return;
-        AskMalabarOverlay.show(context, _onBubbleTap);
-      });
+    // Show the floating bubble after first layout (slight delay for polish)
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      if (!mounted) return;
+      AskMalabarOverlay.show(context, _onAskMalabarBubbleTap);
     });
   }
 
-  Future<void> _onBubbleTap() async {
-    if (_isChatOpen) return; // ✅ block re-entry
+  Future<void> _onAskMalabarBubbleTap() async {
+    if (_isChatOpen) return;
     _isChatOpen = true;
 
     Haptic.medium(context);
-
-    // Hide bubble so it can’t be tapped while the sheet is open
     AskMalabarOverlay.hide();
 
     await showModalBottomSheet(
@@ -62,37 +71,85 @@ class _AppShellState extends State<AppShell> {
       builder: (_) => const _AskMalabarSheet(),
     );
 
-    // Sheet closed
     _isChatOpen = false;
     if (!mounted) return;
-    AskMalabarOverlay.show(context, _onBubbleTap);
+    AskMalabarOverlay.show(context, _onAskMalabarBubbleTap);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Navigation
+  // ─────────────────────────────────────────────────────────────
+  void _onTap(int i) {
+    if (i == _index) {
+      // Scroll-to-top when re-tapping the active tab
+      final primary = PrimaryScrollController.maybeOf(context);
+      if (primary != null && primary.hasClients) {
+        primary.animateTo(
+          0,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+        );
+      }
+      return;
+    }
+    Haptic.light(context);
+    setState(() => _index = i);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: IndexedStack(index: _index, children: _screens),
-      bottomNavigationBar: NavigationBar(
-        height: 64,
-        backgroundColor: Colors.white,
-        indicatorColor: const Color(0x115A2D82),
-        selectedIndex: _index,
-        onDestinationSelected: (i) {
-          Haptic.light(context);
-          setState(() => _index = i);
-        },
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
-          NavigationDestination(
-              icon: Icon(Icons.grid_view_rounded), label: 'Categories'),
-          NavigationDestination(
-              icon: Icon(Icons.favorite_outline), label: 'Favourites'),
-          NavigationDestination(
-              icon: Icon(Icons.person_outline), label: 'Profile'),
-          NavigationDestination(
-              icon: Icon(Icons.shopping_cart_outlined), label: 'Cart'),
-        ],
+    // Back from non-home tabs goes to Home first.
+    return WillPopScope(
+      onWillPop: () async {
+        if (_index != 0) {
+          setState(() => _index = 0);
+          return false;
+        }
+        return true;
+      },
+      child: Scaffold(
+        body: PageStorage(
+          bucket: _bucket,
+          child: IndexedStack(
+            index: _index,
+            children: _screens,
+          ),
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _index,
+          type: BottomNavigationBarType.fixed,
+          selectedItemColor: const Color(0xFF5A2D82),
+          unselectedItemColor: const Color(0xFF7A7A7A),
+          showUnselectedLabels: true,
+          onTap: _onTap,
+          items: <BottomNavigationBarItem>[
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined),
+              activeIcon: Icon(Icons.home_rounded),
+              label: 'Home',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.grid_view_outlined),
+              activeIcon: Icon(Icons.grid_view_rounded),
+              label: 'Categories',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.storefront_outlined),
+              activeIcon: Icon(Icons.storefront_rounded),
+              label: 'Virtual Store',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline),
+              activeIcon: Icon(Icons.person),
+              label: 'Profile',
+            ),
+            BottomNavigationBarItem(
+              icon: _CartIcon(count: _cartCount),
+              activeIcon: _CartIcon(count: _cartCount, active: true),
+              label: 'Cart',
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -104,6 +161,47 @@ class _AppShellState extends State<AppShell> {
   }
 }
 
+/// Small, dependency-free badge for the cart tab.
+class _CartIcon extends StatelessWidget {
+  const _CartIcon({required this.count, this.active = false});
+  final int count;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color =
+        active ? const Color(0xFF5A2D82) : const Color(0xFF7A7A7A);
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Icon(Icons.shopping_bag_outlined, color: color),
+        if (count > 0)
+          Positioned(
+            right: -4,
+            top: -4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xFF5A2D82),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Text(
+                '$count',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  height: 1.0,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Bottom sheet content for Ask Malabar.
 class _AskMalabarSheet extends StatelessWidget {
   const _AskMalabarSheet();
 

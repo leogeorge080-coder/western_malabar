@@ -137,8 +137,8 @@ class _SearchHeaderDelegateState extends State<SearchHeaderDelegate> {
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 200),
                         child: _compact
-                            ? _CompactSearch(key: const ValueKey('compact'))
-                            : _ExpandedSearch(key: const ValueKey('expanded')),
+                            ? const _CompactSearch(key: ValueKey('compact'))
+                            : const _ExpandedSearch(key: ValueKey('expanded')),
                       ),
                     ),
                     const SizedBox(height: 8),

@@ -29,28 +29,17 @@ dependencies:
   shared_preferences: ^2.3.2
   url_launcher: ^6.3.1
 
+  # 🌤 Weather fetch
+  http: ^1.2.2
+
   # 🧠 Rename helper for app id / package name edits
   rename: ^3.1.0
-
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-
-  # ✅ Fix lint issue (analysis_options.yaml)
-  flutter_lints: ^4.0.0
-
-  # 🟡 Launcher icon generator
-  flutter_launcher_icons: ^0.13.1
-
-  # 🟢 Native splash generator
-  flutter_native_splash: ^2.4.1
 
 # -------------------- FLUTTER LAUNCHER ICONS --------------------
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path_android: assets/icon/fg.png
-  image_path_ios: assets/icon/fg.png
+  image_path: assets/icon/fg.png
   adaptive_icon_foreground: assets/icon/fg.png
   adaptive_icon_background: assets/icon/bg.png
   remove_alpha_ios: true
@@ -58,14 +47,24 @@ flutter_launcher_icons:
 # -------------------- FLUTTER --------------------
 flutter:
   uses-material-design: true
+
   assets:
-    # ICONS
+    # 🟩 App Icons
     - assets/icon/fg.png
     - assets/icon/bg.png
-
-    # SPLASH (points to your /icon/ directory)
     - assets/icon/wm_mark.png
     - assets/icon/wm_mark_mono.png
+
+    # 🟪 Home banners
+    - assets/banners/
+
+    # 🚀 Transparent PNGs for the animated Noon-style strip
+    - assets/flyin/appam_stew.png
+    - assets/flyin/puttu_kadala.png
+    - assets/flyin/set_dosa.png
+    - assets/flyin/grated_coconut.png
+    - assets/flyin/angamaly_mango.png
+    - assets/flyin/ulli_vada.png
 
 # -------------------- FLUTTER NATIVE SPLASH --------------------
 flutter_native_splash:
