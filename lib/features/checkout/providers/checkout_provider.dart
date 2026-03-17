@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:western_malabar/features/checkout/models/checkout_address.dart';
-import 'package:western_malabar/services/postcode_lookup_service.dart';
+import 'package:western_malabar/shared/services/postcode_lookup_service.dart';
 
 class CheckoutState {
   final CheckoutAddress address;
@@ -246,3 +246,7 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 final checkoutProvider = StateNotifierProvider<CheckoutNotifier, CheckoutState>(
   (ref) => CheckoutNotifier(),
 );
+
+
+
+

@@ -6,8 +6,8 @@ import 'package:western_malabar/core/feedback/scan_feedback.dart';
 import 'package:western_malabar/features/admin/models/admin_order_model.dart';
 import 'package:western_malabar/features/admin/screens/order_qr_scan_screen.dart';
 import 'package:western_malabar/features/admin/services/admin_orders_service.dart';
-import 'package:western_malabar/theme.dart';
-import 'package:western_malabar/theme/wm_gradients.dart';
+import 'package:western_malabar/shared/theme/theme.dart';
+import 'package:western_malabar/shared/theme/wm_gradients.dart';
 
 String buildFullAddress(AdminOrderModel order) {
   final parts = [
@@ -517,3 +517,7 @@ class _InfoRow extends StatelessWidget {
     );
   }
 }
+
+
+
+

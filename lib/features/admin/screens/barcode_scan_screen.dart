@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:western_malabar/theme.dart';
+import 'package:western_malabar/shared/theme/theme.dart';
 
 class BarcodeScanScreen extends StatefulWidget {
   const BarcodeScanScreen({super.key});
@@ -93,3 +93,7 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen> {
     );
   }
 }
+
+
+
+

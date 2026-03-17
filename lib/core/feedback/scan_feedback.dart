@@ -26,3 +26,5 @@ class ScanFeedback {
     await HapticFeedback.selectionClick();
   }
 }
+
+

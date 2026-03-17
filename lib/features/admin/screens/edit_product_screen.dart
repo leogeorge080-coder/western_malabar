@@ -6,8 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:western_malabar/features/admin/models/admin_product_edit_model.dart';
 import 'package:western_malabar/features/admin/providers/admin_products_provider.dart';
 import 'package:western_malabar/features/admin/screens/barcode_scan_screen.dart';
-import 'package:western_malabar/theme.dart';
-import 'package:western_malabar/theme/wm_gradients.dart';
+import 'package:western_malabar/shared/theme/theme.dart';
+import 'package:western_malabar/shared/theme/wm_gradients.dart';
 
 class EditProductScreen extends ConsumerStatefulWidget {
   final String productId;
@@ -663,3 +663,7 @@ class _AppTextField extends StatelessWidget {
     );
   }
 }
+
+
+
+

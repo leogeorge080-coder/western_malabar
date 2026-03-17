@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:western_malabar/features/admin/models/admin_product_edit_model.dart';
 import 'package:western_malabar/features/admin/providers/admin_products_provider.dart';
 import 'package:western_malabar/features/admin/screens/edit_product_screen.dart';
-import 'package:western_malabar/theme.dart';
-import 'package:western_malabar/theme/wm_gradients.dart';
+import 'package:western_malabar/shared/theme/theme.dart';
+import 'package:western_malabar/shared/theme/wm_gradients.dart';
 
 enum AdminProductFilter {
   all,
@@ -433,3 +433,7 @@ class _MiniBadge extends StatelessWidget {
     );
   }
 }
+
+
+
+

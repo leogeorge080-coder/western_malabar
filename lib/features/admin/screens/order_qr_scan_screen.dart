@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:western_malabar/core/feedback/scan_feedback.dart';
-import 'package:western_malabar/theme.dart';
+import 'package:western_malabar/shared/theme/theme.dart';
 
 class OrderQrScanScreen extends StatefulWidget {
   const OrderQrScanScreen({super.key});
@@ -99,3 +99,7 @@ class _OrderQrScanScreenState extends State<OrderQrScanScreen> {
     );
   }
 }
+
+
+
+

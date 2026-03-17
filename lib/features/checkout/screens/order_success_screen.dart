@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:western_malabar/theme.dart';
-import 'package:western_malabar/theme/wm_gradients.dart';
+import 'package:western_malabar/shared/theme/theme.dart';
+import 'package:western_malabar/shared/theme/wm_gradients.dart';
 
 class OrderSuccessScreen extends StatelessWidget {
   final String orderId;
@@ -228,3 +228,7 @@ class _InfoCard extends StatelessWidget {
     );
   }
 }
+
+
+
+

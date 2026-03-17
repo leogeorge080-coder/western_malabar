@@ -4,8 +4,8 @@ import 'package:western_malabar/features/admin/screens/admin_orders_screen.dart'
 import 'package:western_malabar/features/admin/screens/admin_products_screen.dart';
 import 'package:western_malabar/features/profile/models/profile_model.dart';
 import 'package:western_malabar/features/profile/providers/profile_provider.dart';
-import 'package:western_malabar/theme.dart';
-import 'package:western_malabar/theme/wm_gradients.dart';
+import 'package:western_malabar/shared/theme/theme.dart';
+import 'package:western_malabar/shared/theme/wm_gradients.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -1072,3 +1072,7 @@ class _ProfileErrorView extends StatelessWidget {
     );
   }
 }
+
+
+
+

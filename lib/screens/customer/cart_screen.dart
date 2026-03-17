@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:western_malabar/core/pricing/cart_pricing.dart';
+import 'package:western_malabar/features/cart/services/cart_pricing.dart';
 import 'package:western_malabar/features/checkout/screens/checkout_screen.dart';
 import 'package:western_malabar/models/product_model.dart';
 import 'package:western_malabar/services/product_service.dart';
 import 'package:western_malabar/state/cart_provider.dart';
 import 'package:western_malabar/theme.dart';
-import 'package:western_malabar/theme/wm_gradients.dart';
-import 'package:western_malabar/widgets/cart/free_delivery_progress_card.dart';
+import 'package:western_malabar/shared/theme/wm_gradients.dart';
+import 'package:western_malabar/features/cart/widgets/free_delivery_progress_card.dart';
 import 'package:western_malabar/widgets/product_card.dart';
 
 class CartScreen extends ConsumerWidget {
@@ -955,3 +955,5 @@ class _YouMayAlsoLikeSectionState
     );
   }
 }
+
+

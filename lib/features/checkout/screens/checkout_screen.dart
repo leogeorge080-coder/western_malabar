@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 
-import 'package:western_malabar/core/pricing/cart_pricing.dart';
+import 'package:western_malabar/features/cart/services/cart_pricing.dart';
 import 'package:western_malabar/features/admin/providers/admin_orders_provider.dart';
 import 'package:western_malabar/features/checkout/providers/checkout_provider.dart';
 import 'package:western_malabar/features/checkout/screens/order_success_screen.dart';
 import 'package:western_malabar/features/checkout/services/checkout_service.dart';
 import 'package:western_malabar/features/checkout/services/stripe_payment_service.dart';
-import 'package:western_malabar/services/postcode_lookup_service.dart';
-import 'package:western_malabar/state/cart_provider.dart';
-import 'package:western_malabar/theme.dart';
-import 'package:western_malabar/theme/wm_gradients.dart';
+import 'package:western_malabar/shared/services/postcode_lookup_service.dart';
+import 'package:western_malabar/features/cart/providers/cart_provider.dart';
+import 'package:western_malabar/shared/theme/theme.dart';
+import 'package:western_malabar/shared/theme/wm_gradients.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
   const CheckoutScreen({super.key});
@@ -1030,3 +1030,5 @@ class _AmazonSelectionCard extends StatelessWidget {
     );
   }
 }
+
+

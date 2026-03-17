@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:western_malabar/theme.dart';
-import 'package:western_malabar/theme/wm_gradients.dart';
+import 'package:western_malabar/shared/theme/theme.dart';
+import 'package:western_malabar/shared/theme/wm_gradients.dart';
 import 'package:western_malabar/features/admin/models/admin_order_model.dart';
 import 'package:western_malabar/features/admin/providers/admin_orders_provider.dart';
 import 'package:western_malabar/features/admin/screens/admin_order_detail_screen.dart';
@@ -478,3 +478,7 @@ class _MiniChip extends StatelessWidget {
     );
   }
 }
+
+
+
+

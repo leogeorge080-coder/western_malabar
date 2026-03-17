@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:western_malabar/state/cart_provider.dart';
+import 'package:western_malabar/features/cart/providers/cart_provider.dart';
 import '../models/checkout_address.dart';
 
 class PlacedOrderResult {
@@ -199,3 +199,7 @@ Future<void> ensureSupabaseUser() async {
 final checkoutServiceProvider = Provider<CheckoutService>((ref) {
   return CheckoutService(Supabase.instance.client);
 });
+
+
+
+

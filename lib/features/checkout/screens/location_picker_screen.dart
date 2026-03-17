@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:western_malabar/theme.dart';
+import 'package:western_malabar/shared/theme/theme.dart';
 
 class PickedLocation {
   final double latitude;
@@ -188,3 +188,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
     );
   }
 }
+
+
+
+
