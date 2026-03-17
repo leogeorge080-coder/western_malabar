@@ -1,11 +1,20 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- ✅ Needed for WebView to load your online VR store -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- (Optional) If you ever load http:// during development -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Camera permission for QR scanning and image picking -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
     <application
         android:label="WM Shop"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:hardwareAccelerated="true"
+        android:usesCleartextTraffic="true"> <!-- optional, ok to keep -->
 
-        <!-- 🔹 Android App Shortcuts metadata -->
+        <!-- 🔹 Android App Shortcuts metadata (kept) -->
         <meta-data
             android:name="android.app.shortcuts"
             android:resource="@xml/shortcuts" />
@@ -13,25 +22,24 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTask"
-            android:taskAffinity=""
+            android:launchMode="singleTop"
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
 
-            <!-- Flutter’s normal splash background -->
+            <!-- Flutter’s normal splash background (kept) -->
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme" />
 
-            <!-- Launcher entry -->
+            <!-- Launcher entry (kept) -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- 🔹 Custom deep link scheme for WM Shop -->
+            <!-- 🔹 Custom deep link scheme for WM Shop (kept) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -40,13 +48,13 @@
             </intent-filter>
         </activity>
 
-        <!-- Required by Flutter tool -->
+        <!-- Required by Flutter tool (kept) -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
 
-    <!-- Flutter text-processing permission -->
+    <!-- Flutter text-processing permission (kept) -->
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT" />

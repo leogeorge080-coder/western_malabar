@@ -1,87 +1,53 @@
-// lib/screens/customer/app_shell.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// Screens
 import 'package:western_malabar/screens/customer/home_screen.dart';
 import 'package:western_malabar/screens/customer/category_screen.dart';
-import 'package:western_malabar/screens/customer/profile_screen.dart';
+import 'package:western_malabar/features/profile/screens/profile_screen.dart';
 import 'package:western_malabar/screens/customer/cart_screen.dart';
 
-// Virtual Store feature
-import 'package:western_malabar/features/virtual_store/virtual_store.dart';
-
-// Utilities & overlay
 import 'package:western_malabar/utils/haptic.dart';
+import 'package:western_malabar/utils/cart_fly_target.dart';
 import 'package:western_malabar/widgets/ask_malabar_overlay.dart';
+import 'package:western_malabar/state/cart_provider.dart';
 
-class AppShell extends StatefulWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
 
   @override
-  State<AppShell> createState() => _AppShellState();
+  ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends ConsumerState<AppShell> {
   final PageStorageBucket _bucket = PageStorageBucket();
+  final GlobalKey<HomeScreenState> _homeKey = GlobalKey<HomeScreenState>();
 
-  // Order must match BottomNavigationBar items
   late final List<Widget> _screens = <Widget>[
-    const HomeScreen(),
+    HomeScreen(key: _homeKey),
     const CategoryScreen(),
-    const VirtualStoreScreen(), // 🟣 Virtual Store tab
     const ProfileScreen(),
     const CartScreen(),
   ];
 
   int _index = 0;
-  bool _isChatOpen = false; // guard: prevent multiple sheets
 
-  // If you later wire cart count from state/provider, bind here.
-  int get _cartCount => 0;
-
-  // ─────────────────────────────────────────────────────────────
-  // Ask Malabar bubble
-  // ─────────────────────────────────────────────────────────────
-  @override
-  void initState() {
-    super.initState();
-    // Show the floating bubble after first layout (slight delay for polish)
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await Future<void>.delayed(const Duration(milliseconds: 200));
-      if (!mounted) return;
-      AskMalabarOverlay.show(context, _onAskMalabarBubbleTap);
-    });
-  }
-
-  Future<void> _onAskMalabarBubbleTap() async {
-    if (_isChatOpen) return;
-    _isChatOpen = true;
-
-    Haptic.medium(context);
-    AskMalabarOverlay.hide();
-
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => const _AskMalabarSheet(),
-    );
-
-    _isChatOpen = false;
-    if (!mounted) return;
-    AskMalabarOverlay.show(context, _onAskMalabarBubbleTap);
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // Navigation
-  // ─────────────────────────────────────────────────────────────
   void _onTap(int i) {
+    if (i == 0) {
+      if (_index != 0) {
+        Haptic.light(context);
+        setState(() => _index = 0);
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _homeKey.currentState?.scrollToTop();
+        });
+        return;
+      }
+
+      _homeKey.currentState?.scrollToTop();
+      return;
+    }
+
     if (i == _index) {
-      // Scroll-to-top when re-tapping the active tab
       final primary = PrimaryScrollController.maybeOf(context);
       if (primary != null && primary.hasClients) {
         primary.animateTo(
@@ -92,20 +58,22 @@ class _AppShellState extends State<AppShell> {
       }
       return;
     }
+
     Haptic.light(context);
     setState(() => _index = i);
   }
 
   @override
   Widget build(BuildContext context) {
-    // Back from non-home tabs goes to Home first.
-    return WillPopScope(
-      onWillPop: () async {
-        if (_index != 0) {
+    final cartItems = ref.watch(cartProvider);
+    final cartCount = cartItems.fold<int>(0, (sum, item) => sum + item.qty);
+
+    return PopScope(
+      canPop: _index == 0,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _index != 0) {
           setState(() => _index = 0);
-          return false;
         }
-        return true;
       },
       child: Scaffold(
         body: PageStorage(
@@ -134,18 +102,19 @@ class _AppShellState extends State<AppShell> {
               label: 'Categories',
             ),
             const BottomNavigationBarItem(
-              icon: Icon(Icons.storefront_outlined),
-              activeIcon: Icon(Icons.storefront_rounded),
-              label: 'Virtual Store',
-            ),
-            const BottomNavigationBarItem(
               icon: Icon(Icons.person_outline),
               activeIcon: Icon(Icons.person),
               label: 'Profile',
             ),
             BottomNavigationBarItem(
-              icon: _CartIcon(count: _cartCount),
-              activeIcon: _CartIcon(count: _cartCount, active: true),
+              icon: _CartIcon(
+                key: wmBottomCartNavKey,
+                count: cartCount,
+              ),
+              activeIcon: _CartIcon(
+                count: cartCount,
+                active: true,
+              ),
               label: 'Cart',
             ),
           ],
@@ -161,9 +130,13 @@ class _AppShellState extends State<AppShell> {
   }
 }
 
-/// Small, dependency-free badge for the cart tab.
 class _CartIcon extends StatelessWidget {
-  const _CartIcon({required this.count, this.active = false});
+  const _CartIcon({
+    super.key,
+    required this.count,
+    this.active = false,
+  });
+
   final int count;
   final bool active;
 
@@ -171,6 +144,7 @@ class _CartIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final Color color =
         active ? const Color(0xFF5A2D82) : const Color(0xFF7A7A7A);
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -201,7 +175,6 @@ class _CartIcon extends StatelessWidget {
   }
 }
 
-/// Bottom sheet content for Ask Malabar.
 class _AskMalabarSheet extends StatelessWidget {
   const _AskMalabarSheet();
 

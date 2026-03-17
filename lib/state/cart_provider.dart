@@ -1,4 +1,4 @@
-import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:western_malabar/models/product_model.dart';
 
 class CartItem {
@@ -61,8 +61,20 @@ class CartState extends StateNotifier<List<CartItem>> {
     }
     return sum;
   }
+
+  int get totalCents {
+    int sum = 0;
+    for (final e in state) {
+      final cents = e.product.salePriceCents ?? e.product.priceCents ?? 0;
+      sum += cents * e.qty;
+    }
+    return sum;
+  }
 }
 
 // Provider
 final cartProvider =
     StateNotifierProvider<CartState, List<CartItem>>((ref) => CartState());
+
+// Track which products are currently being added (loading state)
+final addingProductIdsProvider = StateProvider<Set<String>>((ref) => {});

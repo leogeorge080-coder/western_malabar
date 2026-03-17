@@ -5,6 +5,7 @@ class CategoryModel {
   final String? icon;
   final int sortOrder;
   final bool isActive;
+  final String? parentId; // NEW
 
   const CategoryModel({
     required this.id,
@@ -13,6 +14,7 @@ class CategoryModel {
     this.icon,
     required this.sortOrder,
     required this.isActive,
+    this.parentId,
   });
 
   factory CategoryModel.fromMap(Map<String, dynamic> m) => CategoryModel(
@@ -22,5 +24,6 @@ class CategoryModel {
         icon: m['icon'] as String?,
         sortOrder: (m['sort_order'] as int?) ?? 0,
         isActive: (m['is_active'] as bool?) ?? true,
+        parentId: m['parent_id'] as String?, // NEW
       );
 }

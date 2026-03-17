@@ -1,5 +1,5 @@
-name: western_malabar
-description: Western Malabar – Customer App (Flutter + Supabase)
+﻿name: western_malabar
+description: Western Malabar â€“ Customer App (Flutter + Supabase)
 publish_to: "none"
 
 version: 1.0.0+1
@@ -7,33 +7,57 @@ version: 1.0.0+1
 environment:
   sdk: ">=3.4.0 <4.0.0"
 
+# -------------------- DEPENDENCIES --------------------
 dependencies:
   flutter:
     sdk: flutter
 
-  # 🟣 Supabase backend
-  supabase_flutter: ^2.6.0
+  # ðŸŸ£ Supabase backend
+  supabase_flutter: ^2.9.1
 
-  # 🪴 Riverpod state management
+  # 🪴 State management
+  flutter_riverpod: ^2.6.1
   hooks_riverpod: ^2.5.1
   flutter_hooks: ^0.20.5
+  provider: ^6.1.2
 
-  # 🌍 Internationalization
+  # ðŸŒ Internationalization
   intl: ^0.19.0
 
-  # 🖼️ Cached images for banners / product grids
-  cached_network_image: ^3.3.1
+  # ðŸ–¼ï¸ Cached images for banners / product grids
+  cached_network_image: ^3.4.1
 
-  # 🧩 Utils and helpers
-  provider: ^6.1.2
+  # âš™ï¸ Local storage & launchers
   shared_preferences: ^2.3.2
   url_launcher: ^6.3.1
 
-  # 🌤 Weather fetch
+  # ðŸŒ¤ Weather & API calls
   http: ^1.2.2
 
-  # 🧠 Rename helper for app id / package name edits
+  # 🔱 Stripe payment integration
+  flutter_stripe: ^11.5.0
+  # 📱 QR code generation
+  qr_flutter: ^4.1.0
+  # 📱 QR code scanning
+  mobile_scanner: ^7.0.1
+  # 🖼️ Image picker for product uploads
+  image_picker: ^1.1.2
+  # 🔊 Audio playback for feedback
+  audioplayers: ^6.0.0
+  # Google Maps for location picking
+  google_maps_flutter: ^2.5.0
+  # Environment variables
+  flutter_dotenv: ^5.1.0
+
+  # Rename helper for app id / package name edits
   rename: ^3.1.0
+
+# -------------------- DEV DEPENDENCIES --------------------
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.1
 
 # -------------------- FLUTTER LAUNCHER ICONS --------------------
 flutter_launcher_icons:
@@ -44,27 +68,25 @@ flutter_launcher_icons:
   adaptive_icon_background: assets/icon/bg.png
   remove_alpha_ios: true
 
-# -------------------- FLUTTER --------------------
+# -------------------- FLUTTER CONFIG --------------------
 flutter:
   uses-material-design: true
-
   assets:
-    # 🟩 App Icons
+    - assets/sfx/success_beep.mp3
+    - assets/sfx/error_beep.mp3
+    - .env
     - assets/icon/fg.png
     - assets/icon/bg.png
     - assets/icon/wm_mark.png
     - assets/icon/wm_mark_mono.png
-
-    # 🟪 Home banners
     - assets/banners/
-
-    # 🚀 Transparent PNGs for the animated Noon-style strip
     - assets/flyin/appam_stew.png
     - assets/flyin/puttu_kadala.png
     - assets/flyin/set_dosa.png
     - assets/flyin/grated_coconut.png
     - assets/flyin/angamaly_mango.png
     - assets/flyin/ulli_vada.png
+    - assets/placeholders/wm_product_placeholder.png
 
 # -------------------- FLUTTER NATIVE SPLASH --------------------
 flutter_native_splash:
@@ -77,3 +99,4 @@ flutter_native_splash:
 
   android: true
   ios: false
+

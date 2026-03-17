@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:western_malabar/screens/customer/home_screen.dart';
+import 'package:western_malabar/screens/customer/search_screen.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -15,6 +16,9 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.white,
       ),
       home: const HomeScreen(),
+      routes: {
+        '/search': (_) => const SearchScreen(),
+      },
     );
   }
 }

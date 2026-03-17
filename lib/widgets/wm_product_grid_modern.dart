@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:western_malabar/models/product_model.dart';
+import 'package:western_malabar/widgets/cart/add_to_cart_control.dart';
 
-/// Minimal product type for this grid. If you already have a model,
-/// just map to these fields when you pass [products].
+/// Minimal product type for this grid.
+/// If you already have a model, just map to these fields when you pass [products].
 class WmProduct {
   final String id;
   final String name;
@@ -16,21 +18,19 @@ class WmProduct {
   });
 }
 
-/// Modern, bold 2-column grid with floating price tags and reveal-on-tap
-/// Add button. Great for a home feed section.
+/// Modern, bold 2-column grid.
+/// Uses shared AddToCartControl so cart behavior stays identical all over the app.
 class WMTodaysPicksGrid extends StatelessWidget {
   const WMTodaysPicksGrid({
     super.key,
     required this.products,
     this.title = "Today's Picks",
-    this.onAdd,
     this.onTap,
     this.crossAxisCount = 2,
   });
 
   final List<WmProduct> products;
   final String title;
-  final void Function(WmProduct product)? onAdd;
   final void Function(WmProduct product)? onTap;
   final int crossAxisCount;
 
@@ -51,7 +51,9 @@ class WMTodaysPicksGrid extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         if (products.isEmpty)
-          const _EmptyState()
+          const Center(
+            child: Text('No products available'),
+          )
         else
           GridView.builder(
             shrinkWrap: true,
@@ -62,12 +64,11 @@ class WMTodaysPicksGrid extends StatelessWidget {
               crossAxisCount: crossAxisCount,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
-              childAspectRatio: .78, // tall, visual cards
+              childAspectRatio: .78,
             ),
             itemCount: products.length,
             itemBuilder: (context, i) => _ProductTile(
               product: products[i],
-              onAdd: onAdd,
               onTap: onTap,
             ),
           ),
@@ -79,150 +80,138 @@ class WMTodaysPicksGrid extends StatelessWidget {
 class _ProductTile extends StatefulWidget {
   const _ProductTile({
     required this.product,
-    this.onAdd,
     this.onTap,
   });
 
   final WmProduct product;
-  final void Function(WmProduct product)? onAdd;
   final void Function(WmProduct product)? onTap;
 
   @override
   State<_ProductTile> createState() => _ProductTileState();
 }
 
-class _ProductTileState extends State<_ProductTile>
-    with SingleTickerProviderStateMixin {
+class _ProductTileState extends State<_ProductTile> {
   bool _pressed = false;
-  late final AnimationController _a = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 150));
-
-  @override
-  void dispose() {
-    _a.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     const purple = Color(0xFF5A2D82);
     final p = widget.product;
 
-    return GestureDetector(
-      onTapDown: (_) {
-        _a.forward();
-        setState(() => _pressed = true);
-      },
-      onTapCancel: () {
-        _a.reverse();
-        setState(() => _pressed = false);
-      },
-      onTapUp: (_) {
-        _a.reverse();
-        setState(() => _pressed = false);
-      },
-      onTap: () => widget.onTap?.call(p),
-      child: AnimatedScale(
-        duration: const Duration(milliseconds: 140),
-        scale: _pressed ? 0.98 : 1.0,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: const [
-              BoxShadow(
+    final productModel = ProductModel(
+      id: p.id,
+      name: p.name,
+      image: p.imageUrl,
+      priceCents: p.priceCents,
+      salePriceCents: null,
+    );
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () => widget.onTap?.call(p),
+        onHighlightChanged: (v) => setState(() => _pressed = v),
+        child: AnimatedScale(
+          duration: const Duration(milliseconds: 140),
+          scale: _pressed ? 0.98 : 1.0,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: _pressed
+                    ? purple.withValues(alpha: 0.18)
+                    : Colors.black.withValues(alpha: 0.05),
+              ),
+              boxShadow: const [
+                BoxShadow(
                   color: Color(0x15000000),
                   blurRadius: 12,
-                  offset: Offset(0, 6)),
-            ],
-          ),
-          child: Column(
-            children: [
-              // Image area
-              Expanded(
-                child: Stack(
-                  children: [
-                    // image / placeholder
-                    Positioned.fill(
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(18)),
-                        child: p.imageUrl == null || p.imageUrl!.isEmpty
-                            ? Container(
+                  offset: Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(18)),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: p.imageUrl == null || p.imageUrl!.isEmpty
+                          ? Container(
+                              color: const Color(0xFFF1F1F4),
+                              alignment: Alignment.center,
+                              child: const Icon(
+                                Icons.image,
+                                size: 48,
+                                color: Colors.black26,
+                              ),
+                            )
+                          : Image.network(
+                              p.imageUrl!,
+                              fit: BoxFit.cover,
+                              loadingBuilder: (context, child, progress) {
+                                if (progress == null) return child;
+                                return const Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                );
+                              },
+                              errorBuilder: (_, __, ___) => Container(
                                 color: const Color(0xFFF1F1F4),
                                 alignment: Alignment.center,
-                                child: const Icon(Icons.image,
-                                    size: 48, color: Colors.black26),
-                              )
-                            : Image.network(
-                                p.imageUrl!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  color: const Color(0xFFF1F1F4),
-                                  alignment: Alignment.center,
-                                  child: const Icon(Icons.broken_image_outlined,
-                                      size: 44, color: Colors.black26),
+                                child: const Icon(
+                                  Icons.broken_image_outlined,
+                                  size: 44,
+                                  color: Colors.black26,
                                 ),
                               ),
-                      ),
-                    ),
-                    // floating price tag
-                    Positioned(
-                      right: 10,
-                      bottom: 10,
-                      child: _PriceTag(text: _gbp(p.priceCents)),
-                    ),
-                    // add button overlay (appears when pressed)
-                    Positioned(
-                      left: 10,
-                      bottom: 10,
-                      child: AnimatedOpacity(
-                        duration: const Duration(milliseconds: 150),
-                        opacity: _pressed ? 1 : 0,
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: purple,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
                             ),
-                          ),
-                          onPressed: () => widget.onAdd?.call(p),
-                          icon: const Icon(Icons.add_shopping_cart, size: 18),
-                          label: const Text('Add'),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        p.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        softWrap: false,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          height: 1.2,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              // Info
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      p.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 14),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _gbp(p.priceCents),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: Colors.black87,
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _gbp(p.priceCents),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15,
+                                color: purple,
+                              ),
+                            ),
+                          ),
+                          AddToCartControl(product: productModel),
+                        ],
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -230,52 +219,6 @@ class _ProductTileState extends State<_ProductTile>
   }
 }
 
-class _PriceTag extends StatelessWidget {
-  const _PriceTag({required this.text});
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0x22000000), blurRadius: 10, offset: Offset(0, 4)),
-        ],
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontWeight: FontWeight.w900,
-          fontSize: 13,
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 140,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F7FB),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: const Text('No picks yet — check back soon!',
-          style: TextStyle(color: Colors.black54, fontWeight: FontWeight.w600)),
-    );
-  }
-}
-
-// Helpers
 String _gbp(int cents) {
   final pounds = cents / 100.0;
   return '£${pounds.toStringAsFixed(2)}';
