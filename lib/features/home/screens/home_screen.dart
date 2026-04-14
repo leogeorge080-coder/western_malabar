@@ -14,34 +14,32 @@ import 'package:western_malabar/features/checkout/providers/address_provider.dar
 import 'package:western_malabar/features/checkout/screens/saved_addresses_screen.dart';
 import 'package:western_malabar/features/search/providers/search_controller.dart';
 import 'package:western_malabar/features/search/screens/global_product_search_screen.dart';
-import 'package:western_malabar/shared/theme/wm_gradients.dart';
 import 'package:western_malabar/shared/utils/cart_fly_target.dart';
 import 'package:western_malabar/shared/utils/fly_to_cart.dart';
 import 'package:western_malabar/shared/utils/haptic.dart';
-import 'package:western_malabar/shared/widgets/edge_sweep_glow.dart';
 
-const _wmPrimary = Color(0xFF5A2D82);
-const _wmPrimaryDark = Color(0xFF442062);
+const _wmPrimary = Color(0xFF2A2F3A);
+const _wmPrimaryDark = Color(0xFF171A20);
 
-const _wmCanvas = Color(0xFFF8F5EF);
+const _wmCanvas = Color(0xFFF7F7F7);
 const _wmSurface = Colors.white;
 
-const _wmTextStrong = Color(0xFF1F1B24);
-const _wmTextSoft = Color(0xFF6B6672);
-const _wmTextMuted = Color(0xFF8A8493);
+const _wmTextStrong = Color(0xFF111827);
+const _wmTextSoft = Color(0xFF6B7280);
+const _wmTextMuted = Color(0xFF9CA3AF);
 
-const _wmBorder = Color(0xFFE9E2EE);
-const _wmBorderSoft = Color(0xFFF0EBF4);
+const _wmBorder = Color(0xFFE5E7EB);
+const _wmBorderSoft = Color(0xFFF1F5F9);
 
-const _wmLavender = Color(0xFFF3ECFB);
-const _wmLavenderSoft = Color(0xFFF8F4FC);
+const _wmLavender = Color(0xFFF3F4F6);
+const _wmLavenderSoft = Color(0xFFF8FAFC);
 
-const _wmSuccess = Color(0xFF1E8E5A);
-const _wmDeal = Color(0xFFE48B13);
-const _wmReward = Color(0xFFB8841A);
-const _wmGold = Color(0xFFF0C53E);
+const _wmSuccess = Color(0xFF15803D);
+const _wmDeal = Color(0xFFF59E0B);
+const _wmReward = Color(0xFFD97706);
+const _wmGold = Color(0xFFF59E0B);
 
-const _wmSectionNeutral = Color(0xFF2B2531);
+const _wmSectionNeutral = Color(0xFF111827);
 
 String _gbp(int cents) => '£${(cents / 100.0).toStringAsFixed(2)}';
 String _moneyShort(int cents) => '£${(cents / 100).toStringAsFixed(2)}';
@@ -250,7 +248,6 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
     final newRows = await _productSvc.fetchNewInStore(limit: 12);
     final categories = await categoriesFuture;
 
-    // Strict dedupe only for top-priority rails.
     final priorityExcluded = <String>{};
 
     final buyItAgain = _uniqueRailProducts(
@@ -271,7 +268,6 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
       minItemsToShow: 1,
     );
 
-    // Soft dedupe for lower rails: dedupe inside each rail only.
     List<WmProduct> softRail(List<WmProductDto> rows,
         {int minItemsToShow = 1}) {
       final localSeen = <String>{};
@@ -408,24 +404,10 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
             right: 0,
             top: 0,
             height: headerBgHeight,
-            child: Stack(
-              children: [
-                const Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: WMGradients.homeBackground,
-                    ),
-                  ),
-                ),
-                EdgeSweepGlow(
-                  height: headerBgHeight,
-                  borderRadius: 28,
-                  thickness: 4.2,
-                  blurSigma: 2,
-                  opacity: 0.06,
-                  cycle: const Duration(seconds: 18),
-                ),
-              ],
+            child: Container(
+              decoration: const BoxDecoration(
+                color: _wmCanvas,
+              ),
             ),
           ),
           RefreshIndicator(
@@ -485,8 +467,8 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 180),
                                 curve: Curves.easeOut,
-                                color: const Color(0xFFFFFCF8)
-                                    .withOpacity(_lerp(0.0, 0.80, t)),
+                                color: const Color(0xFFF7F7F7)
+                                    .withOpacity(_lerp(0.0, 0.94, t)),
                               ),
                             ),
                           ),
@@ -500,15 +482,15 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
                             child: Container(
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(
-                                  _lerp(0.96, 1.0, t),
+                                  _lerp(0.98, 1.0, t),
                                 ),
                                 borderRadius: BorderRadius.circular(24),
                                 border: Border.all(color: _wmBorder),
                                 boxShadow: const [
                                   BoxShadow(
-                                    color: Color(0x11000000),
-                                    blurRadius: 8,
-                                    offset: Offset(0, 3),
+                                    color: Color(0x0A000000),
+                                    blurRadius: 12,
+                                    offset: Offset(0, 4),
                                   ),
                                 ],
                               ),
@@ -802,7 +784,7 @@ class _LocationPill extends StatelessWidget {
               const Icon(
                 Icons.keyboard_arrow_down_rounded,
                 size: 18,
-                color: Colors.black45,
+                color: _wmTextSoft,
               ),
             ],
           ),
@@ -829,8 +811,6 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final titleColor = prominent ? _wmPrimary : _wmSectionNeutral;
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -840,8 +820,8 @@ class _SectionHeader extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: TextStyle(
-                  color: titleColor,
+                style: const TextStyle(
+                  color: _wmSectionNeutral,
                   fontSize: 22,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.3,
@@ -863,7 +843,7 @@ class _SectionHeader extends StatelessWidget {
           TextButton(
             onPressed: onAction,
             style: TextButton.styleFrom(
-              foregroundColor: _wmPrimary,
+              foregroundColor: _wmTextStrong,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             ),
             child: Text(
@@ -916,7 +896,7 @@ class _CartMomentumCard extends ConsumerWidget {
               height: 52,
               width: 52,
               decoration: BoxDecoration(
-                color: _wmLavender,
+                color: const Color(0xFFF3F4F6),
                 borderRadius: BorderRadius.circular(16),
               ),
               alignment: Alignment.center,
@@ -967,7 +947,7 @@ class _CartMomentumCard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
           color:
-              remaining > 0 ? const Color(0xFFF2DCA0) : const Color(0xFFBFE2CE),
+              remaining > 0 ? const Color(0xFFE5E7EB) : const Color(0xFFD1FAE5),
         ),
         boxShadow: const [
           BoxShadow(
@@ -984,8 +964,8 @@ class _CartMomentumCard extends ConsumerWidget {
             width: 52,
             decoration: BoxDecoration(
               color: remaining > 0
-                  ? const Color(0xFFFFF3D6)
-                  : const Color(0xFFE8F6EE),
+                  ? const Color(0xFFF3F4F6)
+                  : const Color(0xFFECFDF5),
               borderRadius: BorderRadius.circular(16),
             ),
             alignment: Alignment.center,
@@ -1023,8 +1003,8 @@ class _CartMomentumCard extends ConsumerWidget {
                     value: progress,
                     minHeight: 8,
                     backgroundColor: remaining > 0
-                        ? const Color(0xFFF1E7CC)
-                        : const Color(0xFFDDEFE4),
+                        ? const Color(0xFFE5E7EB)
+                        : const Color(0xFFDCFCE7),
                     valueColor: AlwaysStoppedAnimation<Color>(
                       remaining > 0 ? _wmPrimary : _wmSuccess,
                     ),
@@ -1330,7 +1310,7 @@ class _RailProductSkeleton extends StatelessWidget {
           Container(
             height: 138,
             decoration: const BoxDecoration(
-              color: Color(0xFFF4EFF8),
+              color: Color(0xFFF3F4F6),
               borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             ),
           ),
@@ -1373,7 +1353,7 @@ class _ShimmerBar extends StatelessWidget {
         width: width,
         height: height,
         decoration: BoxDecoration(
-          color: const Color(0xFF6B3FA6),
+          color: const Color(0xFFD1D5DB),
           borderRadius: BorderRadius.circular(999),
         ),
       ),
@@ -1529,6 +1509,8 @@ class _ProductTileState extends ConsumerState<_ProductTile> {
             elevation: 0,
             backgroundColor: _wmPrimary,
             foregroundColor: Colors.white,
+            disabledBackgroundColor: const Color(0xFF4B5563),
+            disabledForegroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -1660,11 +1642,11 @@ class _ProductTileState extends ConsumerState<_ProductTile> {
   Widget _buildImage(WmProduct p) {
     Widget placeholderIcon({double size = 36}) {
       return Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [
               Colors.white,
-              const Color(0xFFF6F3F8),
+              Color(0xFFF8FAFC),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -1680,7 +1662,7 @@ class _ProductTileState extends ConsumerState<_ProductTile> {
                 width: 58,
                 height: 58,
                 decoration: BoxDecoration(
-                  color: _wmLavenderSoft,
+                  color: const Color(0xFFF3F4F6),
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
@@ -1692,7 +1674,7 @@ class _ProductTileState extends ConsumerState<_ProductTile> {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF4EEE7),
+                  color: const Color(0xFFEFF1F5),
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
@@ -1712,11 +1694,11 @@ class _ProductTileState extends ConsumerState<_ProductTile> {
     final imageWidget = p.imageUrl == null || p.imageUrl!.isEmpty
         ? placeholderIcon(size: 38)
         : DecoratedBox(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: [
                   Colors.white,
-                  const Color(0xFFF7F4F9),
+                  Color(0xFFF8FAFC),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -1817,13 +1799,13 @@ class _ProductTileState extends ConsumerState<_ProductTile> {
               color: widget.surfaceTint ?? _wmSurface,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: _pressed ? _wmPrimary.withOpacity(0.16) : _wmBorder,
+                color: _pressed ? const Color(0xFFCBD5E1) : _wmBorder,
               ),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x0D000000),
-                  blurRadius: 8,
-                  offset: Offset(0, 3),
+                  color: Color(0x08000000),
+                  blurRadius: 14,
+                  offset: Offset(0, 6),
                 ),
               ],
             ),
@@ -1942,10 +1924,7 @@ class _ProductTileState extends ConsumerState<_ProductTile> {
                                     style: TextStyle(
                                       fontWeight: FontWeight.w900,
                                       fontSize: priceSize,
-                                      color: widget.emphasizeDeals &&
-                                              p.hasPriceDrop
-                                          ? _wmDeal
-                                          : _wmPrimary,
+                                      color: _wmSuccess,
                                       letterSpacing: -0.25,
                                     ),
                                   ),
@@ -2113,19 +2092,19 @@ class _WmPromoAutoCarouselState extends State<WmPromoAutoCarousel> {
       title: 'Free Delivery over £30',
       subtitle: 'Build your basket smarter this week',
       icon: Icons.local_shipping_outlined,
-      colors: [Color(0xFF4A2A68), Color(0xFF8A6AB2)],
+      colors: [Color(0xFF111827), Color(0xFF374151)],
     ),
     _PromoItem(
       title: 'Best value this week',
       subtitle: 'Savings worth adding to your basket now',
       icon: Icons.local_offer_outlined,
-      colors: [Color(0xFF247A54), Color(0xFF7BC89B)],
+      colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
     ),
     _PromoItem(
       title: 'Rewards ready to use',
       subtitle: 'Turn your points into value on your next order',
       icon: Icons.card_giftcard_outlined,
-      colors: [Color(0xFFA57A1E), Color(0xFFE4C56C)],
+      colors: [Color(0xFF4B5563), Color(0xFF6B7280)],
     ),
   ];
 
@@ -2276,7 +2255,7 @@ class _Dots extends StatelessWidget {
           width: i == index ? 16 : 6,
           height: 6,
           decoration: BoxDecoration(
-            color: i == index ? _wmPrimary : _wmLavender,
+            color: i == index ? _wmPrimary : const Color(0xFFE5E7EB),
             borderRadius: BorderRadius.circular(999),
           ),
         ),
@@ -2304,8 +2283,8 @@ class _Shimmer extends StatefulWidget {
     Color? baseColor,
     Color? highlightColor,
     Duration? speed,
-  })  : baseColor = baseColor ?? const Color(0xFF6B3FA6),
-        highlightColor = highlightColor ?? _wmGold,
+  })  : baseColor = baseColor ?? const Color(0xFFD1D5DB),
+        highlightColor = highlightColor ?? const Color(0xFFF3F4F6),
         speed = speed ?? const Duration(seconds: 3);
 
   final Widget child;
@@ -2381,9 +2360,9 @@ class _LoyaltyCard extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
-          colors: [Color(0xFFF7F1FD), Color(0xFFEEE6F8)],
+          colors: [Color(0xFFFFFFFF), Color(0xFFF9FAFB)],
         ),
-        border: Border.all(color: const Color(0xFFDCCFED)),
+        border: Border.all(color: Color(0xFFE5E7EB)),
         boxShadow: const [
           BoxShadow(
             color: Color(0x06000000),
@@ -2399,9 +2378,9 @@ class _LoyaltyCard extends StatelessWidget {
             height: 38,
             width: 38,
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF4D9),
+              color: const Color(0xFFFFF7ED),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFF0E1B5)),
+              border: Border.all(color: const Color(0xFFFED7AA)),
             ),
             alignment: Alignment.center,
             child: const Icon(Icons.loyalty, color: _wmReward, size: 18),
@@ -2440,7 +2419,7 @@ class _LoyaltyCard extends StatelessWidget {
           TextButton(
             style: TextButton.styleFrom(
               foregroundColor: _wmPrimary,
-              backgroundColor: Colors.white.withOpacity(.8),
+              backgroundColor: const Color(0xFFF9FAFB),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),

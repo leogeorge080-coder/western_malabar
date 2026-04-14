@@ -3,9 +3,31 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:western_malabar/features/orders/models/order_detail_model.dart';
 import 'package:western_malabar/features/orders/models/order_item_model.dart';
 import 'package:western_malabar/features/orders/providers/orders_provider.dart';
-import 'package:western_malabar/shared/theme/theme.dart';
-import 'package:western_malabar/shared/theme/wm_gradients.dart';
 import 'package:western_malabar/shared/widgets/wm_product_image.dart';
+
+const _wmOrderBg = Color(0xFFF7F7F7);
+const _wmOrderSurface = Colors.white;
+const _wmOrderSurfaceSoft = Color(0xFFF9FAFB);
+const _wmOrderBorder = Color(0xFFE5E7EB);
+
+const _wmOrderTextStrong = Color(0xFF111827);
+const _wmOrderTextSoft = Color(0xFF6B7280);
+const _wmOrderTextMuted = Color(0xFF9CA3AF);
+
+const _wmOrderPrimary = Color(0xFF2A2F3A);
+const _wmOrderPrimaryDark = Color(0xFF171A20);
+
+const _wmOrderSuccess = Color(0xFF15803D);
+const _wmOrderSuccessSoft = Color(0xFFECFDF5);
+
+const _wmOrderInfo = Color(0xFF2563EB);
+const _wmOrderInfoSoft = Color(0xFFEFF6FF);
+
+const _wmOrderWarning = Color(0xFFB45309);
+const _wmOrderWarningSoft = Color(0xFFFFFBEB);
+
+const _wmOrderDanger = Color(0xFFDC2626);
+const _wmOrderDangerSoft = Color(0xFFFEF2F2);
 
 class OrderDetailScreen extends ConsumerWidget {
   final String orderId;
@@ -30,84 +52,79 @@ class OrderDetailScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: WMGradients.pageBackground,
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              const _OrderDetailHeader(),
-              Expanded(
-                child: orderAsync.when(
-                  loading: () => RefreshIndicator(
-                    color: WMTheme.royalPurple,
-                    onRefresh: refresh,
-                    child: const _LoadingView(),
-                  ),
-                  error: (error, _) => RefreshIndicator(
-                    color: WMTheme.royalPurple,
-                    onRefresh: refresh,
-                    child: _ErrorView(
-                      message: error.toString(),
-                      onRetry: () {
-                        ref.invalidate(orderDetailProvider(orderId));
-                        ref.invalidate(orderItemsProvider(orderId));
-                      },
-                    ),
-                  ),
-                  data: (order) {
-                    return itemsAsync.when(
-                      loading: () => RefreshIndicator(
-                        color: WMTheme.royalPurple,
-                        onRefresh: refresh,
-                        child: _OrderDetailLoadingScaffold(order: order),
-                      ),
-                      error: (error, _) => RefreshIndicator(
-                        color: WMTheme.royalPurple,
-                        onRefresh: refresh,
-                        child: _ErrorView(
-                          message: error.toString(),
-                          onRetry: () {
-                            ref.invalidate(orderItemsProvider(orderId));
-                          },
-                        ),
-                      ),
-                      data: (items) {
-                        return RefreshIndicator(
-                          color: WMTheme.royalPurple,
-                          onRefresh: refresh,
-                          child: SingleChildScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(
-                              parent: BouncingScrollPhysics(),
-                            ),
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                            child: Column(
-                              children: [
-                                _OrderHeroCard(
-                                    order: order, itemCount: items.length),
-                                const SizedBox(height: 14),
-                                _OrderTimelineCard(order: order),
-                                const SizedBox(height: 14),
-                                _DeliveryInfoCard(order: order),
-                                const SizedBox(height: 14),
-                                _OrderItemsCard(items: items),
-                                const SizedBox(height: 14),
-                                _OrderPricingCard(order: order),
-                                const SizedBox(height: 14),
-                                _SupportCard(order: order),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
+      backgroundColor: _wmOrderBg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            const _OrderDetailHeader(),
+            Expanded(
+              child: orderAsync.when(
+                loading: () => RefreshIndicator(
+                  color: _wmOrderPrimary,
+                  onRefresh: refresh,
+                  child: const _LoadingView(),
                 ),
+                error: (error, _) => RefreshIndicator(
+                  color: _wmOrderPrimary,
+                  onRefresh: refresh,
+                  child: _ErrorView(
+                    message: error.toString(),
+                    onRetry: () {
+                      ref.invalidate(orderDetailProvider(orderId));
+                      ref.invalidate(orderItemsProvider(orderId));
+                    },
+                  ),
+                ),
+                data: (order) {
+                  return itemsAsync.when(
+                    loading: () => RefreshIndicator(
+                      color: _wmOrderPrimary,
+                      onRefresh: refresh,
+                      child: _OrderDetailLoadingScaffold(order: order),
+                    ),
+                    error: (error, _) => RefreshIndicator(
+                      color: _wmOrderPrimary,
+                      onRefresh: refresh,
+                      child: _ErrorView(
+                        message: error.toString(),
+                        onRetry: () {
+                          ref.invalidate(orderItemsProvider(orderId));
+                        },
+                      ),
+                    ),
+                    data: (items) {
+                      return RefreshIndicator(
+                        color: _wmOrderPrimary,
+                        onRefresh: refresh,
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(
+                            parent: BouncingScrollPhysics(),
+                          ),
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                          child: Column(
+                            children: [
+                              _OrderHeroCard(
+                                  order: order, itemCount: items.length),
+                              const SizedBox(height: 14),
+                              _OrderTimelineCard(order: order),
+                              const SizedBox(height: 14),
+                              _DeliveryInfoCard(order: order),
+                              const SizedBox(height: 14),
+                              _OrderItemsCard(items: items),
+                              const SizedBox(height: 14),
+                              _OrderPricingCard(order: order),
+                              const SizedBox(height: 14),
+                              _SupportCard(order: order),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -124,7 +141,7 @@ class _OrderDetailHeader extends StatelessWidget {
       child: Row(
         children: [
           Material(
-            color: Colors.white.withValues(alpha: 0.94),
+            color: _wmOrderSurface,
             borderRadius: BorderRadius.circular(18),
             child: InkWell(
               borderRadius: BorderRadius.circular(18),
@@ -134,9 +151,10 @@ class _OrderDetailHeader extends StatelessWidget {
                 height: 48,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: _wmOrderBorder),
                   boxShadow: const [
                     BoxShadow(
-                      color: Color(0x12000000),
+                      color: Color(0x0C000000),
                       blurRadius: 10,
                       offset: Offset(0, 4),
                     ),
@@ -144,7 +162,7 @@ class _OrderDetailHeader extends StatelessWidget {
                 ),
                 child: const Icon(
                   Icons.arrow_back_ios_new_rounded,
-                  color: WMTheme.royalPurple,
+                  color: _wmOrderPrimary,
                   size: 20,
                 ),
               ),
@@ -160,7 +178,7 @@ class _OrderDetailHeader extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 25,
                     fontWeight: FontWeight.w900,
-                    color: Colors.black87,
+                    color: _wmOrderTextStrong,
                     letterSpacing: -0.3,
                   ),
                 ),
@@ -170,7 +188,7 @@ class _OrderDetailHeader extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black54,
+                    color: _wmOrderTextSoft,
                   ),
                 ),
               ],
@@ -194,8 +212,7 @@ class _OrderHeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = order.displayStatus;
-    final statusColor = _statusColor(status);
-    final statusBg = statusColor.withValues(alpha: 0.12);
+    final statusTone = _statusTone(status);
     final isPickup = _isPickup(order);
 
     return Container(
@@ -206,14 +223,14 @@ class _OrderHeroCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            WMTheme.royalPurple,
-            Color(0xFF8753C4),
+            _wmOrderPrimaryDark,
+            _wmOrderPrimary,
           ],
         ),
         borderRadius: BorderRadius.circular(26),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x22000000),
+            color: Color(0x18000000),
             blurRadius: 18,
             offset: Offset(0, 8),
           ),
@@ -227,10 +244,10 @@ class _OrderHeroCard extends StatelessWidget {
                 width: 58,
                 height: 58,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.14),
+                  color: Colors.white.withOpacity(0.10),
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.18),
+                    color: Colors.white.withOpacity(0.12),
                   ),
                 ),
                 child: Icon(
@@ -263,8 +280,8 @@ class _OrderHeroCard extends StatelessWidget {
                       order.customerName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.92),
+                      style: const TextStyle(
+                        color: Color(0xFFD1D5DB),
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                       ),
@@ -279,10 +296,10 @@ class _OrderHeroCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
+              color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.14),
+                color: Colors.white.withOpacity(0.10),
               ),
             ),
             child: Row(
@@ -316,8 +333,8 @@ class _OrderHeroCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   _formatDate(order.createdAt),
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.92),
+                  style: const TextStyle(
+                    color: Color(0xFFD1D5DB),
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -329,16 +346,14 @@ class _OrderHeroCard extends StatelessWidget {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: statusBg,
+                  color: statusTone.bg,
                   borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.18),
-                  ),
+                  border: Border.all(color: statusTone.border),
                 ),
                 child: Text(
                   status,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.98),
+                    color: statusTone.fg,
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
                   ),
@@ -356,24 +371,48 @@ class _OrderHeroCard extends StatelessWidget {
     return type == 'local_pickup';
   }
 
-  static Color _statusColor(String status) {
+  static _StatusTone _statusTone(String status) {
     switch (status) {
       case 'Delivered':
       case 'Collected':
-        return const Color(0xFF1E8E3E);
+        return const _StatusTone(
+          fg: _wmOrderSuccess,
+          bg: _wmOrderSuccessSoft,
+          border: Color(0xFFA7F3D0),
+        );
       case 'Out for Delivery':
       case 'Ready for Pickup':
-        return const Color(0xFF1565C0);
+        return const _StatusTone(
+          fg: _wmOrderInfo,
+          bg: _wmOrderInfoSoft,
+          border: Color(0xFFBFDBFE),
+        );
       case 'Packing':
       case 'Preparing':
       case 'Confirmed':
-        return const Color(0xFF8A6700);
+        return const _StatusTone(
+          fg: _wmOrderWarning,
+          bg: _wmOrderWarningSoft,
+          border: Color(0xFFFDE68A),
+        );
       case 'Cancelled':
-        return Colors.redAccent;
+        return const _StatusTone(
+          fg: _wmOrderDanger,
+          bg: _wmOrderDangerSoft,
+          border: Color(0xFFFECACA),
+        );
       case 'Payment Pending':
-        return const Color(0xFF7C3AED);
+        return const _StatusTone(
+          fg: Color(0xFF7C3AED),
+          bg: Color(0xFFF5F3FF),
+          border: Color(0xFFDDD6FE),
+        );
       default:
-        return WMTheme.royalPurple;
+        return const _StatusTone(
+          fg: _wmOrderPrimary,
+          bg: Color(0xFFF3F4F6),
+          border: _wmOrderBorder,
+        );
     }
   }
 
@@ -424,8 +463,8 @@ class _HeroStat extends StatelessWidget {
       children: [
         Text(
           label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.82),
+          style: const TextStyle(
+            color: Color(0xFFCBD5E1),
             fontSize: 11,
             fontWeight: FontWeight.w700,
           ),
@@ -490,11 +529,12 @@ class _OrderTimelineCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.97),
+        color: _wmOrderSurface,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _wmOrderBorder),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x12000000),
+            color: Color(0x0C000000),
             blurRadius: 12,
             offset: Offset(0, 6),
           ),
@@ -507,7 +547,7 @@ class _OrderTimelineCard extends StatelessWidget {
             children: [
               Icon(
                 Icons.route_rounded,
-                color: WMTheme.royalPurple,
+                color: _wmOrderPrimary,
                 size: 18,
               ),
               SizedBox(width: 8),
@@ -516,7 +556,7 @@ class _OrderTimelineCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w900,
-                  color: Colors.black87,
+                  color: _wmOrderTextStrong,
                 ),
               ),
             ],
@@ -571,9 +611,9 @@ class _TimelineRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = isActive ? const Color(0xFF1E8E3E) : Colors.black26;
-    final lineColor =
-        isActive ? const Color(0xFFB7E1C1) : const Color(0xFFE8E8E8);
+    final iconColor = isActive ? _wmOrderSuccess : _wmOrderTextMuted;
+    final lineColor = isActive ? const Color(0xFFA7F3D0) : _wmOrderBorder;
+    final bubbleBg = isActive ? _wmOrderSuccessSoft : const Color(0xFFF3F4F6);
 
     return IntrinsicHeight(
       child: Row(
@@ -587,10 +627,12 @@ class _TimelineRow extends StatelessWidget {
                   width: 24,
                   height: 24,
                   decoration: BoxDecoration(
-                    color: isActive
-                        ? const Color(0xFFE8F5E9)
-                        : const Color(0xFFF3F3F3),
+                    color: bubbleBg,
                     shape: BoxShape.circle,
+                    border: Border.all(
+                      color:
+                          isActive ? const Color(0xFFBBF7D0) : _wmOrderBorder,
+                    ),
                   ),
                   child: Icon(
                     icon,
@@ -621,7 +663,8 @@ class _TimelineRow extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
-                        color: isActive ? Colors.black87 : Colors.black38,
+                        color:
+                            isActive ? _wmOrderTextStrong : _wmOrderTextMuted,
                       ),
                     ),
                   ),
@@ -631,7 +674,7 @@ class _TimelineRow extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: Colors.black54,
+                        color: _wmOrderTextSoft,
                       ),
                     ),
                 ],
@@ -684,11 +727,12 @@ class _DeliveryInfoCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.97),
+        color: _wmOrderSurface,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _wmOrderBorder),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x12000000),
+            color: Color(0x0C000000),
             blurRadius: 12,
             offset: Offset(0, 6),
           ),
@@ -701,7 +745,7 @@ class _DeliveryInfoCard extends StatelessWidget {
             children: [
               Icon(
                 icon,
-                color: WMTheme.royalPurple,
+                color: _wmOrderPrimary,
                 size: 18,
               ),
               const SizedBox(width: 8),
@@ -710,7 +754,7 @@ class _DeliveryInfoCard extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w900,
-                  color: Colors.black87,
+                  color: _wmOrderTextStrong,
                 ),
               ),
             ],
@@ -768,7 +812,7 @@ class _InfoRow extends StatelessWidget {
             style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: Colors.black54,
+              color: _wmOrderTextSoft,
             ),
           ),
           const SizedBox(height: 6),
@@ -777,7 +821,7 @@ class _InfoRow extends StatelessWidget {
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: Colors.black87,
+              color: _wmOrderTextStrong,
               height: 1.5,
             ),
           ),
@@ -793,7 +837,7 @@ class _InfoRow extends StatelessWidget {
             style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: Colors.black54,
+              color: _wmOrderTextSoft,
             ),
           ),
         ),
@@ -805,7 +849,7 @@ class _InfoRow extends StatelessWidget {
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w800,
-              color: Colors.black87,
+              color: _wmOrderTextStrong,
             ),
           ),
         ),
@@ -827,11 +871,12 @@ class _OrderItemsCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.97),
+        color: _wmOrderSurface,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _wmOrderBorder),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x12000000),
+            color: Color(0x0C000000),
             blurRadius: 12,
             offset: Offset(0, 6),
           ),
@@ -845,7 +890,7 @@ class _OrderItemsCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w900,
-              color: Colors.black87,
+              color: _wmOrderTextStrong,
             ),
           ),
           const SizedBox(height: 12),
@@ -854,15 +899,16 @@ class _OrderItemsCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFFF6F0FB),
+                color: _wmOrderSurfaceSoft,
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: _wmOrderBorder),
               ),
               child: const Text(
                 'No items found for this order.',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: Colors.black54,
+                  color: _wmOrderTextSoft,
                 ),
               ),
             )
@@ -895,8 +941,9 @@ class _OrderItemTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF6F0FB),
+        color: _wmOrderSurfaceSoft,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _wmOrderBorder),
       ),
       child: Row(
         children: [
@@ -906,6 +953,7 @@ class _OrderItemTile extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _wmOrderBorder),
             ),
             child: WmProductImage(
               imageUrl: item.image,
@@ -926,7 +974,7 @@ class _OrderItemTile extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
-                    color: Colors.black87,
+                    color: _wmOrderTextStrong,
                     height: 1.35,
                   ),
                 ),
@@ -937,7 +985,7 @@ class _OrderItemTile extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black54,
+                      color: _wmOrderTextSoft,
                     ),
                   ),
                 ],
@@ -950,13 +998,14 @@ class _OrderItemTile extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: _wmOrderBorder),
                   ),
                   child: Text(
                     'Qty: ${item.qty}',
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
-                      color: Colors.black87,
+                      color: _wmOrderTextStrong,
                     ),
                   ),
                 ),
@@ -972,7 +1021,7 @@ class _OrderItemTile extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: Colors.black54,
+                  color: _wmOrderTextSoft,
                 ),
               ),
               const SizedBox(height: 6),
@@ -981,7 +1030,7 @@ class _OrderItemTile extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w900,
-                  color: WMTheme.royalPurple,
+                  color: _wmOrderPrimary,
                 ),
               ),
             ],
@@ -1005,11 +1054,12 @@ class _OrderPricingCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.97),
+        color: _wmOrderSurface,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _wmOrderBorder),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x12000000),
+            color: Color(0x0C000000),
             blurRadius: 12,
             offset: Offset(0, 6),
           ),
@@ -1023,7 +1073,7 @@ class _OrderPricingCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w900,
-              color: Colors.black87,
+              color: _wmOrderTextStrong,
             ),
           ),
           const SizedBox(height: 14),
@@ -1049,7 +1099,7 @@ class _OrderPricingCard extends StatelessWidget {
           const SizedBox(height: 12),
           Container(
             height: 1,
-            color: const Color(0xFFEDE7F6),
+            color: _wmOrderBorder,
           ),
           const SizedBox(height: 12),
           _PricingRow(
@@ -1084,7 +1134,7 @@ class _PricingRow extends StatelessWidget {
             style: TextStyle(
               fontSize: isTotal ? 15 : 13,
               fontWeight: isTotal ? FontWeight.w900 : FontWeight.w700,
-              color: isTotal ? Colors.black87 : Colors.black54,
+              color: isTotal ? _wmOrderTextStrong : _wmOrderTextSoft,
             ),
           ),
         ),
@@ -1096,7 +1146,7 @@ class _PricingRow extends StatelessWidget {
             style: TextStyle(
               fontSize: isTotal ? 16 : 13,
               fontWeight: FontWeight.w900,
-              color: isTotal ? WMTheme.royalPurple : Colors.black87,
+              color: isTotal ? _wmOrderPrimary : _wmOrderTextStrong,
             ),
           ),
         ),
@@ -1120,11 +1170,12 @@ class _SupportCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.97),
+        color: _wmOrderSurface,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _wmOrderBorder),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x12000000),
+            color: Color(0x0C000000),
             blurRadius: 12,
             offset: Offset(0, 6),
           ),
@@ -1138,7 +1189,7 @@ class _SupportCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w900,
-              color: Colors.black87,
+              color: _wmOrderTextStrong,
             ),
           ),
           const SizedBox(height: 10),
@@ -1149,7 +1200,7 @@ class _SupportCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: Colors.black54,
+              color: _wmOrderTextSoft,
               height: 1.5,
             ),
           ),
@@ -1158,8 +1209,9 @@ class _SupportCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFFF6F0FB),
+              color: _wmOrderSurfaceSoft,
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _wmOrderBorder),
             ),
             child: Text(
               order.orderNumber.trim().isEmpty
@@ -1168,7 +1220,7 @@ class _SupportCard extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
-                color: WMTheme.royalPurple,
+                color: _wmOrderPrimary,
               ),
             ),
           ),
@@ -1246,8 +1298,9 @@ class _SkeletonCard extends StatelessWidget {
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.82),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _wmOrderBorder),
       ),
     );
   }
@@ -1274,8 +1327,9 @@ class _ErrorView extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.96),
+            color: _wmOrderSurface,
             borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: _wmOrderBorder),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1283,7 +1337,7 @@ class _ErrorView extends StatelessWidget {
               const Icon(
                 Icons.error_outline_rounded,
                 size: 42,
-                color: Colors.redAccent,
+                color: _wmOrderDanger,
               ),
               const SizedBox(height: 12),
               const Text(
@@ -1291,7 +1345,7 @@ class _ErrorView extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
-                  color: Colors.black87,
+                  color: _wmOrderTextStrong,
                 ),
               ),
               const SizedBox(height: 8),
@@ -1300,7 +1354,7 @@ class _ErrorView extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 13,
-                  color: Colors.black54,
+                  color: _wmOrderTextSoft,
                   fontWeight: FontWeight.w600,
                   height: 1.45,
                 ),
@@ -1311,7 +1365,7 @@ class _ErrorView extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: onRetry,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: WMTheme.royalPurple,
+                    backgroundColor: _wmOrderPrimary,
                     foregroundColor: Colors.white,
                     minimumSize: const Size.fromHeight(50),
                     shape: RoundedRectangleBorder(
@@ -1330,4 +1384,16 @@ class _ErrorView extends StatelessWidget {
       ],
     );
   }
+}
+
+class _StatusTone {
+  final Color fg;
+  final Color bg;
+  final Color border;
+
+  const _StatusTone({
+    required this.fg,
+    required this.bg,
+    required this.border,
+  });
 }

@@ -2,9 +2,22 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:western_malabar/features/cart/widgets/add_to_cart_control.dart';
 import 'package:western_malabar/features/catalog/models/product_model.dart';
-import 'package:western_malabar/shared/theme/theme.dart';
 import 'package:western_malabar/shared/utils/haptic.dart';
 import 'package:western_malabar/shared/widgets/star_rating_badge.dart';
+
+const _wmCardBg = Colors.white;
+const _wmCardBorder = Color(0xFFE5E7EB);
+const _wmCardText = Color(0xFF111827);
+const _wmCardSoftText = Color(0xFF6B7280);
+const _wmCardMutedText = Color(0xFF9CA3AF);
+const _wmCardSurface = Color(0xFFF8FAFC);
+const _wmCardSurfaceAlt = Color(0xFFF3F4F6);
+
+const _wmCardPrimary = Color(0xFF2A2F3A);
+const _wmCardPrimaryDark = Color(0xFF171A20);
+const _wmCardSuccess = Color(0xFF15803D);
+const _wmCardDeal = Color(0xFFF59E0B);
+const _wmCardDanger = Color(0xFFDC2626);
 
 class ProductCard extends StatelessWidget {
   final ProductModel p;
@@ -70,10 +83,10 @@ class _CompactProductCard extends StatelessWidget {
     final hasRating = parent.showRating && (p.ratingCount ?? 0) > 0;
 
     return Material(
-      color: Colors.white,
+      color: _wmCardBg,
       borderRadius: BorderRadius.circular(18),
-      elevation: parent.showShadow ? 0.7 : 0,
-      shadowColor: const Color(0x0E000000),
+      elevation: parent.showShadow ? 0.5 : 0,
+      shadowColor: const Color(0x0A000000),
       child: InkWell(
         onTap: parent.onTap,
         borderRadius: BorderRadius.circular(18),
@@ -82,7 +95,7 @@ class _CompactProductCard extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: const Color(0xFFF2EDF8),
+              color: _wmCardBorder,
             ),
           ),
           child: Row(
@@ -108,7 +121,7 @@ class _CompactProductCard extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF6C6C6C),
+                            color: _wmCardSoftText,
                             height: 1.05,
                           ),
                         ),
@@ -122,7 +135,7 @@ class _CompactProductCard extends StatelessWidget {
                           fontWeight: FontWeight.w800,
                           fontSize: 14,
                           height: 1.2,
-                          color: Color(0xFF1F1F1F),
+                          color: _wmCardText,
                         ),
                       ),
                       if (parent._showMetaPills) ...[
@@ -197,10 +210,10 @@ class _GridProductCard extends StatelessWidget {
 
     return RepaintBoundary(
       child: Material(
-        color: Colors.white,
+        color: _wmCardBg,
         borderRadius: BorderRadius.circular(18),
-        elevation: parent.showShadow ? 0.45 : 0,
-        shadowColor: const Color(0x09000000),
+        elevation: parent.showShadow ? 0.35 : 0,
+        shadowColor: const Color(0x08000000),
         child: InkWell(
           onTap: parent.onTap,
           borderRadius: BorderRadius.circular(18),
@@ -209,7 +222,7 @@ class _GridProductCard extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
-                color: const Color(0xFFF2EDF8),
+                color: _wmCardBorder,
               ),
             ),
             child: Padding(
@@ -251,7 +264,7 @@ class _GridProductCard extends StatelessWidget {
                             style: const TextStyle(
                               fontSize: 10.8,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF6C6C6C),
+                              color: _wmCardSoftText,
                               height: 1.05,
                             ),
                           ),
@@ -267,7 +280,7 @@ class _GridProductCard extends StatelessWidget {
                             fontWeight: FontWeight.w800,
                             fontSize: 13.7,
                             height: 1.18,
-                            color: Color(0xFF1F1F1F),
+                            color: _wmCardText,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -364,7 +377,7 @@ class _ImageSurface extends StatelessWidget {
     return Positioned.fill(
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: const Color(0xFFF8F5FB),
+          color: _wmCardSurface,
           borderRadius: BorderRadius.circular(14),
         ),
       ),
@@ -422,13 +435,14 @@ class _ProductImagePlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFFF8F5FB),
+      color: _wmCardSurface,
       alignment: Alignment.center,
       child: const SizedBox(
         width: 15,
         height: 15,
         child: CircularProgressIndicator(
           strokeWidth: 1.7,
+          color: _wmCardPrimary,
         ),
       ),
     );
@@ -441,11 +455,11 @@ class _ProductImageFallback extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFFF8F5FB),
+      color: _wmCardSurface,
       alignment: Alignment.center,
       child: const Icon(
         Icons.image_outlined,
-        color: Color(0xFFB8AEC6),
+        color: _wmCardMutedText,
         size: 25,
       ),
     );
@@ -467,8 +481,15 @@ class _MetaPillRow extends StatelessWidget {
           label: product.dealBadgeText?.trim().isNotEmpty == true
               ? product.dealBadgeText!
               : 'Deal',
+          backgroundColor: const Color(0xFFFFF7ED),
+          textColor: _wmCardDeal,
         ),
-      if (product.isFrozen == true) const _MetaPill(label: 'Frozen'),
+      if (product.isFrozen == true)
+        const _MetaPill(
+          label: 'Frozen',
+          backgroundColor: Color(0xFFF3F4F6),
+          textColor: _wmCardPrimary,
+        ),
     ];
 
     if (pills.isEmpty) return const SizedBox.shrink();
@@ -488,9 +509,13 @@ class _MetaPillRow extends StatelessWidget {
 class _MetaPill extends StatelessWidget {
   const _MetaPill({
     required this.label,
+    this.backgroundColor = const Color(0xFFF3F4F6),
+    this.textColor = _wmCardPrimary,
   });
 
   final String label;
+  final Color backgroundColor;
+  final Color textColor;
 
   @override
   Widget build(BuildContext context) {
@@ -498,7 +523,7 @@ class _MetaPill extends StatelessWidget {
       height: 20,
       padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5EFFB),
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(999),
       ),
       alignment: Alignment.center,
@@ -506,10 +531,10 @@ class _MetaPill extends StatelessWidget {
         label,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.w800,
-          color: Color(0xFF5A2D82),
+          color: textColor,
           height: 1.0,
         ),
       ),
@@ -533,7 +558,7 @@ class _PriceBlock extends StatelessWidget {
     final priceStyle = TextStyle(
       fontWeight: FontWeight.w900,
       fontSize: dense ? 15 : 15.8,
-      color: WMTheme.royalPurple,
+      color: _wmCardSuccess,
       letterSpacing: -0.22,
       height: 1.0,
     );
@@ -591,7 +616,7 @@ class _DiscountBadge extends StatelessWidget {
       height: 22,
       padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
-        color: WMTheme.royalPurple,
+        color: _wmCardDanger,
         borderRadius: BorderRadius.circular(999),
         boxShadow: const [
           BoxShadow(

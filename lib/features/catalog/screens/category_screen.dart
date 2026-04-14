@@ -6,8 +6,20 @@ import 'package:western_malabar/features/search/screens/global_product_search_sc
 import 'package:western_malabar/features/catalog/screens/subcategory_screen.dart';
 import 'package:western_malabar/features/catalog/services/category_service.dart';
 import 'package:western_malabar/features/cart/providers/cart_provider.dart';
-import 'package:western_malabar/shared/theme/wm_gradients.dart';
 import 'package:western_malabar/features/cart/widgets/sticky_cart_bar.dart';
+
+const _wmCategoryBg = Color(0xFFF7F7F7);
+const _wmCategorySurface = Colors.white;
+const _wmCategoryBorder = Color(0xFFE5E7EB);
+
+const _wmCategoryTextStrong = Color(0xFF111827);
+const _wmCategoryTextSoft = Color(0xFF6B7280);
+const _wmCategoryTextMuted = Color(0xFF9CA3AF);
+
+const _wmCategoryPrimary = Color(0xFF2A2F3A);
+const _wmCategoryPrimaryDark = Color(0xFF171A20);
+const _wmCategoryAmber = Color(0xFFF59E0B);
+const _wmCategoryDanger = Color(0xFFDC2626);
 
 class CategoryScreen extends ConsumerStatefulWidget {
   const CategoryScreen({super.key});
@@ -92,24 +104,19 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const purple = Color(0xFF5A2D82);
     final items = _filtered;
-
-    // Watch cart provider
     final cartItems = ref.watch(cartProvider);
     final cartCount = cartItems.fold<int>(0, (sum, item) => sum + item.qty);
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: _wmCategoryBg,
       body: Stack(
         children: [
           Container(
-            decoration: const BoxDecoration(
-              gradient: WMGradients.pageBackground,
-            ),
+            color: _wmCategoryBg,
             child: RefreshIndicator(
               onRefresh: _load,
-              color: purple,
+              color: _wmCategoryPrimary,
               child: CustomScrollView(
                 physics: const BouncingScrollPhysics(
                   parent: AlwaysScrollableScrollPhysics(),
@@ -131,24 +138,31 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
                             style: TextStyle(
                               fontSize: 26,
                               fontWeight: FontWeight.w900,
-                              color: purple,
+                              color: _wmCategoryTextStrong,
                             ),
                           ),
                           Stack(
                             children: [
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.shopping_cart_outlined,
-                                  color: purple,
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: _wmCategorySurface,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: _wmCategoryBorder),
                                 ),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const CartScreen(),
-                                    ),
-                                  );
-                                },
+                                child: IconButton(
+                                  icon: const Icon(
+                                    Icons.shopping_cart_outlined,
+                                    color: _wmCategoryPrimary,
+                                  ),
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const CartScreen(),
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
                               if (cartCount > 0)
                                 Positioned(
@@ -157,7 +171,7 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
                                   child: Container(
                                     padding: const EdgeInsets.all(4),
                                     decoration: BoxDecoration(
-                                      color: Colors.red,
+                                      color: _wmCategoryDanger,
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     constraints: const BoxConstraints(
@@ -189,7 +203,7 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: Colors.black.withValues(alpha: 0.58),
+                          color: _wmCategoryTextSoft.withOpacity(0.95),
                         ),
                       ),
                     ),
@@ -253,7 +267,7 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w900,
-                          color: purple,
+                          color: _wmCategoryTextStrong,
                         ),
                       ),
                     ),
@@ -293,6 +307,9 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
                                 ),
                               ),
                   ),
+                  const SliverToBoxAdapter(
+                    child: SizedBox(height: 120),
+                  ),
                 ],
               ),
             ),
@@ -307,14 +324,14 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
 
   Color _colorFor(String s) {
     const palette = [
-      Color(0xFF5A2D82),
-      Color(0xFFF0C53E),
-      Color(0xFF5DBB63),
-      Color(0xFF6E7FF3),
-      Color(0xFFFF9F59),
+      Color(0xFFF59E0B),
+      Color(0xFF15803D),
+      Color(0xFF2A2F3A),
+      Color(0xFFD97706),
+      Color(0xFF0F766E),
     ];
     final h = s.toLowerCase().hashCode;
-    return palette[h % palette.length];
+    return palette[h.abs() % palette.length];
   }
 }
 
@@ -333,15 +350,14 @@ class _SearchLaunchField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const purple = Color(0xFF5A2D82);
-
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _wmCategorySurface,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _wmCategoryBorder),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x14000000),
+            color: Color(0x0A000000),
             blurRadius: 8,
             offset: Offset(0, 3),
           ),
@@ -353,10 +369,17 @@ class _SearchLaunchField extends StatelessWidget {
         onSubmitted: onSubmitted,
         decoration: InputDecoration(
           hintText: hint,
-          prefixIcon: const Icon(Icons.search, color: purple),
+          hintStyle: const TextStyle(
+            color: _wmCategoryTextSoft,
+            fontWeight: FontWeight.w600,
+          ),
+          prefixIcon: const Icon(Icons.search, color: _wmCategoryPrimary),
           suffixIcon: IconButton(
             onPressed: onSearchTap,
-            icon: const Icon(Icons.arrow_forward_rounded, color: purple),
+            icon: const Icon(
+              Icons.arrow_forward_rounded,
+              color: _wmCategoryPrimary,
+            ),
           ),
           border: InputBorder.none,
           isDense: true,
@@ -377,20 +400,18 @@ class _HeroBrowseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const purple = Color(0xFF5A2D82);
-
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         gradient: const LinearGradient(
-          colors: [Color(0xFF5A2D82), Color(0xFF7B4AB1)],
+          colors: [_wmCategoryPrimaryDark, _wmCategoryPrimary],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x22000000),
+            color: Color(0x18000000),
             blurRadius: 14,
             offset: Offset(0, 8),
           ),
@@ -402,7 +423,7 @@ class _HeroBrowseCard extends StatelessWidget {
             width: 58,
             height: 58,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.14),
+              color: Colors.white.withOpacity(0.12),
               borderRadius: BorderRadius.circular(18),
             ),
             child: const Icon(
@@ -428,7 +449,7 @@ class _HeroBrowseCard extends StatelessWidget {
                 Text(
                   'Rice, masala, frozen foods, snacks, tea, and more.',
                   style: TextStyle(
-                    color: Colors.white70,
+                    color: Color(0xFFE5E7EB),
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
@@ -440,7 +461,7 @@ class _HeroBrowseCard extends StatelessWidget {
           TextButton(
             onPressed: onSearchTap,
             style: TextButton.styleFrom(
-              foregroundColor: purple,
+              foregroundColor: _wmCategoryPrimary,
               backgroundColor: Colors.white,
             ),
             child: const Text(
@@ -468,11 +489,12 @@ class _QuickChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: _wmCategorySurface,
           borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: _wmCategoryBorder),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x14000000),
+              color: Color(0x08000000),
               blurRadius: 6,
               offset: Offset(0, 2),
             ),
@@ -480,7 +502,10 @@ class _QuickChip extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: const TextStyle(fontWeight: FontWeight.w700),
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            color: _wmCategoryTextStrong,
+          ),
         ),
       ),
     );
@@ -509,18 +534,12 @@ class _CategoryCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       child: Container(
         decoration: BoxDecoration(
+          color: _wmCategorySurface,
           borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              accentColor.withValues(alpha: 0.11),
-              accentColor.withValues(alpha: 0.05),
-            ],
-          ),
+          border: Border.all(color: _wmCategoryBorder),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x12000000),
+              color: Color(0x0C000000),
               blurRadius: 10,
               offset: Offset(0, 6),
             ),
@@ -539,7 +558,7 @@ class _CategoryCard extends StatelessWidget {
               style: const TextStyle(
                 fontWeight: FontWeight.w900,
                 fontSize: 15,
-                color: Colors.black87,
+                color: _wmCategoryTextStrong,
               ),
             ),
             const SizedBox(height: 6),
@@ -547,10 +566,10 @@ class _CategoryCard extends StatelessWidget {
               subtitle,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: Colors.black.withValues(alpha: 0.56),
+                color: _wmCategoryTextSoft,
               ),
             ),
           ],
@@ -591,8 +610,8 @@ class _GlassIcon extends StatelessWidget {
       height: 54,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: accentColor.withValues(alpha: 0.18),
-        border: Border.all(color: accentColor.withValues(alpha: 0.20)),
+        color: accentColor.withOpacity(0.12),
+        border: Border.all(color: accentColor.withOpacity(0.18)),
       ),
       alignment: Alignment.center,
       child: Text(emoji, style: const TextStyle(fontSize: 28)),
@@ -616,11 +635,12 @@ class _EmptyState extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(22),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: _wmCategorySurface,
           borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: _wmCategoryBorder),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x10000000),
+              color: Color(0x0C000000),
               blurRadius: 10,
               offset: Offset(0, 5),
             ),
@@ -631,7 +651,7 @@ class _EmptyState extends StatelessWidget {
             const Icon(
               Icons.search_off_rounded,
               size: 42,
-              color: Color(0xFF5A2D82),
+              color: _wmCategoryPrimary,
             ),
             const SizedBox(height: 12),
             Text(
@@ -639,6 +659,7 @@ class _EmptyState extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w900,
+                color: _wmCategoryTextStrong,
               ),
             ),
             const SizedBox(height: 8),
@@ -648,7 +669,7 @@ class _EmptyState extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: Colors.black54,
+                color: _wmCategoryTextSoft,
               ),
             ),
           ],
@@ -729,7 +750,3 @@ class _ShimmerBoxState extends State<_ShimmerBox>
     );
   }
 }
-
-
-
-

@@ -3,9 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:western_malabar/features/catalog/models/category_model.dart';
 import 'package:western_malabar/features/search/screens/global_product_search_screen.dart';
 import 'package:western_malabar/features/catalog/services/category_service.dart';
-import 'package:western_malabar/shared/theme/wm_gradients.dart';
 import 'package:western_malabar/features/cart/widgets/sticky_cart_bar.dart';
 import 'package:western_malabar/features/catalog/screens/subcategory_products_screen.dart';
+
+const _wmSubBg = Color(0xFFF7F7F7);
+const _wmSubSurface = Colors.white;
+const _wmSubBorder = Color(0xFFE5E7EB);
+
+const _wmSubTextStrong = Color(0xFF111827);
+const _wmSubTextSoft = Color(0xFF6B7280);
+const _wmSubTextMuted = Color(0xFF9CA3AF);
+
+const _wmSubPrimary = Color(0xFF2A2F3A);
+const _wmSubPrimaryDark = Color(0xFF171A20);
 
 class SubcategoryScreen extends ConsumerStatefulWidget {
   const SubcategoryScreen({
@@ -79,20 +89,17 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const purple = Color(0xFF5A2D82);
     final items = _filtered;
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: _wmSubBg,
       body: Stack(
         children: [
           Container(
-            decoration: const BoxDecoration(
-              gradient: WMGradients.pageBackground,
-            ),
+            color: _wmSubBg,
             child: RefreshIndicator(
               onRefresh: _load,
-              color: purple,
+              color: _wmSubPrimary,
               child: CustomScrollView(
                 physics: const BouncingScrollPhysics(
                   parent: AlwaysScrollableScrollPhysics(),
@@ -108,14 +115,21 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
                       ),
                       child: Row(
                         children: [
-                          IconButton(
-                            onPressed: () => Navigator.maybePop(context),
-                            icon: const Icon(
-                              Icons.arrow_back_ios_new_rounded,
-                              color: purple,
+                          Container(
+                            decoration: BoxDecoration(
+                              color: _wmSubSurface,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: _wmSubBorder),
+                            ),
+                            child: IconButton(
+                              onPressed: () => Navigator.maybePop(context),
+                              icon: const Icon(
+                                Icons.arrow_back_ios_new_rounded,
+                                color: _wmSubPrimary,
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: Text(
                               widget.parentName,
@@ -124,7 +138,7 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
                               style: const TextStyle(
                                 fontSize: 23,
                                 fontWeight: FontWeight.w900,
-                                color: purple,
+                                color: _wmSubTextStrong,
                               ),
                             ),
                           ),
@@ -140,7 +154,7 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: Colors.black.withValues(alpha: 0.58),
+                          color: _wmSubTextSoft.withOpacity(0.95),
                         ),
                       ),
                     ),
@@ -178,7 +192,7 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w900,
-                          color: purple,
+                          color: _wmSubTextStrong,
                         ),
                       ),
                     ),
@@ -254,15 +268,14 @@ class _SearchLaunchField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const purple = Color(0xFF5A2D82);
-
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _wmSubSurface,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _wmSubBorder),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x14000000),
+            color: Color(0x0A000000),
             blurRadius: 8,
             offset: Offset(0, 3),
           ),
@@ -274,10 +287,14 @@ class _SearchLaunchField extends StatelessWidget {
         onSubmitted: onSubmitted,
         decoration: InputDecoration(
           hintText: hint,
-          prefixIcon: const Icon(Icons.search, color: purple),
+          hintStyle: const TextStyle(
+            color: _wmSubTextSoft,
+            fontWeight: FontWeight.w600,
+          ),
+          prefixIcon: const Icon(Icons.search, color: _wmSubPrimary),
           suffixIcon: IconButton(
             onPressed: onSearchTap,
-            icon: const Icon(Icons.arrow_forward_rounded, color: purple),
+            icon: const Icon(Icons.arrow_forward_rounded, color: _wmSubPrimary),
           ),
           border: InputBorder.none,
           isDense: true,
@@ -304,18 +321,17 @@ class _SubcategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const purple = Color(0xFF5A2D82);
-
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          color: const Color(0xFFF8F5FC),
+          color: _wmSubSurface,
+          border: Border.all(color: _wmSubBorder),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x12000000),
+              color: Color(0x0C000000),
               blurRadius: 10,
               offset: Offset(0, 6),
             ),
@@ -330,12 +346,12 @@ class _SubcategoryCard extends StatelessWidget {
               height: 52,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
-                color: purple.withValues(alpha: 0.10),
+                color: const Color(0xFFF3F4F6),
               ),
               alignment: Alignment.center,
               child: const Icon(
                 Icons.category_outlined,
-                color: purple,
+                color: _wmSubPrimary,
                 size: 26,
               ),
             ),
@@ -347,7 +363,7 @@ class _SubcategoryCard extends StatelessWidget {
               style: const TextStyle(
                 fontWeight: FontWeight.w900,
                 fontSize: 15,
-                color: Colors.black87,
+                color: _wmSubTextStrong,
               ),
             ),
             const SizedBox(height: 6),
@@ -358,7 +374,7 @@ class _SubcategoryCard extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: Colors.black54,
+                color: _wmSubTextSoft,
               ),
             ),
           ],
@@ -384,11 +400,12 @@ class _EmptyState extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(22),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: _wmSubSurface,
           borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: _wmSubBorder),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x10000000),
+              color: Color(0x0C000000),
               blurRadius: 10,
               offset: Offset(0, 5),
             ),
@@ -399,7 +416,7 @@ class _EmptyState extends StatelessWidget {
             const Icon(
               Icons.search_off_rounded,
               size: 42,
-              color: Color(0xFF5A2D82),
+              color: _wmSubPrimary,
             ),
             const SizedBox(height: 12),
             Text(
@@ -407,6 +424,7 @@ class _EmptyState extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w900,
+                color: _wmSubTextStrong,
               ),
             ),
             const SizedBox(height: 8),
@@ -416,7 +434,7 @@ class _EmptyState extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: Colors.black54,
+                color: _wmSubTextSoft,
               ),
             ),
           ],

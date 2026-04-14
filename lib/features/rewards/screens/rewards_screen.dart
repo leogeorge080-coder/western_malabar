@@ -1,8 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:western_malabar/features/profile/providers/profile_provider.dart';
-import 'package:western_malabar/shared/theme/theme.dart';
-import 'package:western_malabar/shared/theme/wm_gradients.dart';
+
+const _wmRewardsBg = Color(0xFFF7F7F7);
+const _wmRewardsSurface = Colors.white;
+const _wmRewardsBorder = Color(0xFFE5E7EB);
+
+const _wmRewardsTextStrong = Color(0xFF111827);
+const _wmRewardsTextSoft = Color(0xFF6B7280);
+const _wmRewardsTextMuted = Color(0xFF9CA3AF);
+
+const _wmRewardsPrimary = Color(0xFF2A2F3A);
+const _wmRewardsPrimaryDark = Color(0xFF171A20);
+
+const _wmRewardsAmber = Color(0xFFF59E0B);
+const _wmRewardsAmberDark = Color(0xFFD97706);
+const _wmRewardsAmberSoft = Color(0xFFFFF7ED);
+
+const _wmRewardsSuccess = Color(0xFF15803D);
+const _wmRewardsSuccessSoft = Color(0xFFECFDF5);
+
+const _wmRewardsDanger = Color(0xFFDC2626);
 
 class RewardsScreen extends ConsumerWidget {
   const RewardsScreen({super.key});
@@ -15,101 +33,96 @@ class RewardsScreen extends ConsumerWidget {
     final profileAsync = ref.watch(profileProvider);
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: WMGradients.pageBackground,
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              const _RewardsTopBar(),
-              const SizedBox(height: 10),
-              Expanded(
-                child: profileAsync.when(
-                  loading: () => const _RewardsLoadingView(),
-                  error: (error, _) => _RewardsErrorView(
-                    message: error.toString(),
-                    onRetry: () => ref.invalidate(profileProvider),
-                  ),
-                  data: (profile) {
-                    if (profile == null) {
-                      return _RewardsErrorView(
-                        message: 'Profile not found for this account.',
-                        onRetry: () => ref.invalidate(profileProvider),
-                      );
-                    }
-
-                    final summary = _RewardsViewData.fromProfile(
-                      profile: profile,
-                      pointsPerRewardBlock: _pointsPerRewardBlock,
-                      rewardBlockValuePence: _rewardBlockValuePence,
-                    );
-
-                    return RefreshIndicator(
-                      color: WMTheme.royalPurple,
-                      onRefresh: () async {
-                        ref.invalidate(profileProvider);
-                        await ref.read(profileProvider.future);
-                      },
-                      child: ListView(
-                        physics: const AlwaysScrollableScrollPhysics(
-                          parent: BouncingScrollPhysics(),
-                        ),
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
-                        children: [
-                          _RewardsHeroCard(
-                            data: summary,
-                            onRedeemTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Reward redemption will be available at checkout soon.',
-                                  ),
-                                ),
-                              );
-                            },
-                            onHistoryTap: () {
-                              showModalBottomSheet<void>(
-                                context: context,
-                                backgroundColor: Colors.white,
-                                shape: const RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.vertical(
-                                    top: Radius.circular(24),
-                                  ),
-                                ),
-                                builder: (_) => _RewardsHistorySheet(
-                                  items: _demoRewardActivity(summary),
-                                ),
-                              );
-                            },
-                            onHowItWorksTap: () {
-                              showModalBottomSheet<void>(
-                                context: context,
-                                backgroundColor: Colors.white,
-                                shape: const RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.vertical(
-                                    top: Radius.circular(24),
-                                  ),
-                                ),
-                                builder: (_) => const _RewardsHowItWorksSheet(),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 14),
-                          _RewardsActivityCard(
-                            items: _demoRewardActivity(summary),
-                          ),
-                          const SizedBox(height: 14),
-                          const _HowToEarnCard(),
-                        ],
-                      ),
-                    );
-                  },
+      backgroundColor: _wmRewardsBg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            const _RewardsTopBar(),
+            const SizedBox(height: 10),
+            Expanded(
+              child: profileAsync.when(
+                loading: () => const _RewardsLoadingView(),
+                error: (error, _) => _RewardsErrorView(
+                  message: error.toString(),
+                  onRetry: () => ref.invalidate(profileProvider),
                 ),
+                data: (profile) {
+                  if (profile == null) {
+                    return _RewardsErrorView(
+                      message: 'Profile not found for this account.',
+                      onRetry: () => ref.invalidate(profileProvider),
+                    );
+                  }
+
+                  final summary = _RewardsViewData.fromProfile(
+                    profile: profile,
+                    pointsPerRewardBlock: _pointsPerRewardBlock,
+                    rewardBlockValuePence: _rewardBlockValuePence,
+                  );
+
+                  return RefreshIndicator(
+                    color: _wmRewardsPrimary,
+                    onRefresh: () async {
+                      ref.invalidate(profileProvider);
+                      await ref.read(profileProvider.future);
+                    },
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(
+                        parent: BouncingScrollPhysics(),
+                      ),
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+                      children: [
+                        _RewardsHeroCard(
+                          data: summary,
+                          onRedeemTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Reward redemption will be available at checkout soon.',
+                                ),
+                              ),
+                            );
+                          },
+                          onHistoryTap: () {
+                            showModalBottomSheet<void>(
+                              context: context,
+                              backgroundColor: Colors.white,
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(24),
+                                ),
+                              ),
+                              builder: (_) => _RewardsHistorySheet(
+                                items: _demoRewardActivity(summary),
+                              ),
+                            );
+                          },
+                          onHowItWorksTap: () {
+                            showModalBottomSheet<void>(
+                              context: context,
+                              backgroundColor: Colors.white,
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(24),
+                                ),
+                              ),
+                              builder: (_) => const _RewardsHowItWorksSheet(),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        _RewardsActivityCard(
+                          items: _demoRewardActivity(summary),
+                        ),
+                        const SizedBox(height: 14),
+                        const _HowToEarnCard(),
+                      ],
+                    ),
+                  );
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -262,7 +275,7 @@ class _RewardsTopBar extends StatelessWidget {
               style: TextStyle(
                 fontSize: 26,
                 fontWeight: FontWeight.w900,
-                color: Colors.black87,
+                color: _wmRewardsTextStrong,
                 letterSpacing: -0.3,
               ),
             ),
@@ -294,12 +307,12 @@ class _RewardsHeroCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.98),
+        color: _wmRewardsSurface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF1E3B0)),
+        border: Border.all(color: _wmRewardsBorder),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x12000000),
+            color: Color(0x0D000000),
             blurRadius: 14,
             offset: Offset(0, 7),
           ),
@@ -316,8 +329,8 @@ class _RewardsHeroCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [
-                      Color(0xFFF0C53E),
-                      Color(0xFFFFD96A),
+                      _wmRewardsAmber,
+                      Color(0xFFFBBF24),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(18),
@@ -338,7 +351,7 @@ class _RewardsHeroCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w900,
-                        color: Colors.black87,
+                        color: _wmRewardsTextStrong,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -346,7 +359,7 @@ class _RewardsHeroCard extends StatelessWidget {
                       data.trustLine,
                       style: const TextStyle(
                         fontSize: 12.5,
-                        color: Colors.black54,
+                        color: _wmRewardsTextSoft,
                         fontWeight: FontWeight.w700,
                         height: 1.35,
                       ),
@@ -356,6 +369,9 @@ class _RewardsHeroCard extends StatelessWidget {
               ),
               TextButton(
                 onPressed: onHowItWorksTap,
+                style: TextButton.styleFrom(
+                  foregroundColor: _wmRewardsPrimary,
+                ),
                 child: const Text(
                   'How it works',
                   style: TextStyle(fontWeight: FontWeight.w800),
@@ -370,8 +386,8 @@ class _RewardsHeroCard extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [
-                  Color(0xFF5A2D82),
-                  Color(0xFF8452C1),
+                  _wmRewardsPrimaryDark,
+                  _wmRewardsPrimary,
                 ],
               ),
               borderRadius: BorderRadius.circular(20),
@@ -394,7 +410,7 @@ class _RewardsHeroCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFFF3EBFF),
+                    color: Color(0xFFE5E7EB),
                     height: 1.35,
                   ),
                 ),
@@ -426,9 +442,9 @@ class _RewardsHeroCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFFBF2),
+              color: _wmRewardsAmberSoft,
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFFF3E4B9)),
+              border: Border.all(color: const Color(0xFFFED7AA)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -437,7 +453,7 @@ class _RewardsHeroCard extends StatelessWidget {
                   'Next reward',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.black54,
+                    color: _wmRewardsTextSoft,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -446,7 +462,7 @@ class _RewardsHeroCard extends StatelessWidget {
                   data.progressHeadline,
                   style: const TextStyle(
                     fontSize: 17,
-                    color: Colors.black87,
+                    color: _wmRewardsTextStrong,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -455,7 +471,7 @@ class _RewardsHeroCard extends StatelessWidget {
                   data.progressLabel,
                   style: const TextStyle(
                     fontSize: 12,
-                    color: Colors.black54,
+                    color: _wmRewardsTextSoft,
                     fontWeight: FontWeight.w700,
                     height: 1.35,
                   ),
@@ -466,9 +482,9 @@ class _RewardsHeroCard extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: data.nextRewardProgress,
                     minHeight: 10,
-                    backgroundColor: const Color(0xFFF2E8C8),
+                    backgroundColor: const Color(0xFFFDE7C7),
                     valueColor: const AlwaysStoppedAnimation<Color>(
-                      Color(0xFFF0C53E),
+                      _wmRewardsAmber,
                     ),
                   ),
                 ),
@@ -479,7 +495,7 @@ class _RewardsHeroCard extends StatelessWidget {
                       '${data.pointsIntoNext} pts',
                       style: const TextStyle(
                         fontSize: 12,
-                        color: Colors.black87,
+                        color: _wmRewardsTextStrong,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -488,7 +504,7 @@ class _RewardsHeroCard extends StatelessWidget {
                       '${data.pointsPerRewardBlock} pts',
                       style: const TextStyle(
                         fontSize: 12,
-                        color: Colors.black54,
+                        color: _wmRewardsTextSoft,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -509,8 +525,8 @@ class _RewardsHeroCard extends StatelessWidget {
                     style: TextStyle(fontWeight: FontWeight.w800),
                   ),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: WMTheme.royalPurple,
-                    side: const BorderSide(color: WMTheme.royalPurple),
+                    foregroundColor: _wmRewardsPrimary,
+                    side: const BorderSide(color: _wmRewardsBorder),
                     minimumSize: const Size.fromHeight(48),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -528,8 +544,9 @@ class _RewardsHeroCard extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        hasReadyReward ? WMTheme.royalPurple : Colors.black26,
+                    backgroundColor: hasReadyReward
+                        ? _wmRewardsPrimary
+                        : const Color(0xFF9CA3AF),
                     foregroundColor: Colors.white,
                     minimumSize: const Size.fromHeight(48),
                     elevation: 0,
@@ -563,10 +580,10 @@ class _HeroStat extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: light ? const Color(0x16FFFFFF) : const Color(0xFFFBF9FE),
+        color: light ? const Color(0x14FFFFFF) : const Color(0xFFF9FAFB),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: light ? const Color(0x24FFFFFF) : const Color(0xFFEAE2F5),
+          color: light ? const Color(0x24FFFFFF) : _wmRewardsBorder,
         ),
       ),
       child: Column(
@@ -576,7 +593,7 @@ class _HeroStat extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: 11.5,
-              color: light ? const Color(0xFFF4EBFF) : Colors.black54,
+              color: light ? const Color(0xFFE5E7EB) : _wmRewardsTextSoft,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -585,7 +602,7 @@ class _HeroStat extends StatelessWidget {
             value,
             style: TextStyle(
               fontSize: 20,
-              color: light ? Colors.white : WMTheme.royalPurple,
+              color: light ? Colors.white : _wmRewardsPrimary,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -608,11 +625,12 @@ class _RewardsActivityCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.97),
+        color: _wmRewardsSurface,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _wmRewardsBorder),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x12000000),
+            color: Color(0x0D000000),
             blurRadius: 12,
             offset: Offset(0, 6),
           ),
@@ -626,7 +644,7 @@ class _RewardsActivityCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w900,
-              color: Colors.black87,
+              color: _wmRewardsTextStrong,
             ),
           ),
           const SizedBox(height: 14),
@@ -635,16 +653,16 @@ class _RewardsActivityCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFFFCFBFE),
+                color: const Color(0xFFF9FAFB),
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFECE5F6)),
+                border: Border.all(color: _wmRewardsBorder),
               ),
               child: const Text(
                 'No rewards activity yet. Complete your first order to start earning points.',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: Colors.black54,
+                  color: _wmRewardsTextSoft,
                   height: 1.4,
                 ),
               ),
@@ -674,10 +692,17 @@ class _RewardActivityRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = switch (item.type) {
-      _RewardActivityType.earned => const Color(0xFF1E8E3E),
-      _RewardActivityType.redeemed => WMTheme.royalPurple,
-      _RewardActivityType.bonus => const Color(0xFFF0A500),
-      _RewardActivityType.info => const Color(0xFF5A2D82),
+      _RewardActivityType.earned => _wmRewardsSuccess,
+      _RewardActivityType.redeemed => _wmRewardsPrimary,
+      _RewardActivityType.bonus => _wmRewardsAmber,
+      _RewardActivityType.info => _wmRewardsPrimary,
+    };
+
+    final bgColor = switch (item.type) {
+      _RewardActivityType.earned => _wmRewardsSuccessSoft,
+      _RewardActivityType.redeemed => const Color(0xFFF3F4F6),
+      _RewardActivityType.bonus => _wmRewardsAmberSoft,
+      _RewardActivityType.info => const Color(0xFFF3F4F6),
     };
 
     final icon = switch (item.type) {
@@ -696,9 +721,9 @@ class _RewardActivityRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFCFBFE),
+        color: const Color(0xFFF9FAFB),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFECE5F6)),
+        border: Border.all(color: _wmRewardsBorder),
       ),
       child: Row(
         children: [
@@ -706,7 +731,7 @@ class _RewardActivityRow extends StatelessWidget {
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.10),
+              color: bgColor,
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(
@@ -724,7 +749,7 @@ class _RewardActivityRow extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: Colors.black87,
+                    color: _wmRewardsTextStrong,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -733,7 +758,7 @@ class _RewardActivityRow extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black54,
+                    color: _wmRewardsTextSoft,
                     height: 1.35,
                   ),
                 ),
@@ -764,11 +789,12 @@ class _HowToEarnCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.97),
+        color: _wmRewardsSurface,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _wmRewardsBorder),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x12000000),
+            color: Color(0x0D000000),
             blurRadius: 12,
             offset: Offset(0, 6),
           ),
@@ -782,7 +808,7 @@ class _HowToEarnCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w900,
-              color: Colors.black87,
+              color: _wmRewardsTextStrong,
             ),
           ),
           SizedBox(height: 14),
@@ -823,12 +849,16 @@ class _RewardTipRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isFire = icon == Icons.local_fire_department_rounded;
+    final bg = isFire ? _wmRewardsAmberSoft : const Color(0xFFF3F4F6);
+    final iconColor = isFire ? _wmRewardsAmber : _wmRewardsPrimary;
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFCFBFE),
+        color: const Color(0xFFF9FAFB),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFECE5F6)),
+        border: Border.all(color: _wmRewardsBorder),
       ),
       child: Row(
         children: [
@@ -836,12 +866,12 @@ class _RewardTipRow extends StatelessWidget {
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: const Color(0xFFF4EDFB),
+              color: bg,
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(
               icon,
-              color: WMTheme.royalPurple,
+              color: iconColor,
             ),
           ),
           const SizedBox(width: 12),
@@ -854,7 +884,7 @@ class _RewardTipRow extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: Colors.black87,
+                    color: _wmRewardsTextStrong,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -863,7 +893,7 @@ class _RewardTipRow extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black54,
+                    color: _wmRewardsTextSoft,
                     height: 1.35,
                   ),
                 ),
@@ -881,18 +911,18 @@ class _RewardsHowItWorksSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(20, 18, 20, 28),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
+        children: [
           Text(
             'How rewards work',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w900,
-              color: Colors.black87,
+              color: _wmRewardsTextStrong,
             ),
           ),
           SizedBox(height: 14),
@@ -905,7 +935,7 @@ class _RewardsHowItWorksSheet extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Colors.black54,
+              color: _wmRewardsTextSoft,
               height: 1.6,
             ),
           ),
@@ -937,7 +967,7 @@ class _RewardsHistorySheet extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w900,
-                  color: Colors.black87,
+                  color: _wmRewardsTextStrong,
                 ),
               ),
             ),
@@ -1007,8 +1037,9 @@ class _RewardsSkeleton extends StatelessWidget {
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.82),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _wmRewardsBorder),
       ),
     );
   }
@@ -1035,8 +1066,9 @@ class _RewardsErrorView extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.96),
+            color: _wmRewardsSurface,
             borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: _wmRewardsBorder),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1044,7 +1076,7 @@ class _RewardsErrorView extends StatelessWidget {
               const Icon(
                 Icons.error_outline_rounded,
                 size: 42,
-                color: Colors.redAccent,
+                color: _wmRewardsDanger,
               ),
               const SizedBox(height: 12),
               const Text(
@@ -1052,6 +1084,7 @@ class _RewardsErrorView extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
+                  color: _wmRewardsTextStrong,
                 ),
               ),
               const SizedBox(height: 8),
@@ -1060,7 +1093,7 @@ class _RewardsErrorView extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 13,
-                  color: Colors.black54,
+                  color: _wmRewardsTextSoft,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1068,7 +1101,7 @@ class _RewardsErrorView extends StatelessWidget {
               ElevatedButton(
                 onPressed: onRetry,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: WMTheme.royalPurple,
+                  backgroundColor: _wmRewardsPrimary,
                   foregroundColor: Colors.white,
                 ),
                 child: const Text('Retry'),

@@ -12,6 +12,15 @@ import 'package:western_malabar/shared/utils/cart_fly_target.dart';
 import 'package:western_malabar/shared/widgets/ask_malabar_overlay.dart';
 import 'package:western_malabar/features/cart/providers/cart_provider.dart';
 
+const _wmNavBg = Colors.white;
+const _wmNavBorder = Color(0xFFE5E7EB);
+const _wmNavText = Color(0xFF6B7280);
+const _wmNavTextActive = Color(0xFF111827);
+const _wmNavPrimary = Color(0xFF2A2F3A);
+const _wmNavPrimaryDark = Color(0xFF171A20);
+const _wmNavAmber = Color(0xFFF59E0B);
+const _wmNavDanger = Color(0xFFDC2626);
+
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
 
@@ -24,11 +33,11 @@ class _AppShellState extends ConsumerState<AppShell> {
   final GlobalKey<HomeScreenState> _homeKey = GlobalKey<HomeScreenState>();
 
   late final List<Widget> _screens = <Widget>[
-    HomeScreen(key: _homeKey), // 0
-    const CategoryScreen(), // 1
-    const CartScreen(), // 2
-    const RewardsScreen(), // 3
-    const ProfileScreen(), // 4
+    HomeScreen(key: _homeKey),
+    const CategoryScreen(),
+    const CartScreen(),
+    const RewardsScreen(),
+    const ProfileScreen(),
   ];
 
   int _index = 0;
@@ -118,11 +127,17 @@ class _WMCustomBottomNav extends StatelessWidget {
       height: 84,
       padding: const EdgeInsets.only(bottom: 8),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: _wmNavBg,
+        border: Border(
+          top: BorderSide(
+            color: _wmNavBorder,
+            width: 1,
+          ),
+        ),
         boxShadow: [
           BoxShadow(
-            blurRadius: 12,
-            color: Color(0x14000000),
+            blurRadius: 14,
+            color: Color(0x0E000000),
             offset: Offset(0, -2),
           ),
         ],
@@ -195,7 +210,7 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isActive ? const Color(0xFF5A2D82) : const Color(0xFF7A7A7A);
+    final color = isActive ? _wmNavTextActive : _wmNavText;
 
     return Expanded(
       child: InkWell(
@@ -252,12 +267,9 @@ class _AnimatedCartButtonState extends State<_AnimatedCartButton>
   late final Animation<double> _pulseAnimation;
   late final Animation<double> _bounceAnimation;
 
-  int _previousCount = 0;
-
   @override
   void initState() {
     super.initState();
-    _previousCount = widget.count;
 
     _pulseController = AnimationController(
       vsync: this,
@@ -321,8 +333,6 @@ class _AnimatedCartButtonState extends State<_AnimatedCartButton>
     if (countChanged && countIncreased) {
       _bounceController.forward(from: 0);
     }
-
-    _previousCount = widget.count;
   }
 
   @override
@@ -334,8 +344,7 @@ class _AnimatedCartButtonState extends State<_AnimatedCartButton>
 
   @override
   Widget build(BuildContext context) {
-    final buttonColor =
-        widget.isActive ? const Color(0xFF4E2675) : const Color(0xFF5A2D82);
+    final buttonColor = widget.isActive ? _wmNavPrimaryDark : _wmNavPrimary;
 
     return GestureDetector(
       onTap: widget.onTap,
@@ -363,8 +372,7 @@ class _AnimatedCartButtonState extends State<_AnimatedCartButton>
                         height: 72,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color:
-                              const Color(0xFF5A2D82).withValues(alpha: 0.10),
+                          color: _wmNavPrimary.withOpacity(0.08),
                         ),
                       ),
                     ),
@@ -376,8 +384,7 @@ class _AnimatedCartButtonState extends State<_AnimatedCartButton>
                         height: 64,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color:
-                              const Color(0xFF8753C4).withValues(alpha: 0.10),
+                          color: _wmNavPrimary.withOpacity(0.05),
                         ),
                       ),
                     ),
@@ -389,8 +396,7 @@ class _AnimatedCartButtonState extends State<_AnimatedCartButton>
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color:
-                              const Color(0xFF5A2D82).withValues(alpha: 0.20),
+                          color: _wmNavPrimary.withOpacity(0.16),
                           blurRadius: 12,
                           offset: const Offset(0, 6),
                         ),
@@ -417,9 +423,7 @@ class _AnimatedCartButtonState extends State<_AnimatedCartButton>
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: widget.isActive
-                            ? const Color(0xFF5A2D82)
-                            : const Color(0xFF7A7A7A),
+                        color: widget.isActive ? _wmNavTextActive : _wmNavText,
                       ),
                     ),
                   ),
@@ -460,9 +464,16 @@ class _AnimatedCartBadge extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: const Color(0xFF5A2D82),
+            color: _wmNavDanger,
             width: 1.4,
           ),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x12000000),
+              blurRadius: 6,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
         constraints: const BoxConstraints(
           minWidth: 22,
@@ -472,7 +483,7 @@ class _AnimatedCartBadge extends StatelessWidget {
           child: Text(
             count > 99 ? '99+' : '$count',
             style: const TextStyle(
-              color: Color(0xFF5A2D82),
+              color: _wmNavDanger,
               fontSize: 10,
               fontWeight: FontWeight.w900,
               height: 1.0,
@@ -510,7 +521,7 @@ class _AskMalabarSheet extends StatelessWidget {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF5A2D82),
+                color: _wmNavTextActive,
               ),
             ),
             const SizedBox(height: 8),
@@ -523,8 +534,19 @@ class _AskMalabarSheet extends StatelessWidget {
               decoration: InputDecoration(
                 hintText: 'e.g., Find Kerala snacks under £5',
                 prefixIcon: const Icon(Icons.chat_bubble_outline),
+                filled: true,
+                fillColor: Colors.white,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: _wmNavBorder),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: _wmNavBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: _wmNavPrimary),
                 ),
               ),
             ),
@@ -535,7 +557,7 @@ class _AskMalabarSheet extends StatelessWidget {
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF5A2D82),
+                backgroundColor: _wmNavPrimary,
                 foregroundColor: Colors.white,
                 minimumSize: const Size.fromHeight(48),
                 shape: RoundedRectangleBorder(

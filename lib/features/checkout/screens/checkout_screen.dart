@@ -19,8 +19,26 @@ import 'package:western_malabar/features/checkout/services/stripe_payment_servic
 import 'package:western_malabar/features/profile/models/profile_model.dart';
 import 'package:western_malabar/features/profile/providers/profile_provider.dart';
 import 'package:western_malabar/shared/services/postcode_lookup_service.dart';
-import 'package:western_malabar/shared/theme/theme.dart';
-import 'package:western_malabar/shared/theme/wm_gradients.dart';
+
+const _wmCheckoutBg = Color(0xFFF7F7F7);
+const _wmCheckoutSurface = Colors.white;
+const _wmCheckoutBorder = Color(0xFFE5E7EB);
+
+const _wmCheckoutTextStrong = Color(0xFF111827);
+const _wmCheckoutTextSoft = Color(0xFF6B7280);
+const _wmCheckoutTextMuted = Color(0xFF9CA3AF);
+
+const _wmCheckoutPrimary = Color(0xFF2A2F3A);
+const _wmCheckoutPrimaryDark = Color(0xFF171A20);
+
+const _wmCheckoutSuccess = Color(0xFF15803D);
+const _wmCheckoutSuccessSoft = Color(0xFFECFDF5);
+
+const _wmCheckoutDanger = Color(0xFFDC2626);
+const _wmCheckoutDangerSoft = Color(0xFFFEF2F2);
+
+const _wmCheckoutAmber = Color(0xFFF59E0B);
+const _wmCheckoutAmberSoft = Color(0xFFFFF7ED);
 
 class CheckoutScreen extends ConsumerStatefulWidget {
   const CheckoutScreen({super.key});
@@ -30,7 +48,6 @@ class CheckoutScreen extends ConsumerStatefulWidget {
 }
 
 class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
-  // --- Guest checkout and email helpers ---
   bool get _isGuestCheckout {
     final user = Supabase.instance.client.auth.currentUser;
     return user == null || user.isAnonymous;
@@ -132,7 +149,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             return;
           }
 
-          final rewardPoints = profile.rewardPoints as int? ?? 0;
+          final rewardPoints = (profile.rewardPoints as int?) ?? 0;
           const pointsPerRewardBlock = 200;
           const rewardBlockValuePence = 200;
 
@@ -713,7 +730,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         return;
       }
 
-      // COD or zero-total order path
       final paymentStatus = confirmedTotalCents == 0 ? 'paid' : 'cod_pending';
 
       final placedOrder = await ref.read(checkoutServiceProvider).placeOrder(
@@ -854,246 +870,242 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     }
 
     final isGuestCheckout = _isGuestCheckout;
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: WMGradients.pageBackground,
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              const _CheckoutHeader(),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(14, 8, 14, 24),
-                  children: [
-                    addressesAsync.when(
-                      loading: () => const _SectionCard(
-                        title: 'Delivery Address',
-                        child: _InlineLoadingRow(
-                          text: 'Loading saved addresses...',
-                        ),
-                      ),
-                      error: (_, __) => _buildAddressSection(
-                        checkout: checkout,
-                        addresses: const [],
-                      ),
-                      data: (addresses) {
-                        _ensureSavedAddressSelection(addresses);
-                        return _buildAddressSection(
-                          checkout: checkout,
-                          addresses: addresses,
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 14),
-                    _SectionCard(
-                      title: 'Delivery',
-                      child: Column(
-                        children: [
-                          _ChoiceTile(
-                            title: 'Home Delivery',
-                            subtitle: 'Delivered to your address',
-                            selected: checkout.deliveryType == 'home_delivery',
-                            onTap: () => ref
-                                .read(checkoutProvider.notifier)
-                                .updateDeliveryType('home_delivery'),
-                          ),
-                          const SizedBox(height: 10),
-                          _ChoiceTile(
-                            title: 'Local Pickup',
-                            subtitle: 'Collect from store',
-                            selected: checkout.deliveryType == 'local_pickup',
-                            onTap: () => ref
-                                .read(checkoutProvider.notifier)
-                                .updateDeliveryType('local_pickup'),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _SectionCard(
-                      title: 'Delivery Slot',
-                      child: Column(
-                        children: [
-                          _ChoiceTile(
-                            title: 'Tomorrow • 6 PM - 8 PM',
-                            selected: checkout.deliverySlot ==
-                                'Tomorrow • 6 PM - 8 PM',
-                            onTap: () => ref
-                                .read(checkoutProvider.notifier)
-                                .updateDeliverySlot('Tomorrow • 6 PM - 8 PM'),
-                          ),
-                          const SizedBox(height: 10),
-                          _ChoiceTile(
-                            title: 'Tomorrow • 8 PM - 10 PM',
-                            selected: checkout.deliverySlot ==
-                                'Tomorrow • 8 PM - 10 PM',
-                            onTap: () => ref
-                                .read(checkoutProvider.notifier)
-                                .updateDeliverySlot('Tomorrow • 8 PM - 10 PM'),
-                          ),
-                          const SizedBox(height: 10),
-                          _ChoiceTile(
-                            title: 'Saturday • 10 AM - 12 PM',
-                            selected: checkout.deliverySlot ==
-                                'Saturday • 10 AM - 12 PM',
-                            onTap: () => ref
-                                .read(checkoutProvider.notifier)
-                                .updateDeliverySlot('Saturday • 10 AM - 12 PM'),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _SectionCard(
-                      title: 'Payment Method',
-                      child: Column(
-                        children: [
-                          _ChoiceTile(
-                            title: 'Cash on Delivery',
-                            subtitle: 'Pay when your order arrives',
-                            selected: checkout.paymentMethod == 'cod',
-                            onTap: () => ref
-                                .read(checkoutProvider.notifier)
-                                .updatePaymentMethod('cod'),
-                          ),
-                          const SizedBox(height: 10),
-                          _ChoiceTile(
-                            title: 'Card / Apple Pay / Google Pay',
-                            subtitle: 'Secure online payment with Stripe',
-                            selected: checkout.paymentMethod == 'card',
-                            onTap: () => ref
-                                .read(checkoutProvider.notifier)
-                                .updatePaymentMethod('card'),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _RewardsCheckoutCard(
-                      availableRewardPence: checkout.availableRewardPence,
-                      appliedRewardPence: appliedRewardCents,
-                      pointsToNextReward: checkout.pointsToNextReward,
-                      useRewards: checkout.useRewards,
-                      maxRedeemablePence: maxRewardUsableCents,
-                      isLoading: checkout.rewardsLoading,
-                      message: isGuestCheckout
-                          ? _guestCheckoutBenefitsText()
-                          : checkout.rewardsMessage,
-                      isGuestCheckout: isGuestCheckout,
-                      onToggle: (value) {
-                        if (isGuestCheckout) return;
 
-                        final notifier = ref.read(checkoutProvider.notifier);
-                        notifier.toggleUseRewards(value);
-                        notifier.setAppliedRewardPence(
-                          value ? maxRewardUsableCents : 0,
-                        );
-                      },
+    return Scaffold(
+      backgroundColor: _wmCheckoutBg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            const _CheckoutHeader(),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(14, 8, 14, 24),
+                children: [
+                  addressesAsync.when(
+                    loading: () => const _SectionCard(
+                      title: 'Delivery Address',
+                      child: _InlineLoadingRow(
+                        text: 'Loading saved addresses...',
+                      ),
                     ),
-                    const SizedBox(height: 14),
-                    _SectionCard(
-                      title: 'Order Summary',
-                      child: Column(
-                        children: [
-                          if (checkout.backendSummaryLoading) ...[
-                            const _InlineLoadingRow(
-                              text: 'Confirming latest total...',
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                          if (checkout.backendSummaryError.isNotEmpty) ...[
-                            _AmazonInfoBanner(
-                              icon: Icons.info_outline_rounded,
-                              text: checkout.backendSummaryError,
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                          _PriceRow(
-                            label: 'Items',
-                            value:
-                                '${cartItems.fold<int>(0, (sum, item) => sum + item.qty)}',
+                    error: (_, __) => _buildAddressSection(
+                      checkout: checkout,
+                      addresses: const [],
+                    ),
+                    data: (addresses) {
+                      _ensureSavedAddressSelection(addresses);
+                      return _buildAddressSection(
+                        checkout: checkout,
+                        addresses: addresses,
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  _SectionCard(
+                    title: 'Delivery',
+                    child: Column(
+                      children: [
+                        _ChoiceTile(
+                          title: 'Home Delivery',
+                          subtitle: 'Delivered to your address',
+                          selected: checkout.deliveryType == 'home_delivery',
+                          onTap: () => ref
+                              .read(checkoutProvider.notifier)
+                              .updateDeliveryType('home_delivery'),
+                        ),
+                        const SizedBox(height: 10),
+                        _ChoiceTile(
+                          title: 'Local Pickup',
+                          subtitle: 'Collect from store',
+                          selected: checkout.deliveryType == 'local_pickup',
+                          onTap: () => ref
+                              .read(checkoutProvider.notifier)
+                              .updateDeliveryType('local_pickup'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _SectionCard(
+                    title: 'Delivery Slot',
+                    child: Column(
+                      children: [
+                        _ChoiceTile(
+                          title: 'Tomorrow • 6 PM - 8 PM',
+                          selected:
+                              checkout.deliverySlot == 'Tomorrow • 6 PM - 8 PM',
+                          onTap: () => ref
+                              .read(checkoutProvider.notifier)
+                              .updateDeliverySlot('Tomorrow • 6 PM - 8 PM'),
+                        ),
+                        const SizedBox(height: 10),
+                        _ChoiceTile(
+                          title: 'Tomorrow • 8 PM - 10 PM',
+                          selected: checkout.deliverySlot ==
+                              'Tomorrow • 8 PM - 10 PM',
+                          onTap: () => ref
+                              .read(checkoutProvider.notifier)
+                              .updateDeliverySlot('Tomorrow • 8 PM - 10 PM'),
+                        ),
+                        const SizedBox(height: 10),
+                        _ChoiceTile(
+                          title: 'Saturday • 10 AM - 12 PM',
+                          selected: checkout.deliverySlot ==
+                              'Saturday • 10 AM - 12 PM',
+                          onTap: () => ref
+                              .read(checkoutProvider.notifier)
+                              .updateDeliverySlot('Saturday • 10 AM - 12 PM'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _SectionCard(
+                    title: 'Payment Method',
+                    child: Column(
+                      children: [
+                        _ChoiceTile(
+                          title: 'Cash on Delivery',
+                          subtitle: 'Pay when your order arrives',
+                          selected: checkout.paymentMethod == 'cod',
+                          onTap: () => ref
+                              .read(checkoutProvider.notifier)
+                              .updatePaymentMethod('cod'),
+                        ),
+                        const SizedBox(height: 10),
+                        _ChoiceTile(
+                          title: 'Card / Apple Pay / Google Pay',
+                          subtitle: 'Secure online payment with Stripe',
+                          selected: checkout.paymentMethod == 'card',
+                          onTap: () => ref
+                              .read(checkoutProvider.notifier)
+                              .updatePaymentMethod('card'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _RewardsCheckoutCard(
+                    availableRewardPence: checkout.availableRewardPence,
+                    appliedRewardPence: appliedRewardCents,
+                    pointsToNextReward: checkout.pointsToNextReward,
+                    useRewards: checkout.useRewards,
+                    maxRedeemablePence: maxRewardUsableCents,
+                    isLoading: checkout.rewardsLoading,
+                    message: isGuestCheckout
+                        ? _guestCheckoutBenefitsText()
+                        : checkout.rewardsMessage,
+                    isGuestCheckout: isGuestCheckout,
+                    onToggle: (value) {
+                      if (isGuestCheckout) return;
+
+                      final notifier = ref.read(checkoutProvider.notifier);
+                      notifier.toggleUseRewards(value);
+                      notifier.setAppliedRewardPence(
+                        value ? maxRewardUsableCents : 0,
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  _SectionCard(
+                    title: 'Order Summary',
+                    child: Column(
+                      children: [
+                        if (checkout.backendSummaryLoading) ...[
+                          const _InlineLoadingRow(
+                            text: 'Confirming latest total...',
                           ),
+                          const SizedBox(height: 12),
+                        ],
+                        if (checkout.backendSummaryError.isNotEmpty) ...[
+                          _AmazonInfoBanner(
+                            icon: Icons.info_outline_rounded,
+                            text: checkout.backendSummaryError,
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        _PriceRow(
+                          label: 'Items',
+                          value:
+                              '${cartItems.fold<int>(0, (sum, item) => sum + item.qty)}',
+                        ),
+                        const SizedBox(height: 10),
+                        _PriceRow(
+                          label: 'Subtotal',
+                          value: _money(subtotalCents),
+                        ),
+                        if (appliedRewardCents > 0) ...[
                           const SizedBox(height: 10),
                           _PriceRow(
-                            label: 'Subtotal',
-                            value: _money(subtotalCents),
-                          ),
-                          if (appliedRewardCents > 0) ...[
-                            const SizedBox(height: 10),
-                            _PriceRow(
-                              label: 'Rewards',
-                              value: '-${_money(appliedRewardCents)}',
-                              valueColor: const Color(0xFF1E8E3E),
-                            ),
-                          ],
-                          const SizedBox(height: 10),
-                          _PriceRow(
-                            label: 'Delivery Fee',
-                            value: _money(deliveryFeeCents),
-                          ),
-                          const Divider(height: 24),
-                          _PriceRow(
-                            label: 'Total',
-                            value: _money(totalCents),
-                            bold: true,
+                            label: 'Rewards',
+                            value: '-${_money(appliedRewardCents)}',
+                            valueColor: _wmCheckoutSuccess,
                           ),
                         ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x12000000),
-                      blurRadius: 10,
-                      offset: Offset(0, -4),
-                    ),
-                  ],
-                ),
-                child: SafeArea(
-                  top: false,
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: checkout.isPlacingOrder ? null : _onPlaceOrder,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: WMTheme.royalPurple,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(56),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                        const SizedBox(height: 10),
+                        _PriceRow(
+                          label: 'Delivery Fee',
+                          value: _money(deliveryFeeCents),
                         ),
-                      ),
-                      child: checkout.isPlacingOrder
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.4,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(
-                              'Place Order • ${_money(totalCents)}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 16,
-                              ),
-                            ),
+                        const Divider(height: 24),
+                        _PriceRow(
+                          label: 'Total',
+                          value: _money(totalCents),
+                          bold: true,
+                        ),
+                      ],
                     ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
+              decoration: const BoxDecoration(
+                color: _wmCheckoutSurface,
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x12000000),
+                    blurRadius: 10,
+                    offset: Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                top: false,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: checkout.isPlacingOrder ? null : _onPlaceOrder,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _wmCheckoutPrimary,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(56),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: checkout.isPlacingOrder
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.4,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            'Place Order • ${_money(totalCents)}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                            ),
+                          ),
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -1129,7 +1141,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Show email field for all checkout modes
           _CheckoutTextField(
             label: 'Email Address',
             controller: _emailController,
@@ -1213,7 +1224,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                           ? null
                           : _findAddress,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: WMTheme.royalPurple,
+                        backgroundColor: _wmCheckoutPrimary,
                         foregroundColor: Colors.white,
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1247,13 +1258,13 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: checkout.postcodeEligible
-                        ? const Color(0xFFF1FAF3)
-                        : const Color(0xFFFFF4F4),
+                        ? _wmCheckoutSuccessSoft
+                        : _wmCheckoutDangerSoft,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: checkout.postcodeEligible
-                          ? const Color(0xFFBFE3C7)
-                          : const Color(0xFFFFD1D1),
+                          ? const Color(0xFFBBF7D0)
+                          : const Color(0xFFFECACA),
                     ),
                   ),
                   child: Row(
@@ -1264,8 +1275,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                             ? Icons.check_circle_rounded
                             : Icons.info_rounded,
                         color: checkout.postcodeEligible
-                            ? Colors.green
-                            : Colors.redAccent,
+                            ? _wmCheckoutSuccess
+                            : _wmCheckoutDanger,
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -1274,6 +1285,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                           style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
+                            color: _wmCheckoutTextStrong,
                           ),
                         ),
                       ),
@@ -1287,7 +1299,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   icon: Icons.home_rounded,
                   title: 'Selected Address',
                   subtitle: checkout.selectedAddressLabel,
-                  accent: WMTheme.royalPurple,
+                  accent: _wmCheckoutPrimary,
                 ),
               ],
               const SizedBox(height: 12),
@@ -1326,6 +1338,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                       'Use saved address instead',
                       style: TextStyle(fontWeight: FontWeight.w800),
                     ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: _wmCheckoutPrimary,
+                    ),
                   ),
                 ),
               ],
@@ -1356,9 +1371,9 @@ class _CompactSavedAddressCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F2FC),
+        color: const Color(0xFFF9FAFB),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE4D8F4)),
+        border: Border.all(color: _wmCheckoutBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1367,7 +1382,7 @@ class _CompactSavedAddressCard extends StatelessWidget {
             children: [
               const Icon(
                 Icons.location_on_rounded,
-                color: WMTheme.royalPurple,
+                color: _wmCheckoutPrimary,
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -1376,7 +1391,7 @@ class _CompactSavedAddressCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w900,
-                    color: Colors.black87,
+                    color: _wmCheckoutTextStrong,
                   ),
                 ),
               ),
@@ -1385,7 +1400,7 @@ class _CompactSavedAddressCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: WMTheme.royalPurple,
+                    color: _wmCheckoutPrimary,
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: const Text(
@@ -1405,7 +1420,7 @@ class _CompactSavedAddressCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: Colors.black54,
+              color: _wmCheckoutTextSoft,
               height: 1.4,
             ),
           ),
@@ -1421,6 +1436,9 @@ class _CompactSavedAddressCard extends StatelessWidget {
                   'Change',
                   style: TextStyle(fontWeight: FontWeight.w800),
                 ),
+                style: TextButton.styleFrom(
+                  foregroundColor: _wmCheckoutPrimary,
+                ),
               ),
               TextButton.icon(
                 onPressed: onNewAddressTap,
@@ -1428,6 +1446,9 @@ class _CompactSavedAddressCard extends StatelessWidget {
                 label: const Text(
                   'New address',
                   style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                style: TextButton.styleFrom(
+                  foregroundColor: _wmCheckoutPrimary,
                 ),
               ),
             ],
@@ -1455,9 +1476,9 @@ class _SavedAddressesEntryCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F2FC),
+        color: const Color(0xFFF9FAFB),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE4D8F4)),
+        border: Border.all(color: _wmCheckoutBorder),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1466,12 +1487,12 @@ class _SavedAddressesEntryCard extends StatelessWidget {
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: _wmCheckoutSurface,
               borderRadius: BorderRadius.circular(14),
             ),
             child: const Icon(
               Icons.bookmark_border_rounded,
-              color: WMTheme.royalPurple,
+              color: _wmCheckoutPrimary,
             ),
           ),
           const SizedBox(width: 12),
@@ -1484,7 +1505,7 @@ class _SavedAddressesEntryCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w900,
-                    color: Colors.black87,
+                    color: _wmCheckoutTextStrong,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1493,7 +1514,7 @@ class _SavedAddressesEntryCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black54,
+                    color: _wmCheckoutTextSoft,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -1503,6 +1524,9 @@ class _SavedAddressesEntryCard extends StatelessWidget {
                   children: [
                     TextButton(
                       onPressed: onTap,
+                      style: TextButton.styleFrom(
+                        foregroundColor: _wmCheckoutPrimary,
+                      ),
                       child: const Text(
                         'Choose',
                         style: TextStyle(fontWeight: FontWeight.w800),
@@ -1510,6 +1534,9 @@ class _SavedAddressesEntryCard extends StatelessWidget {
                     ),
                     TextButton(
                       onPressed: onNewAddressTap,
+                      style: TextButton.styleFrom(
+                        foregroundColor: _wmCheckoutPrimary,
+                      ),
                       child: const Text(
                         'New address',
                         style: TextStyle(fontWeight: FontWeight.w800),
@@ -1542,7 +1569,7 @@ class _InlineLoadingRow extends StatelessWidget {
           height: 18,
           child: CircularProgressIndicator(
             strokeWidth: 2.2,
-            color: WMTheme.royalPurple,
+            color: _wmCheckoutPrimary,
           ),
         ),
         const SizedBox(width: 12),
@@ -1552,7 +1579,7 @@ class _InlineLoadingRow extends StatelessWidget {
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: Colors.black54,
+              color: _wmCheckoutTextSoft,
             ),
           ),
         ),
@@ -1575,7 +1602,7 @@ class _SavedAddressPickerSheet extends StatelessWidget {
     return Container(
       height: 560,
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: _wmCheckoutSurface,
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(24),
         ),
@@ -1598,7 +1625,7 @@ class _SavedAddressPickerSheet extends StatelessWidget {
               children: [
                 Icon(
                   Icons.bookmark_border_rounded,
-                  color: WMTheme.royalPurple,
+                  color: _wmCheckoutPrimary,
                 ),
                 SizedBox(width: 8),
                 Text(
@@ -1606,6 +1633,7 @@ class _SavedAddressPickerSheet extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
+                    color: _wmCheckoutTextStrong,
                   ),
                 ),
               ],
@@ -1628,12 +1656,12 @@ class _SavedAddressPickerSheet extends StatelessWidget {
                     width: 42,
                     height: 42,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF6F0FB),
+                      color: const Color(0xFFF3F4F6),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
                       Icons.home_rounded,
-                      color: WMTheme.royalPurple,
+                      color: _wmCheckoutPrimary,
                     ),
                   ),
                   title: Row(
@@ -1644,6 +1672,7 @@ class _SavedAddressPickerSheet extends StatelessWidget {
                           style: const TextStyle(
                             fontWeight: FontWeight.w900,
                             fontSize: 14,
+                            color: _wmCheckoutTextStrong,
                           ),
                         ),
                       ),
@@ -1654,7 +1683,7 @@ class _SavedAddressPickerSheet extends StatelessWidget {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: WMTheme.royalPurple,
+                            color: _wmCheckoutPrimary,
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: const Text(
@@ -1675,14 +1704,14 @@ class _SavedAddressPickerSheet extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: Colors.black54,
+                        color: _wmCheckoutTextSoft,
                         height: 1.35,
                       ),
                     ),
                   ),
                   trailing: const Icon(
                     Icons.chevron_right_rounded,
-                    color: Colors.black38,
+                    color: _wmCheckoutTextMuted,
                   ),
                   onTap: () {
                     onSelected(item);
@@ -1712,7 +1741,7 @@ class _AddressPickerSheet extends StatelessWidget {
     return Container(
       height: 520,
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: _wmCheckoutSurface,
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(24),
         ),
@@ -1735,7 +1764,7 @@ class _AddressPickerSheet extends StatelessWidget {
               children: [
                 Icon(
                   Icons.location_on_rounded,
-                  color: WMTheme.royalPurple,
+                  color: _wmCheckoutPrimary,
                 ),
                 SizedBox(width: 8),
                 Text(
@@ -1743,6 +1772,7 @@ class _AddressPickerSheet extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
+                    color: _wmCheckoutTextStrong,
                   ),
                 ),
               ],
@@ -1765,12 +1795,12 @@ class _AddressPickerSheet extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF6F0FB),
+                      color: const Color(0xFFF3F4F6),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
                       Icons.home_rounded,
-                      color: WMTheme.royalPurple,
+                      color: _wmCheckoutPrimary,
                     ),
                   ),
                   title: Text(
@@ -1778,6 +1808,7 @@ class _AddressPickerSheet extends StatelessWidget {
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 14,
+                      color: _wmCheckoutTextStrong,
                     ),
                   ),
                   subtitle: Padding(
@@ -1787,13 +1818,13 @@ class _AddressPickerSheet extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Colors.black54,
+                        color: _wmCheckoutTextSoft,
                       ),
                     ),
                   ),
                   trailing: const Icon(
                     Icons.chevron_right_rounded,
-                    color: Colors.black38,
+                    color: _wmCheckoutTextMuted,
                   ),
                   onTap: () {
                     onSelected(item);
@@ -1818,9 +1849,19 @@ class _CheckoutHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
       child: Row(
         children: [
-          IconButton(
-            onPressed: () => Navigator.maybePop(context),
-            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          Container(
+            decoration: BoxDecoration(
+              color: _wmCheckoutSurface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _wmCheckoutBorder),
+            ),
+            child: IconButton(
+              onPressed: () => Navigator.maybePop(context),
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: _wmCheckoutPrimary,
+              ),
+            ),
           ),
           const Expanded(
             child: Text(
@@ -1829,6 +1870,7 @@ class _CheckoutHeader extends StatelessWidget {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w900,
+                color: _wmCheckoutTextStrong,
               ),
             ),
           ),
@@ -1853,11 +1895,12 @@ class _SectionCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _wmCheckoutSurface,
         borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _wmCheckoutBorder),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x12000000),
+            color: Color(0x0C000000),
             blurRadius: 10,
             offset: Offset(0, 6),
           ),
@@ -1871,6 +1914,7 @@ class _SectionCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
+              color: _wmCheckoutTextStrong,
             ),
           ),
           const SizedBox(height: 14),
@@ -1902,8 +1946,12 @@ class _CheckoutTextField extends StatelessWidget {
       onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
+        labelStyle: const TextStyle(
+          color: _wmCheckoutTextSoft,
+          fontWeight: FontWeight.w600,
+        ),
         filled: true,
-        fillColor: const Color(0xFFF9F6FC),
+        fillColor: const Color(0xFFF9FAFB),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
           vertical: 14,
@@ -1911,6 +1959,17 @@ class _CheckoutTextField extends StatelessWidget {
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _wmCheckoutBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(
+            color: _wmCheckoutPrimary,
+            width: 1.2,
+          ),
         ),
       ),
     );
@@ -1932,9 +1991,8 @@ class _ChoiceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor =
-        selected ? WMTheme.royalPurple : const Color(0xFFE7E0EF);
-    final bgColor = selected ? const Color(0xFFF6F0FB) : Colors.white;
+    final borderColor = selected ? _wmCheckoutPrimary : _wmCheckoutBorder;
+    final bgColor = selected ? const Color(0xFFF9FAFB) : _wmCheckoutSurface;
 
     return Material(
       color: bgColor,
@@ -1963,6 +2021,7 @@ class _ChoiceTile extends StatelessWidget {
                       style: const TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 14,
+                        color: _wmCheckoutTextStrong,
                       ),
                     ),
                     if (subtitle != null) ...[
@@ -1970,7 +2029,7 @@ class _ChoiceTile extends StatelessWidget {
                       Text(
                         subtitle!,
                         style: const TextStyle(
-                          color: Colors.black54,
+                          color: _wmCheckoutTextSoft,
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
                         ),
@@ -1984,7 +2043,7 @@ class _ChoiceTile extends StatelessWidget {
                 selected
                     ? Icons.radio_button_checked_rounded
                     : Icons.radio_button_off_rounded,
-                color: selected ? WMTheme.royalPurple : Colors.black38,
+                color: selected ? _wmCheckoutPrimary : _wmCheckoutTextMuted,
               ),
             ],
           ),
@@ -2057,16 +2116,16 @@ class _RewardsCheckoutCard extends StatelessWidget {
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: isGuestCheckout
-                        ? const Color(0xFFFFF8E7)
+                        ? _wmCheckoutAmberSoft
                         : canRedeem
-                            ? const Color(0xFFF6F0FB)
+                            ? const Color(0xFFF9FAFB)
                             : const Color(0xFFFBFBFB),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isGuestCheckout
-                          ? const Color(0xFFF0D98D)
+                          ? const Color(0xFFFED7AA)
                           : canRedeem
-                              ? const Color(0xFFE4D8F4)
+                              ? _wmCheckoutBorder
                               : const Color(0xFFEAEAEA),
                     ),
                   ),
@@ -2078,9 +2137,9 @@ class _RewardsCheckoutCard extends StatelessWidget {
                         height: 46,
                         decoration: BoxDecoration(
                           color: isGuestCheckout
-                              ? const Color(0xFF8A6700)
+                              ? _wmCheckoutAmber
                               : canRedeem
-                                  ? WMTheme.royalPurple
+                                  ? _wmCheckoutPrimary
                                   : const Color(0xFFD7D7D7),
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -2101,7 +2160,7 @@ class _RewardsCheckoutCard extends StatelessWidget {
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w900,
-                                color: Colors.black87,
+                                color: _wmCheckoutTextStrong,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -2110,7 +2169,7 @@ class _RewardsCheckoutCard extends StatelessWidget {
                               style: const TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.black54,
+                                color: _wmCheckoutTextSoft,
                                 height: 1.35,
                               ),
                             ),
@@ -2122,7 +2181,7 @@ class _RewardsCheckoutCard extends StatelessWidget {
                                 style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.black45,
+                                  color: _wmCheckoutTextMuted,
                                 ),
                               ),
                             ],
@@ -2133,9 +2192,9 @@ class _RewardsCheckoutCard extends StatelessWidget {
                         Switch.adaptive(
                           value: canRedeem ? useRewards : false,
                           onChanged: canRedeem ? onToggle : null,
-                          activeThumbColor: WMTheme.royalPurple,
+                          activeThumbColor: _wmCheckoutPrimary,
                           activeTrackColor:
-                              WMTheme.royalPurple.withValues(alpha: 0.45),
+                              _wmCheckoutPrimary.withOpacity(0.35),
                         ),
                     ],
                   ),
@@ -2172,11 +2231,11 @@ class _PriceRow extends StatelessWidget {
     final labelStyle = TextStyle(
       fontSize: bold ? 17 : 15,
       fontWeight: bold ? FontWeight.w900 : FontWeight.w700,
-      color: bold ? WMTheme.royalPurple : Colors.black87,
+      color: bold ? _wmCheckoutTextStrong : _wmCheckoutTextStrong,
     );
 
     final resolvedValueColor =
-        valueColor ?? (bold ? WMTheme.royalPurple : Colors.black87);
+        valueColor ?? (bold ? _wmCheckoutPrimary : _wmCheckoutTextStrong);
 
     final valueStyle = TextStyle(
       fontSize: bold ? 17 : 15,
@@ -2209,14 +2268,14 @@ class _AmazonInfoBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF8E7),
+        color: _wmCheckoutAmberSoft,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFF0D98D)),
+        border: Border.all(color: const Color(0xFFFED7AA)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: const Color(0xFF8A6700)),
+          Icon(icon, size: 18, color: const Color(0xFFB45309)),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -2224,7 +2283,7 @@ class _AmazonInfoBanner extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF6B5400),
+                color: Color(0xFF78350F),
               ),
             ),
           ),
@@ -2253,9 +2312,9 @@ class _AmazonSelectionCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _wmCheckoutSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: accent.withValues(alpha: 51)),
+        border: Border.all(color: accent.withOpacity(0.18)),
         boxShadow: const [
           BoxShadow(
             color: Color(0x08000000),
@@ -2271,7 +2330,7 @@ class _AmazonSelectionCard extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: accent.withValues(alpha: 26),
+              color: accent.withOpacity(0.10),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: accent),
@@ -2286,6 +2345,7 @@ class _AmazonSelectionCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w900,
+                    color: _wmCheckoutTextStrong,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -2294,7 +2354,7 @@ class _AmazonSelectionCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black54,
+                    color: _wmCheckoutTextSoft,
                   ),
                 ),
               ],

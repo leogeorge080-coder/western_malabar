@@ -3,8 +3,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:western_malabar/features/checkout/models/address_model.dart';
 import 'package:western_malabar/features/checkout/providers/address_provider.dart';
 import 'package:western_malabar/features/profile/providers/profile_provider.dart';
-import 'package:western_malabar/shared/theme/theme.dart';
-import 'package:western_malabar/shared/theme/wm_gradients.dart';
+
+const _wmAddrBg = Color(0xFFF7F7F7);
+const _wmAddrSurface = Colors.white;
+const _wmAddrBorder = Color(0xFFE5E7EB);
+
+const _wmAddrTextStrong = Color(0xFF111827);
+const _wmAddrTextSoft = Color(0xFF6B7280);
+const _wmAddrTextMuted = Color(0xFF9CA3AF);
+
+const _wmAddrPrimary = Color(0xFF2A2F3A);
+const _wmAddrPrimaryDark = Color(0xFF171A20);
+
+const _wmAddrSuccess = Color(0xFF15803D);
+const _wmAddrSuccessSoft = Color(0xFFECFDF5);
+const _wmAddrDanger = Color(0xFFDC2626);
 
 class SavedAddressesScreen extends ConsumerStatefulWidget {
   const SavedAddressesScreen({super.key});
@@ -84,18 +97,22 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
     final confirmed = await showDialog<bool>(
           context: context,
           builder: (_) => AlertDialog(
+            backgroundColor: _wmAddrSurface,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(22),
             ),
             title: const Text(
               'Delete address?',
-              style: TextStyle(fontWeight: FontWeight.w900),
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                color: _wmAddrTextStrong,
+              ),
             ),
             content: Text(
               'Remove "${address.label}" from your saved addresses?',
               style: const TextStyle(
                 fontWeight: FontWeight.w600,
-                color: Colors.black54,
+                color: _wmAddrTextSoft,
               ),
             ),
             actions: [
@@ -109,7 +126,7 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
               ElevatedButton(
                 onPressed: () => Navigator.pop(context, true),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.redAccent,
+                  backgroundColor: _wmAddrDanger,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -157,10 +174,10 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
     final addressesAsync = ref.watch(addressesProvider);
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: _wmAddrBg,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _isBusy ? null : _openAddSheet,
-        backgroundColor: WMTheme.royalPurple,
+        backgroundColor: _wmAddrPrimary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_location_alt_outlined),
         label: const Text(
@@ -168,64 +185,59 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: WMGradients.pageBackground,
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              const _SavedAddressesHeader(),
-              Expanded(
-                child: addressesAsync.when(
-                  loading: () => const Center(
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.4,
-                      color: WMTheme.royalPurple,
-                    ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            const _SavedAddressesHeader(),
+            Expanded(
+              child: addressesAsync.when(
+                loading: () => const Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.4,
+                    color: _wmAddrPrimary,
                   ),
-                  error: (error, _) => _SavedAddressesErrorView(
-                    message: error.toString(),
-                    onRetry: _refreshAll,
-                  ),
-                  data: (addresses) {
-                    if (addresses.isEmpty) {
-                      return _EmptySavedAddressesView(
-                        onAddTap: _openAddSheet,
-                      );
-                    }
+                ),
+                error: (error, _) => _SavedAddressesErrorView(
+                  message: error.toString(),
+                  onRetry: _refreshAll,
+                ),
+                data: (addresses) {
+                  if (addresses.isEmpty) {
+                    return _EmptySavedAddressesView(
+                      onAddTap: _openAddSheet,
+                    );
+                  }
 
-                    return RefreshIndicator(
-                      color: WMTheme.royalPurple,
-                      onRefresh: _refreshAll,
-                      child: ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 10, 16, 120),
-                        children: [
-                          _SavedAddressesIntroCard(
-                            count: addresses.length,
-                          ),
-                          const SizedBox(height: 14),
-                          ...addresses.map(
-                            (address) => Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: _AddressCard(
-                                address: address,
-                                isBusy: _isBusy,
-                                onSetDefault: () => _setDefault(address),
-                                onEdit: () => _openEditSheet(address),
-                                onDelete: () => _deleteAddress(address),
-                              ),
+                  return RefreshIndicator(
+                    color: _wmAddrPrimary,
+                    onRefresh: _refreshAll,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 120),
+                      children: [
+                        _SavedAddressesIntroCard(
+                          count: addresses.length,
+                        ),
+                        const SizedBox(height: 14),
+                        ...addresses.map(
+                          (address) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _AddressCard(
+                              address: address,
+                              isBusy: _isBusy,
+                              onSetDefault: () => _setDefault(address),
+                              onEdit: () => _openEditSheet(address),
+                              onDelete: () => _deleteAddress(address),
                             ),
                           ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -243,7 +255,10 @@ class _SavedAddressesHeader extends StatelessWidget {
         children: [
           IconButton(
             onPressed: () => Navigator.maybePop(context),
-            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: _wmAddrPrimary,
+            ),
           ),
           const Expanded(
             child: Text(
@@ -252,6 +267,7 @@ class _SavedAddressesHeader extends StatelessWidget {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w900,
+                color: _wmAddrTextStrong,
               ),
             ),
           ),
@@ -277,14 +293,14 @@ class _SavedAddressesIntroCard extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [
-            WMTheme.royalPurple,
-            Color(0xFF8A56C9),
+            _wmAddrPrimaryDark,
+            _wmAddrPrimary,
           ],
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x22000000),
+            color: Color(0x16000000),
             blurRadius: 16,
             offset: Offset(0, 8),
           ),
@@ -296,10 +312,10 @@ class _SavedAddressesIntroCard extends StatelessWidget {
             width: 58,
             height: 58,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.14),
+              color: Colors.white.withOpacity(0.10),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.18),
+                color: Colors.white.withOpacity(0.12),
               ),
             ),
             child: const Icon(
@@ -324,8 +340,8 @@ class _SavedAddressesIntroCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '$count saved address${count == 1 ? '' : 'es'} ready for faster checkout.',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.92),
+                  style: const TextStyle(
+                    color: Color(0xFFD1D5DB),
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     height: 1.35,
@@ -357,21 +373,21 @@ class _AddressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDefault = address.isDefault;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.97),
+        color: _wmAddrSurface,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: address.isDefault
-              ? WMTheme.royalPurple.withValues(alpha: 0.22)
-              : const Color(0xFFECE5F6),
-          width: address.isDefault ? 1.4 : 1,
+          color: isDefault ? const Color(0xFFA7F3D0) : _wmAddrBorder,
+          width: isDefault ? 1.4 : 1,
         ),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x10000000),
+            color: Color(0x0C000000),
             blurRadius: 12,
             offset: Offset(0, 6),
           ),
@@ -385,16 +401,15 @@ class _AddressCard extends StatelessWidget {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: address.isDefault
-                      ? const Color(0xFFF4EDFB)
-                      : const Color(0xFFFBF9FE),
+                  color:
+                      isDefault ? _wmAddrSuccessSoft : const Color(0xFFF3F4F6),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(
                   address.label.toLowerCase() == 'work'
                       ? Icons.business_center_outlined
                       : Icons.home_rounded,
-                  color: WMTheme.royalPurple,
+                  color: isDefault ? _wmAddrSuccess : _wmAddrPrimary,
                 ),
               ),
               const SizedBox(width: 12),
@@ -412,11 +427,11 @@ class _AddressCard extends StatelessWidget {
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w900,
-                              color: Colors.black87,
+                              color: _wmAddrTextStrong,
                             ),
                           ),
                         ),
-                        if (address.isDefault) ...[
+                        if (isDefault) ...[
                           const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -424,7 +439,7 @@ class _AddressCard extends StatelessWidget {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: WMTheme.royalPurple,
+                              color: _wmAddrSuccess,
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: const Text(
@@ -447,7 +462,7 @@ class _AddressCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: Colors.black87,
+                        color: _wmAddrTextStrong,
                       ),
                     ),
                     if (address.phone.trim().isNotEmpty) ...[
@@ -459,7 +474,7 @@ class _AddressCard extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: Colors.black54,
+                          color: _wmAddrTextSoft,
                         ),
                       ),
                     ],
@@ -473,10 +488,10 @@ class _AddressCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(13),
             decoration: BoxDecoration(
-              color: const Color(0xFFFCFBFE),
+              color: const Color(0xFFF9FAFB),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: const Color(0xFFECE5F6),
+                color: _wmAddrBorder,
               ),
             ),
             child: Text(
@@ -484,7 +499,7 @@ class _AddressCard extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: Colors.black54,
+                color: _wmAddrTextSoft,
                 height: 1.4,
               ),
             ),
@@ -492,7 +507,7 @@ class _AddressCard extends StatelessWidget {
           const SizedBox(height: 14),
           Row(
             children: [
-              if (!address.isDefault)
+              if (!isDefault)
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: isBusy ? null : onSetDefault,
@@ -502,8 +517,8 @@ class _AddressCard extends StatelessWidget {
                       style: TextStyle(fontWeight: FontWeight.w800),
                     ),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: WMTheme.royalPurple,
-                      side: const BorderSide(color: WMTheme.royalPurple),
+                      foregroundColor: _wmAddrPrimary,
+                      side: const BorderSide(color: _wmAddrPrimary),
                       minimumSize: const Size.fromHeight(48),
                       backgroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
@@ -512,7 +527,7 @@ class _AddressCard extends StatelessWidget {
                     ),
                   ),
                 ),
-              if (!address.isDefault) const SizedBox(width: 10),
+              if (!isDefault) const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: isBusy ? null : onEdit,
@@ -522,7 +537,7 @@ class _AddressCard extends StatelessWidget {
                     style: TextStyle(fontWeight: FontWeight.w800),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: WMTheme.royalPurple,
+                    backgroundColor: _wmAddrPrimary,
                     foregroundColor: Colors.white,
                     minimumSize: const Size.fromHeight(48),
                     elevation: 0,
@@ -545,7 +560,7 @@ class _AddressCard extends StatelessWidget {
                 style: TextStyle(fontWeight: FontWeight.w800),
               ),
               style: TextButton.styleFrom(
-                foregroundColor: Colors.redAccent,
+                foregroundColor: _wmAddrDanger,
                 minimumSize: const Size.fromHeight(44),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
@@ -575,11 +590,12 @@ class _EmptySavedAddressesView extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.97),
+            color: _wmAddrSurface,
             borderRadius: BorderRadius.circular(26),
+            border: Border.all(color: _wmAddrBorder),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x12000000),
+                color: Color(0x0C000000),
                 blurRadius: 14,
                 offset: Offset(0, 7),
               ),
@@ -593,8 +609,8 @@ class _EmptySavedAddressesView extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [
-                      WMTheme.royalPurple,
-                      Color(0xFF8A56C9),
+                      _wmAddrPrimaryDark,
+                      _wmAddrPrimary,
                     ],
                   ),
                   borderRadius: BorderRadius.circular(24),
@@ -612,7 +628,7 @@ class _EmptySavedAddressesView extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w900,
-                  color: Colors.black87,
+                  color: _wmAddrTextStrong,
                 ),
               ),
               const SizedBox(height: 8),
@@ -622,7 +638,7 @@ class _EmptySavedAddressesView extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black54,
+                  color: _wmAddrTextSoft,
                   height: 1.45,
                 ),
               ),
@@ -637,7 +653,7 @@ class _EmptySavedAddressesView extends StatelessWidget {
                     style: TextStyle(fontWeight: FontWeight.w800),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: WMTheme.royalPurple,
+                    backgroundColor: _wmAddrPrimary,
                     foregroundColor: Colors.white,
                     minimumSize: const Size.fromHeight(54),
                     elevation: 0,
@@ -673,8 +689,9 @@ class _SavedAddressesErrorView extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.97),
+            color: _wmAddrSurface,
             borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: _wmAddrBorder),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -682,7 +699,7 @@ class _SavedAddressesErrorView extends StatelessWidget {
               const Icon(
                 Icons.error_outline_rounded,
                 size: 42,
-                color: Colors.redAccent,
+                color: _wmAddrDanger,
               ),
               const SizedBox(height: 12),
               const Text(
@@ -690,6 +707,7 @@ class _SavedAddressesErrorView extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
+                  color: _wmAddrTextStrong,
                 ),
               ),
               const SizedBox(height: 8),
@@ -698,7 +716,7 @@ class _SavedAddressesErrorView extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 13,
-                  color: Colors.black54,
+                  color: _wmAddrTextSoft,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -706,7 +724,7 @@ class _SavedAddressesErrorView extends StatelessWidget {
               ElevatedButton(
                 onPressed: onRetry,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: WMTheme.royalPurple,
+                  backgroundColor: _wmAddrPrimary,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -888,7 +906,7 @@ class _AddressEditorSheetState extends ConsumerState<_AddressEditorSheet> {
       padding: EdgeInsets.only(bottom: bottomInset),
       child: Container(
         decoration: const BoxDecoration(
-          color: Colors.white,
+          color: _wmAddrSurface,
           borderRadius: BorderRadius.vertical(
             top: Radius.circular(28),
           ),
@@ -914,7 +932,7 @@ class _AddressEditorSheetState extends ConsumerState<_AddressEditorSheet> {
                       _isEdit
                           ? Icons.edit_location_alt_outlined
                           : Icons.add_location_alt_outlined,
-                      color: WMTheme.royalPurple,
+                      color: _wmAddrPrimary,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -923,6 +941,7 @@ class _AddressEditorSheetState extends ConsumerState<_AddressEditorSheet> {
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w900,
+                          color: _wmAddrTextStrong,
                         ),
                       ),
                     ),
@@ -983,9 +1002,9 @@ class _AddressEditorSheetState extends ConsumerState<_AddressEditorSheet> {
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFCFBFE),
+                    color: const Color(0xFFF9FAFB),
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: const Color(0xFFECE5F6)),
+                    border: Border.all(color: _wmAddrBorder),
                   ),
                   child: Row(
                     children: [
@@ -998,7 +1017,7 @@ class _AddressEditorSheetState extends ConsumerState<_AddressEditorSheet> {
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
-                                color: Colors.black87,
+                                color: _wmAddrTextStrong,
                               ),
                             ),
                             SizedBox(height: 4),
@@ -1007,7 +1026,7 @@ class _AddressEditorSheetState extends ConsumerState<_AddressEditorSheet> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.black54,
+                                color: _wmAddrTextSoft,
                               ),
                             ),
                           ],
@@ -1015,7 +1034,7 @@ class _AddressEditorSheetState extends ConsumerState<_AddressEditorSheet> {
                       ),
                       Switch(
                         value: _isDefault,
-                        activeColor: WMTheme.royalPurple,
+                        activeColor: _wmAddrPrimary,
                         onChanged: (value) {
                           setState(() => _isDefault = value);
                         },
@@ -1029,7 +1048,7 @@ class _AddressEditorSheetState extends ConsumerState<_AddressEditorSheet> {
                   child: ElevatedButton(
                     onPressed: _isSaving ? null : _save,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: WMTheme.royalPurple,
+                      backgroundColor: _wmAddrPrimary,
                       foregroundColor: Colors.white,
                       minimumSize: const Size.fromHeight(54),
                       elevation: 0,
@@ -1088,15 +1107,27 @@ class _EditorTextField extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,
+        labelStyle: const TextStyle(
+          color: _wmAddrTextSoft,
+          fontWeight: FontWeight.w700,
+        ),
+        hintStyle: const TextStyle(
+          color: _wmAddrTextMuted,
+          fontWeight: FontWeight.w600,
+        ),
         filled: true,
-        fillColor: const Color(0xFFF9F6FC),
+        fillColor: const Color(0xFFF9FAFB),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
           vertical: 14,
         ),
-        border: OutlineInputBorder(
+        enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
+          borderSide: const BorderSide(color: _wmAddrBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: _wmAddrPrimary, width: 1.2),
         ),
       ),
     );

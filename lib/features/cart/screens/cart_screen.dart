@@ -1,15 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:western_malabar/features/auth/utils/require_checkout_login.dart';
 import 'package:western_malabar/features/cart/services/cart_pricing.dart';
 import 'package:western_malabar/features/checkout/screens/checkout_screen.dart';
 import 'package:western_malabar/features/catalog/models/product_model.dart';
 import 'package:western_malabar/features/catalog/services/product_service.dart';
 import 'package:western_malabar/features/cart/providers/cart_provider.dart';
-import 'package:western_malabar/shared/theme/theme.dart';
-import 'package:western_malabar/shared/theme/wm_gradients.dart';
 import 'package:western_malabar/shared/widgets/product_card.dart';
 import 'package:western_malabar/shared/widgets/wm_product_image.dart';
+
+const _wmCartBg = Color(0xFFF7F7F7);
+const _wmCartSurface = Colors.white;
+const _wmCartBorder = Color(0xFFE5E7EB);
+
+const _wmCartTextStrong = Color(0xFF111827);
+const _wmCartTextSoft = Color(0xFF6B7280);
+const _wmCartTextMuted = Color(0xFF9CA3AF);
+
+const _wmCartPrimary = Color(0xFF2A2F3A);
+const _wmCartPrimaryDark = Color(0xFF171A20);
+
+const _wmCartSuccess = Color(0xFF15803D);
+const _wmCartSuccessSoft = Color(0xFFECFDF5);
+
+const _wmCartAmber = Color(0xFFF59E0B);
+const _wmCartAmberSoft = Color(0xFFFFF7ED);
+
+const _wmCartDanger = Color(0xFFDC2626);
 
 class CartScreen extends ConsumerWidget {
   const CartScreen({super.key});
@@ -36,76 +52,67 @@ class CartScreen extends ConsumerWidget {
     });
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: WMGradients.pageBackground,
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              const _CartHeader(),
-              Expanded(
-                child: cartItems.isEmpty
-                    ? const _EmptyCartView()
-                    : ListView(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                        children: [
-                          _CartTopSummaryCard(
-                            totalItems: totalItems,
-                            subtotalCents: subtotalCents,
-                            deliveryFeeCents: appliedDeliveryFeeCents,
-                            totalCents: totalCents,
-                            unlockedFreeDelivery: unlockedFreeDelivery,
-                            freeDeliveryThresholdCents:
-                                pricing.freeDeliveryThresholdCents,
-                            hasInvalidPricedItems: hasInvalidPricedItems,
-                            onCheckout: () async {
-                              final canContinue =
-                                  await requireCheckoutLogin(context);
-                              if (!canContinue) return;
-
-                              if (!context.mounted) return;
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => const CheckoutScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          ...List.generate(cartItems.length, (i) {
-                            final item = cartItems[i];
-                            final p = item.product;
-                            final unitCents =
-                                p.salePriceCents ?? p.priceCents ?? 0;
-                            final lineTotalCents = unitCents * item.qty;
-
-                            return Padding(
-                              padding: EdgeInsets.only(
-                                bottom: i == cartItems.length - 1 ? 0 : 12,
-                              ),
-                              child: _CartItemCard(
-                                name: p.name,
-                                brandName: p.brandName,
-                                imageUrl: p.image,
-                                qty: item.qty,
-                                unitCents: unitCents,
-                                lineTotalCents: lineTotalCents,
-                                onDec: () => cartNotifier.dec(p),
-                                onInc: () => cartNotifier.inc(p),
-                                onRemove: () => cartNotifier.remove(p),
+      backgroundColor: _wmCartBg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            const _CartHeader(),
+            Expanded(
+              child: cartItems.isEmpty
+                  ? const _EmptyCartView()
+                  : ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                      children: [
+                        _CartTopSummaryCard(
+                          totalItems: totalItems,
+                          subtotalCents: subtotalCents,
+                          deliveryFeeCents: appliedDeliveryFeeCents,
+                          totalCents: totalCents,
+                          unlockedFreeDelivery: unlockedFreeDelivery,
+                          freeDeliveryThresholdCents:
+                              pricing.freeDeliveryThresholdCents,
+                          hasInvalidPricedItems: hasInvalidPricedItems,
+                          onCheckout: () async {
+                            if (!context.mounted) return;
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const CheckoutScreen(),
                               ),
                             );
-                          }),
-                          const SizedBox(height: 16),
-                          const _YouMayAlsoLikeSection(),
-                          const SizedBox(height: 8),
-                        ],
-                      ),
-              ),
-            ],
-          ),
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        ...List.generate(cartItems.length, (i) {
+                          final item = cartItems[i];
+                          final p = item.product;
+                          final unitCents =
+                              p.salePriceCents ?? p.priceCents ?? 0;
+                          final lineTotalCents = unitCents * item.qty;
+
+                          return Padding(
+                            padding: EdgeInsets.only(
+                              bottom: i == cartItems.length - 1 ? 0 : 12,
+                            ),
+                            child: _CartItemCard(
+                              name: p.name,
+                              brandName: p.brandName,
+                              imageUrl: p.image,
+                              qty: item.qty,
+                              unitCents: unitCents,
+                              lineTotalCents: lineTotalCents,
+                              onDec: () => cartNotifier.dec(p),
+                              onInc: () => cartNotifier.inc(p),
+                              onRemove: () => cartNotifier.remove(p),
+                            ),
+                          );
+                        }),
+                        const SizedBox(height: 16),
+                        const _YouMayAlsoLikeSection(),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+            ),
+          ],
         ),
       ),
     );
@@ -121,9 +128,19 @@ class _CartHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
       child: Row(
         children: [
-          IconButton(
-            onPressed: () => Navigator.maybePop(context),
-            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          Container(
+            decoration: BoxDecoration(
+              color: _wmCartSurface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _wmCartBorder),
+            ),
+            child: IconButton(
+              onPressed: () => Navigator.maybePop(context),
+              icon: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: _wmCartPrimary,
+              ),
+            ),
           ),
           const Expanded(
             child: Text(
@@ -132,6 +149,7 @@ class _CartHeader extends StatelessWidget {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w900,
+                color: _wmCartTextStrong,
               ),
             ),
           ),
@@ -154,11 +172,12 @@ class _EmptyCartView extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: _wmCartSurface,
             borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: _wmCartBorder),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x10000000),
+                color: Color(0x0C000000),
                 blurRadius: 12,
                 offset: Offset(0, 6),
               ),
@@ -171,13 +190,13 @@ class _EmptyCartView extends StatelessWidget {
                 width: 74,
                 height: 74,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF6F0FB),
+                  color: const Color(0xFFF3F4F6),
                   borderRadius: BorderRadius.circular(22),
                 ),
                 child: const Icon(
                   Icons.shopping_bag_outlined,
                   size: 34,
-                  color: WMTheme.royalPurple,
+                  color: _wmCartPrimary,
                 ),
               ),
               const SizedBox(height: 16),
@@ -186,7 +205,7 @@ class _EmptyCartView extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 19,
                   fontWeight: FontWeight.w900,
-                  color: Colors.black87,
+                  color: _wmCartTextStrong,
                 ),
               ),
               const SizedBox(height: 8),
@@ -196,7 +215,7 @@ class _EmptyCartView extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black54,
+                  color: _wmCartTextSoft,
                   height: 1.4,
                 ),
               ),
@@ -206,7 +225,7 @@ class _EmptyCartView extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: () => Navigator.maybePop(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: WMTheme.royalPurple,
+                    backgroundColor: _wmCartPrimary,
                     foregroundColor: Colors.white,
                     minimumSize: const Size.fromHeight(48),
                     shape: RoundedRectangleBorder(
@@ -256,10 +275,10 @@ class FreeDeliveryProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = _unlocked ? const Color(0xFFF1FAF3) : const Color(0xFFFFF9EE);
+    final bg = _unlocked ? _wmCartSuccessSoft : _wmCartAmberSoft;
     final border =
-        _unlocked ? const Color(0xFFBFE3C7) : const Color(0xFFF4D98B);
-    final accent = _unlocked ? const Color(0xFF2E9B57) : WMTheme.royalPurple;
+        _unlocked ? const Color(0xFFBBF7D0) : const Color(0xFFFED7AA);
+    final accent = _unlocked ? _wmCartSuccess : _wmCartPrimary;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -269,7 +288,7 @@ class FreeDeliveryProgressCard extends StatelessWidget {
         border: Border.all(color: border),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x10000000),
+            color: Color(0x0C000000),
             blurRadius: 10,
             offset: Offset(0, 5),
           ),
@@ -315,7 +334,7 @@ class FreeDeliveryProgressCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black54,
+                    color: _wmCartTextSoft,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -336,7 +355,7 @@ class FreeDeliveryProgressCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
-                        color: Colors.black87,
+                        color: _wmCartTextStrong,
                       ),
                     ),
                     const Spacer(),
@@ -345,7 +364,7 @@ class FreeDeliveryProgressCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
-                        color: Colors.black54,
+                        color: _wmCartTextSoft,
                       ),
                     ),
                   ],
@@ -392,17 +411,17 @@ class _CartItemCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _wmCartSurface,
         borderRadius: BorderRadius.circular(20),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x12000000),
+            color: Color(0x0C000000),
             blurRadius: 10,
             offset: Offset(0, 6),
           ),
         ],
         border: Border.all(
-          color: const Color(0xFFEFE8F6),
+          color: _wmCartBorder,
         ),
       ),
       child: Row(
@@ -422,7 +441,7 @@ class _CartItemCard extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: Colors.black54,
+                      color: _wmCartTextSoft,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -435,7 +454,7 @@ class _CartItemCard extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                     fontSize: 15.5,
                     height: 1.2,
-                    color: Colors.black87,
+                    color: _wmCartTextStrong,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -449,8 +468,7 @@ class _CartItemCard extends StatelessWidget {
                           ? '${_money(unitCents)} each'
                           : 'Price unavailable',
                       style: TextStyle(
-                        color:
-                            hasValidPrice ? Colors.black54 : Colors.redAccent,
+                        color: hasValidPrice ? _wmCartTextSoft : _wmCartDanger,
                         fontWeight: FontWeight.w700,
                         fontSize: 13,
                       ),
@@ -459,7 +477,7 @@ class _CartItemCard extends StatelessWidget {
                       width: 4,
                       height: 4,
                       decoration: const BoxDecoration(
-                        color: Colors.black26,
+                        color: Color(0xFFCBD5E1),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -468,9 +486,7 @@ class _CartItemCard extends StatelessWidget {
                           ? 'Line total ${_money(lineTotalCents)}'
                           : 'Unavailable',
                       style: TextStyle(
-                        color: hasValidPrice
-                            ? WMTheme.royalPurple
-                            : Colors.redAccent,
+                        color: hasValidPrice ? _wmCartSuccess : _wmCartDanger,
                         fontWeight: FontWeight.w900,
                         fontSize: 13,
                       ),
@@ -499,7 +515,7 @@ class _CartItemCard extends StatelessWidget {
                         ),
                       ),
                       style: TextButton.styleFrom(
-                        foregroundColor: Colors.redAccent,
+                        foregroundColor: _wmCartDanger,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
                           vertical: 6,
@@ -554,10 +570,10 @@ class _QtyStepper extends StatelessWidget {
     return Container(
       height: 38,
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F2FC),
+        color: const Color(0xFFF3F4F6),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFFE6D9F6),
+          color: _wmCartBorder,
         ),
       ),
       child: Row(
@@ -575,7 +591,7 @@ class _QtyStepper extends StatelessWidget {
               style: const TextStyle(
                 fontWeight: FontWeight.w900,
                 fontSize: 15,
-                color: Colors.black87,
+                color: _wmCartTextStrong,
               ),
             ),
           ),
@@ -611,7 +627,7 @@ class _QtyIconButton extends StatelessWidget {
           child: Icon(
             icon,
             size: 18,
-            color: WMTheme.royalPurple,
+            color: _wmCartPrimary,
           ),
         ),
       ),
@@ -647,11 +663,12 @@ class _CartTopSummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _wmCartSurface,
         borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: _wmCartBorder),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x12000000),
+            color: Color(0x0C000000),
             blurRadius: 12,
             offset: Offset(0, 6),
           ),
@@ -665,7 +682,7 @@ class _CartTopSummaryCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w900,
-              color: Colors.black87,
+              color: _wmCartTextStrong,
               letterSpacing: -0.4,
             ),
           ),
@@ -675,7 +692,7 @@ class _CartTopSummaryCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: Colors.black54,
+              color: _wmCartTextSoft,
             ),
           ),
           const SizedBox(height: 14),
@@ -685,7 +702,7 @@ class _CartTopSummaryCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w700,
-                color: Colors.redAccent,
+                color: _wmCartDanger,
               ),
             ),
             const SizedBox(height: 10),
@@ -695,8 +712,9 @@ class _CartTopSummaryCard extends StatelessWidget {
             child: ElevatedButton(
               onPressed: hasInvalidPricedItems ? null : onCheckout,
               style: ElevatedButton.styleFrom(
-                backgroundColor: WMTheme.royalPurple,
+                backgroundColor: _wmCartPrimary,
                 foregroundColor: Colors.white,
+                disabledBackgroundColor: const Color(0xFF9CA3AF),
                 minimumSize: const Size.fromHeight(52),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -720,9 +738,9 @@ class _CartTopSummaryCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFFF9F6FC),
+              color: const Color(0xFFF9FAFB),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFEDE4F7)),
+              border: Border.all(color: _wmCartBorder),
             ),
             child: Column(
               children: [
@@ -735,9 +753,8 @@ class _CartTopSummaryCard extends StatelessWidget {
                   label: 'Delivery',
                   value:
                       unlockedFreeDelivery ? 'FREE' : _money(deliveryFeeCents),
-                  valueColor: unlockedFreeDelivery
-                      ? const Color(0xFF2E9B57)
-                      : Colors.black87,
+                  valueColor:
+                      unlockedFreeDelivery ? _wmCartSuccess : _wmCartTextStrong,
                 ),
                 const Divider(height: 22),
                 _SummaryRow(
@@ -772,13 +789,13 @@ class _SummaryRow extends StatelessWidget {
     final labelStyle = TextStyle(
       fontSize: bold ? 16 : 14,
       fontWeight: bold ? FontWeight.w900 : FontWeight.w700,
-      color: bold ? Colors.black87 : Colors.black54,
+      color: bold ? _wmCartTextStrong : _wmCartTextSoft,
     );
 
     final valueStyle = TextStyle(
       fontSize: bold ? 18 : 14,
       fontWeight: bold ? FontWeight.w900 : FontWeight.w800,
-      color: valueColor ?? (bold ? WMTheme.royalPurple : Colors.black87),
+      color: valueColor ?? (bold ? _wmCartPrimary : _wmCartTextStrong),
     );
 
     return Row(
@@ -862,11 +879,12 @@ class _YouMayAlsoLikeSectionState
       return Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: _wmCartSurface,
           borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: _wmCartBorder),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x10000000),
+              color: Color(0x0C000000),
               blurRadius: 10,
               offset: Offset(0, 5),
             ),
@@ -880,14 +898,17 @@ class _YouMayAlsoLikeSectionState
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w900,
-                color: WMTheme.royalPurple,
+                color: _wmCartTextStrong,
               ),
             ),
             SizedBox(height: 14),
             SizedBox(
               height: 230,
               child: Center(
-                child: CircularProgressIndicator(strokeWidth: 2.2),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.2,
+                  color: _wmCartPrimary,
+                ),
               ),
             ),
           ],
@@ -902,11 +923,12 @@ class _YouMayAlsoLikeSectionState
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _wmCartSurface,
         borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _wmCartBorder),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x10000000),
+            color: Color(0x0C000000),
             blurRadius: 10,
             offset: Offset(0, 5),
           ),
@@ -920,7 +942,7 @@ class _YouMayAlsoLikeSectionState
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w900,
-              color: WMTheme.royalPurple,
+              color: _wmCartTextStrong,
             ),
           ),
           const SizedBox(height: 4),
@@ -929,7 +951,7 @@ class _YouMayAlsoLikeSectionState
             style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
-              color: Colors.black54,
+              color: _wmCartTextSoft,
             ),
           ),
           const SizedBox(height: 14),

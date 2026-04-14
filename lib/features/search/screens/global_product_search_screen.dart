@@ -9,6 +9,23 @@ import 'package:western_malabar/features/search/providers/search_controller.dart
 import 'package:western_malabar/shared/widgets/product_card.dart';
 import 'package:western_malabar/shared/widgets/wm_product_image.dart';
 
+const _wmSearchBg = Color(0xFFF7F7F7);
+const _wmSearchSurface = Colors.white;
+const _wmSearchBorder = Color(0xFFE5E7EB);
+
+const _wmSearchTextStrong = Color(0xFF111827);
+const _wmSearchTextSoft = Color(0xFF6B7280);
+const _wmSearchTextMuted = Color(0xFF9CA3AF);
+
+const _wmSearchPrimary = Color(0xFF2A2F3A);
+const _wmSearchPrimaryDark = Color(0xFF171A20);
+
+const _wmSearchSuccess = Color(0xFF15803D);
+const _wmSearchSuccessSoft = Color(0xFFECFDF5);
+
+const _wmSearchDanger = Color(0xFFDC2626);
+const _wmSearchAmberSoft = Color(0xFFFFF7ED);
+
 class GlobalProductSearchScreen extends ConsumerStatefulWidget {
   const GlobalProductSearchScreen({
     super.key,
@@ -182,21 +199,12 @@ class _GlobalProductSearchScreenState
         _closeSearch();
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFF7F7F7),
+        backgroundColor: _wmSearchBg,
         body: SafeArea(
           child: Stack(
             children: [
               Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Color(0xFFF9F6FC),
-                      Color(0xFFF7F7F7),
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
+                color: _wmSearchBg,
                 child: Column(
                   children: [
                     Padding(
@@ -206,21 +214,21 @@ class _GlobalProductSearchScreenState
                         curve: Curves.easeOutCubic,
                         height: 58,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFDFCFE),
+                          color: _wmSearchSurface,
                           borderRadius: BorderRadius.circular(29),
                           border: Border.all(
                             color: _focusNode.hasFocus
-                                ? const Color(0xFF7A54A8)
-                                : const Color(0xFFD7CEE5),
+                                ? _wmSearchPrimary
+                                : _wmSearchBorder,
                             width: _focusNode.hasFocus ? 1.35 : 1.0,
                           ),
                           boxShadow: [
                             BoxShadow(
                               color: _focusNode.hasFocus
-                                  ? const Color(0x165A2D82)
-                                  : const Color(0x0E000000),
-                              blurRadius: _focusNode.hasFocus ? 16 : 9,
-                              offset: Offset(0, _focusNode.hasFocus ? 6 : 3),
+                                  ? const Color(0x14000000)
+                                  : const Color(0x0A000000),
+                              blurRadius: _focusNode.hasFocus ? 14 : 8,
+                              offset: Offset(0, _focusNode.hasFocus ? 5 : 3),
                             ),
                           ],
                         ),
@@ -230,15 +238,15 @@ class _GlobalProductSearchScreenState
                               onPressed: _closeSearch,
                               icon: const Icon(
                                 Icons.arrow_back_rounded,
-                                color: Colors.black87,
+                                color: _wmSearchTextStrong,
                                 size: 25,
                               ),
                             ),
                             Icon(
                               Icons.search_rounded,
                               color: _focusNode.hasFocus
-                                  ? const Color(0xFF5A2D82)
-                                  : Colors.black87,
+                                  ? _wmSearchPrimary
+                                  : _wmSearchTextStrong,
                               size: 23,
                             ),
                             const SizedBox(width: 10),
@@ -248,11 +256,11 @@ class _GlobalProductSearchScreenState
                                 focusNode: _focusNode,
                                 autofocus: true,
                                 textInputAction: TextInputAction.search,
-                                cursorColor: const Color(0xFF5A2D82),
+                                cursorColor: _wmSearchPrimary,
                                 decoration: InputDecoration(
                                   hintText: widget.hintText,
                                   hintStyle: const TextStyle(
-                                    color: Color(0xFF777777),
+                                    color: _wmSearchTextSoft,
                                     fontSize: 15.5,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -261,7 +269,7 @@ class _GlobalProductSearchScreenState
                                   contentPadding: EdgeInsets.zero,
                                 ),
                                 style: const TextStyle(
-                                  color: Colors.black87,
+                                  color: _wmSearchTextStrong,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: -0.1,
@@ -294,7 +302,7 @@ class _GlobalProductSearchScreenState
                                           onPressed: () {},
                                           icon: const Icon(
                                             Icons.camera_alt_outlined,
-                                            color: Colors.black87,
+                                            color: _wmSearchTextStrong,
                                             size: 21,
                                           ),
                                         ),
@@ -302,7 +310,7 @@ class _GlobalProductSearchScreenState
                                           onPressed: () {},
                                           icon: const Icon(
                                             Icons.mic_none_rounded,
-                                            color: Colors.black87,
+                                            color: _wmSearchTextStrong,
                                             size: 21,
                                           ),
                                         ),
@@ -322,7 +330,7 @@ class _GlobalProductSearchScreenState
                                       },
                                       icon: const Icon(
                                         Icons.close_rounded,
-                                        color: Colors.black54,
+                                        color: _wmSearchTextSoft,
                                         size: 23,
                                       ),
                                     ),
@@ -341,7 +349,7 @@ class _GlobalProductSearchScreenState
                               style: const TextStyle(
                                 fontSize: 16.5,
                                 fontWeight: FontWeight.w900,
-                                color: Colors.black87,
+                                color: _wmSearchTextStrong,
                                 letterSpacing: -0.2,
                               ),
                             ),
@@ -354,7 +362,7 @@ class _GlobalProductSearchScreenState
                                 style: const TextStyle(
                                   fontSize: 13.2,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.black54,
+                                  color: _wmSearchTextSoft,
                                 ),
                               ),
                             ),
@@ -514,8 +522,8 @@ class _GlobalProductSearchScreenState
             right: 0,
             child: LinearProgressIndicator(
               minHeight: 2,
-              color: Color(0xFF5A2D82),
-              backgroundColor: Color(0xFFEFE6F7),
+              color: _wmSearchPrimary,
+              backgroundColor: Color(0xFFE5E7EB),
             ),
           ),
       ],
@@ -546,7 +554,7 @@ class _SearchTypingBody extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
-                color: Colors.black54,
+                color: _wmSearchTextSoft,
               ),
             ),
           ),
@@ -576,7 +584,7 @@ class _SearchTypingBody extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
-                color: Colors.black54,
+                color: _wmSearchTextSoft,
               ),
             ),
           ),
@@ -586,9 +594,9 @@ class _SearchTypingBody extends ConsumerWidget {
         if (state.query.trim().isNotEmpty)
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: _wmSearchSurface,
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFFE8E1EE)),
+              border: Border.all(color: _wmSearchBorder),
             ),
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(
@@ -597,13 +605,13 @@ class _SearchTypingBody extends ConsumerWidget {
               ),
               leading: const Icon(
                 Icons.search_rounded,
-                color: Color(0xFF5A2D82),
+                color: _wmSearchPrimary,
               ),
               title: Text(
                 'Search all products for "${state.query.trim()}"',
                 style: const TextStyle(
                   fontWeight: FontWeight.w800,
-                  color: Colors.black87,
+                  color: _wmSearchTextStrong,
                 ),
               ),
               onTap: () async {
@@ -705,14 +713,14 @@ class _SearchCartBarState extends State<_SearchCartBar>
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [
-                      Color(0xFF5A2D82),
-                      Color(0xFF70409A),
+                      _wmSearchPrimaryDark,
+                      _wmSearchPrimary,
                     ],
                   ),
                   borderRadius: BorderRadius.circular(22),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0x2A5A2D82),
+                      color: const Color(0x22000000),
                       blurRadius: _glow.value,
                       offset: const Offset(0, 9),
                     ),
@@ -751,7 +759,7 @@ class _SearchCartBarState extends State<_SearchCartBar>
                             Text(
                               _money(widget.totalCents),
                               style: const TextStyle(
-                                color: Color(0xFFF4E9FF),
+                                color: Color(0xFFE5E7EB),
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -771,7 +779,7 @@ class _SearchCartBarState extends State<_SearchCartBar>
                         child: const Text(
                           'View basket',
                           style: TextStyle(
-                            color: Color(0xFF5A2D82),
+                            color: _wmSearchPrimary,
                             fontWeight: FontWeight.w900,
                             fontSize: 13,
                           ),
@@ -811,8 +819,6 @@ class _CategorySuggestionTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    const purple = Color(0xFF5A2D82);
-
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -835,9 +841,9 @@ class _CategorySuggestionTile extends ConsumerWidget {
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: _wmSearchSurface,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFE8E1EE)),
+            border: Border.all(color: _wmSearchBorder),
           ),
           child: Row(
             children: [
@@ -845,12 +851,12 @@ class _CategorySuggestionTile extends ConsumerWidget {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF6F1FC),
+                  color: const Color(0xFFF3F4F6),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
                   Icons.grid_view_rounded,
-                  color: purple,
+                  color: _wmSearchPrimary,
                 ),
               ),
               const SizedBox(width: 12),
@@ -862,13 +868,13 @@ class _CategorySuggestionTile extends ConsumerWidget {
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: Colors.black87,
+                    color: _wmSearchTextStrong,
                   ),
                 ),
               ),
               const Icon(
                 Icons.chevron_right_rounded,
-                color: Colors.black38,
+                color: _wmSearchTextMuted,
               ),
             ],
           ),
@@ -908,9 +914,9 @@ class _ProductCardMini extends ConsumerWidget {
           width: 150,
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: _wmSearchSurface,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFE6E6E6)),
+            border: Border.all(color: _wmSearchBorder),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x07000000),
@@ -926,7 +932,7 @@ class _ProductCardMini extends ConsumerWidget {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(14),
                   child: ColoredBox(
-                    color: const Color(0xFFF7F4FA),
+                    color: const Color(0xFFF3F4F6),
                     child: WmProductImage(
                       imageUrl: image,
                       width: double.infinity,
@@ -944,15 +950,16 @@ class _ProductCardMini extends ConsumerWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF3ECFB),
+                    color: _wmSearchAmberSoft,
                     borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: const Color(0xFFFED7AA)),
                   ),
                   child: const Text(
                     'Top match',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF5A2D82),
+                      color: _wmSearchPrimary,
                     ),
                   ),
                 ),
@@ -966,7 +973,7 @@ class _ProductCardMini extends ConsumerWidget {
                   style: const TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
-                    color: Colors.black54,
+                    color: _wmSearchTextSoft,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -979,7 +986,7 @@ class _ProductCardMini extends ConsumerWidget {
                   fontSize: 12.3,
                   fontWeight: FontWeight.w800,
                   height: 1.2,
-                  color: Colors.black87,
+                  color: _wmSearchTextStrong,
                 ),
               ),
               const SizedBox(height: 5),
@@ -988,7 +995,7 @@ class _ProductCardMini extends ConsumerWidget {
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w900,
-                  color: Color(0xFF5A2D82),
+                  color: _wmSearchPrimary,
                 ),
               ),
             ],
@@ -1034,7 +1041,7 @@ class _SearchResultSkeletonState extends State<_SearchResultSkeleton>
         width: width,
         height: height,
         decoration: BoxDecoration(
-          color: const Color(0xFFEFE9F5),
+          color: const Color(0xFFE5E7EB),
           borderRadius: BorderRadius.circular(999),
         ),
       ),
@@ -1047,9 +1054,9 @@ class _SearchResultSkeletonState extends State<_SearchResultSkeleton>
       height: 116,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _wmSearchSurface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE8E1EE)),
+        border: Border.all(color: _wmSearchBorder),
       ),
       child: Row(
         children: [
@@ -1059,7 +1066,7 @@ class _SearchResultSkeletonState extends State<_SearchResultSkeleton>
               width: 90,
               height: double.infinity,
               decoration: BoxDecoration(
-                color: const Color(0xFFF1ECF6),
+                color: const Color(0xFFF3F4F6),
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
@@ -1120,7 +1127,7 @@ class _SearchGridSkeletonState extends State<_SearchGridSkeleton>
         width: width,
         height: height,
         decoration: BoxDecoration(
-          color: const Color(0xFFEFE9F5),
+          color: const Color(0xFFE5E7EB),
           borderRadius: BorderRadius.circular(999),
         ),
       ),
@@ -1132,9 +1139,9 @@ class _SearchGridSkeletonState extends State<_SearchGridSkeleton>
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _wmSearchSurface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFF1EBF8)),
+        border: Border.all(color: _wmSearchBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1145,7 +1152,7 @@ class _SearchGridSkeletonState extends State<_SearchGridSkeleton>
               height: 118,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: const Color(0xFFF1ECF6),
+                color: const Color(0xFFF3F4F6),
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
@@ -1257,7 +1264,7 @@ class _AddedToBasketToastState extends State<_AddedToBasketToast>
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1F1B24),
+                  color: const Color(0xFF111827),
                   borderRadius: BorderRadius.circular(18),
                   boxShadow: const [
                     BoxShadow(
@@ -1274,12 +1281,12 @@ class _AddedToBasketToastState extends State<_AddedToBasketToast>
                       width: 28,
                       height: 28,
                       decoration: BoxDecoration(
-                        color: const Color(0x2258D68D),
+                        color: const Color(0x2215803D),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: const Icon(
                         Icons.check_rounded,
-                        color: Color(0xFF8AF0B1),
+                        color: Color(0xFF86EFAC),
                         size: 18,
                       ),
                     ),
@@ -1320,10 +1327,8 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const purple = Color(0xFF5A2D82);
-
     return Material(
-      color: selected ? const Color(0xFFF4EDFB) : Colors.white,
+      color: selected ? const Color(0xFFF3F4F6) : _wmSearchSurface,
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         onTap: onTap,
@@ -1334,7 +1339,7 @@ class _FilterChip extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? purple : const Color(0xFFE5DDED),
+              color: selected ? _wmSearchPrimary : _wmSearchBorder,
             ),
           ),
           alignment: Alignment.center,
@@ -1346,7 +1351,7 @@ class _FilterChip extends StatelessWidget {
             style: TextStyle(
               fontSize: 12.4,
               fontWeight: FontWeight.w800,
-              color: selected ? purple : Colors.black87,
+              color: selected ? _wmSearchPrimary : _wmSearchTextStrong,
               height: 1.0,
             ),
           ),
@@ -1427,7 +1432,7 @@ class _SearchSectionLabel extends StatelessWidget {
         style: const TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w800,
-          color: Colors.black54,
+          color: _wmSearchTextSoft,
         ),
       ),
     );
@@ -1444,16 +1449,19 @@ class _RecentSearchRow extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _wmSearchSurface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE8E1EE)),
+        border: Border.all(color: _wmSearchBorder),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 14),
-        leading: const Icon(Icons.history_rounded, color: Colors.black54),
+        leading: const Icon(Icons.history_rounded, color: _wmSearchTextSoft),
         title: Text(
           query,
-          style: const TextStyle(fontWeight: FontWeight.w700),
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            color: _wmSearchTextStrong,
+          ),
         ),
         trailing: IconButton(
           onPressed: () {
@@ -1478,7 +1486,7 @@ class _QuickPill extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Material(
-      color: Colors.white,
+      color: _wmSearchSurface,
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         onTap: () async {
@@ -1492,7 +1500,7 @@ class _QuickPill extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: const Color(0xFFE4E4E4)),
+            border: Border.all(color: _wmSearchBorder),
           ),
           alignment: Alignment.center,
           child: Text(
@@ -1500,7 +1508,7 @@ class _QuickPill extends ConsumerWidget {
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: Colors.black87,
+              color: _wmSearchTextStrong,
               height: 1.0,
             ),
           ),
@@ -1523,8 +1531,9 @@ class _NoResults extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: _wmSearchSurface,
             borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: _wmSearchBorder),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x0E000000),
@@ -1539,7 +1548,7 @@ class _NoResults extends StatelessWidget {
               const Icon(
                 Icons.search_off_rounded,
                 size: 42,
-                color: Color(0xFF5A2D82),
+                color: _wmSearchPrimary,
               ),
               const SizedBox(height: 12),
               Text(
@@ -1548,6 +1557,7 @@ class _NoResults extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w900,
+                  color: _wmSearchTextStrong,
                 ),
               ),
               const SizedBox(height: 8),
@@ -1557,7 +1567,7 @@ class _NoResults extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black54,
+                  color: _wmSearchTextSoft,
                 ),
               ),
             ],

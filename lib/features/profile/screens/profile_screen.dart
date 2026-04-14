@@ -19,10 +19,26 @@ import 'package:western_malabar/features/profile/models/profile_model.dart';
 import 'package:western_malabar/features/profile/providers/profile_provider.dart';
 import 'package:western_malabar/features/seller/providers/seller_session_provider.dart';
 import 'package:western_malabar/features/seller/screens/seller_products_screen.dart';
-import 'package:western_malabar/shared/theme/theme.dart';
-import 'package:western_malabar/shared/theme/wm_gradients.dart';
 
 final profileAuthBusyProvider = StateProvider<bool>((ref) => false);
+
+const _wmProfileBg = Color(0xFFF7F7F7);
+const _wmProfileSurface = Colors.white;
+const _wmProfileBorder = Color(0xFFE5E7EB);
+
+const _wmProfileTextStrong = Color(0xFF111827);
+const _wmProfileTextSoft = Color(0xFF6B7280);
+const _wmProfileTextMuted = Color(0xFF9CA3AF);
+
+const _wmProfilePrimary = Color(0xFF2A2F3A);
+const _wmProfilePrimaryDark = Color(0xFF171A20);
+
+const _wmProfileAmber = Color(0xFFF59E0B);
+const _wmProfileAmberDark = Color(0xFFD97706);
+const _wmProfileAmberSoft = Color(0xFFFFF7ED);
+
+const _wmProfileSuccess = Color(0xFF15803D);
+const _wmProfileDanger = Color(0xFFDC2626);
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -35,115 +51,104 @@ class ProfileScreen extends ConsumerWidget {
     final access = ref.watch(accessStateProvider);
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: WMGradients.pageBackground,
-        ),
-        child: SafeArea(
-          child: !isActuallySignedIn
-              ? const _SignedOutProfileView()
-              : Column(
-                  children: [
-                    _ProfileTopBar(
-                      title: 'My Profile',
-                      onSettingsTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Settings coming soon'),
+      backgroundColor: _wmProfileBg,
+      body: SafeArea(
+        child: !isActuallySignedIn
+            ? const _SignedOutProfileView()
+            : Column(
+                children: [
+                  _ProfileTopBar(
+                    title: 'My Profile',
+                    onSettingsTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Settings coming soon'),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  Expanded(
+                    child: ref.watch(profileProvider).when(
+                          loading: () => const _ProfileLoadingView(),
+                          error: (Object error, StackTrace _) =>
+                              _ProfileErrorView(
+                            message: error.toString(),
+                            onRetry: () => ref.invalidate(profileProvider),
                           ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 14),
-                    Expanded(
-                      child: ref.watch(profileProvider).when(
-                            loading: () => const _ProfileLoadingView(),
-                            error: (Object error, StackTrace _) =>
-                                _ProfileErrorView(
-                              message: error.toString(),
-                              onRetry: () => ref.invalidate(profileProvider),
-                            ),
-                            data: (ProfileModel? profile) {
-                              if (profile == null) {
-                                return _ProfileErrorView(
-                                  message:
-                                      'Profile not found for this account.',
-                                  onRetry: () =>
-                                      ref.invalidate(profileProvider),
-                                );
-                              }
-
-                              return _SignedInProfileContent(
-                                profile: profile,
-                                authUser: authUser,
-                                isAdmin: access.isAdmin,
-                                canAccessAdmin: access.canAccessAdmin,
-                                canAccessDelivery: access.canAccessDelivery,
-                                roleLabel: access.effectiveRoleLabel,
-                                onSignOut: () async {
-                                  final container = ProviderScope.containerOf(
-                                      context,
-                                      listen: false);
-                                  final messenger =
-                                      ScaffoldMessenger.of(context);
-
-                                  final busy =
-                                      container.read(profileAuthBusyProvider);
-                                  if (busy) return;
-
-                                  final busyNotifier = container
-                                      .read(profileAuthBusyProvider.notifier);
-
-                                  busyNotifier.state = true;
-
-                                  try {
-                                    container
-                                        .read(cartProvider.notifier)
-                                        .reset();
-                                    container
-                                        .read(checkoutProvider.notifier)
-                                        .reset();
-
-                                    await container
-                                        .read(authServiceProvider)
-                                        .signOut();
-
-                                    container.invalidate(cartProvider);
-                                    container.invalidate(checkoutProvider);
-                                    container.invalidate(addressesProvider);
-                                    container
-                                        .invalidate(defaultAddressProvider);
-                                    container.invalidate(profileProvider);
-                                    container.invalidate(accessStateProvider);
-                                    container.invalidate(authUserProvider);
-                                    container.invalidate(sellerSessionProvider);
-
-                                    if (!context.mounted) return;
-                                    messenger.showSnackBar(
-                                      const SnackBar(
-                                        content:
-                                            Text('Signed out successfully'),
-                                      ),
-                                    );
-                                  } catch (e) {
-                                    if (!context.mounted) return;
-                                    messenger.showSnackBar(
-                                      SnackBar(
-                                        content: Text('Sign out failed: $e'),
-                                      ),
-                                    );
-                                  } finally {
-                                    busyNotifier.state = false;
-                                  }
-                                },
+                          data: (ProfileModel? profile) {
+                            if (profile == null) {
+                              return _ProfileErrorView(
+                                message: 'Profile not found for this account.',
+                                onRetry: () => ref.invalidate(profileProvider),
                               );
-                            },
-                          ),
-                    ),
-                  ],
-                ),
-        ),
+                            }
+
+                            return _SignedInProfileContent(
+                              profile: profile,
+                              authUser: authUser,
+                              isAdmin: access.isAdmin,
+                              canAccessAdmin: access.canAccessAdmin,
+                              canAccessDelivery: access.canAccessDelivery,
+                              roleLabel: access.effectiveRoleLabel,
+                              onSignOut: () async {
+                                final container = ProviderScope.containerOf(
+                                  context,
+                                  listen: false,
+                                );
+                                final messenger = ScaffoldMessenger.of(context);
+
+                                final busy =
+                                    container.read(profileAuthBusyProvider);
+                                if (busy) return;
+
+                                final busyNotifier = container
+                                    .read(profileAuthBusyProvider.notifier);
+
+                                busyNotifier.state = true;
+
+                                try {
+                                  container.read(cartProvider.notifier).reset();
+                                  container
+                                      .read(checkoutProvider.notifier)
+                                      .reset();
+
+                                  await container
+                                      .read(authServiceProvider)
+                                      .signOut();
+
+                                  container.invalidate(cartProvider);
+                                  container.invalidate(checkoutProvider);
+                                  container.invalidate(addressesProvider);
+                                  container.invalidate(defaultAddressProvider);
+                                  container.invalidate(profileProvider);
+                                  container.invalidate(accessStateProvider);
+                                  container.invalidate(authUserProvider);
+                                  container.invalidate(sellerSessionProvider);
+
+                                  if (!context.mounted) return;
+                                  messenger.showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Signed out successfully'),
+                                    ),
+                                  );
+                                } catch (e) {
+                                  if (!context.mounted) return;
+                                  messenger.showSnackBar(
+                                    SnackBar(
+                                      content: Text('Sign out failed: $e'),
+                                    ),
+                                  );
+                                } finally {
+                                  busyNotifier.state = false;
+                                }
+                              },
+                            );
+                          },
+                        ),
+                  ),
+                ],
+              ),
       ),
     );
   }
@@ -170,18 +175,19 @@ class _ProfileTopBar extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 26,
                 fontWeight: FontWeight.w900,
-                color: Colors.black87,
+                color: _wmProfileTextStrong,
                 letterSpacing: -0.3,
               ),
             ),
           ),
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.94),
+              color: _wmProfileSurface,
               borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: _wmProfileBorder),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x12000000),
+                  color: Color(0x0D000000),
                   blurRadius: 10,
                   offset: Offset(0, 4),
                 ),
@@ -191,7 +197,7 @@ class _ProfileTopBar extends StatelessWidget {
               onPressed: onSettingsTap,
               icon: const Icon(
                 Icons.settings_outlined,
-                color: WMTheme.royalPurple,
+                color: _wmProfilePrimary,
               ),
             ),
           ),
@@ -232,14 +238,14 @@ class _SignedOutProfileView extends ConsumerWidget {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        WMTheme.royalPurple,
-                        Color(0xFF8753C4),
+                        _wmProfilePrimaryDark,
+                        _wmProfilePrimary,
                       ],
                     ),
                     borderRadius: BorderRadius.circular(26),
                     boxShadow: const [
                       BoxShadow(
-                        color: Color(0x22000000),
+                        color: Color(0x18000000),
                         blurRadius: 18,
                         offset: Offset(0, 8),
                       ),
@@ -251,10 +257,10 @@ class _SignedOutProfileView extends ConsumerWidget {
                         width: 82,
                         height: 82,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.14),
+                          color: Colors.white.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.18),
+                            color: Colors.white.withOpacity(0.16),
                           ),
                         ),
                         child: const Icon(
@@ -278,7 +284,7 @@ class _SignedOutProfileView extends ConsumerWidget {
                         'Save addresses, view order history, track deliveries, and access rewards with one tap.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.92),
+                          color: Colors.white.withOpacity(0.92),
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                           height: 1.4,
@@ -294,8 +300,9 @@ class _SignedOutProfileView extends ConsumerWidget {
                                   final messenger =
                                       ScaffoldMessenger.of(context);
                                   final container = ProviderScope.containerOf(
-                                      context,
-                                      listen: false);
+                                    context,
+                                    listen: false,
+                                  );
                                   final busyNotifier = container
                                       .read(profileAuthBusyProvider.notifier);
                                   final authService =
@@ -331,7 +338,7 @@ class _SignedOutProfileView extends ConsumerWidget {
                                   height: 18,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2.2,
-                                    color: WMTheme.royalPurple,
+                                    color: _wmProfilePrimary,
                                   ),
                                 )
                               : const Icon(Icons.login_rounded),
@@ -341,7 +348,7 @@ class _SignedOutProfileView extends ConsumerWidget {
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
-                            foregroundColor: WMTheme.royalPurple,
+                            foregroundColor: _wmProfilePrimary,
                             minimumSize: const Size.fromHeight(54),
                             elevation: 0,
                             shape: RoundedRectangleBorder(
@@ -385,7 +392,7 @@ class _SignedOutProfileView extends ConsumerWidget {
                   'Western Malabar • UK Kerala Grocery',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.black54,
+                    color: _wmProfileTextSoft,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -394,7 +401,7 @@ class _SignedOutProfileView extends ConsumerWidget {
                   'App Version 1.0.0',
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.black38,
+                    color: _wmProfileTextMuted,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -653,7 +660,7 @@ class _SignedInProfileContent extends ConsumerWidget {
                       height: 18,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.2,
-                        color: WMTheme.royalPurple,
+                        color: _wmProfilePrimary,
                       ),
                     )
                   : const Icon(Icons.logout_rounded),
@@ -662,12 +669,11 @@ class _SignedInProfileContent extends ConsumerWidget {
                 style: const TextStyle(fontWeight: FontWeight.w800),
               ),
               style: OutlinedButton.styleFrom(
-                foregroundColor: WMTheme.royalPurple,
-                side: const BorderSide(color: WMTheme.royalPurple),
+                foregroundColor: _wmProfilePrimary,
+                side: const BorderSide(color: _wmProfileBorder),
                 minimumSize: const Size.fromHeight(54),
-                backgroundColor: Colors.white.withValues(alpha: 0.94),
-                disabledForegroundColor:
-                    WMTheme.royalPurple.withValues(alpha: 0.65),
+                backgroundColor: _wmProfileSurface,
+                disabledForegroundColor: _wmProfileTextMuted,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(18),
                 ),
@@ -679,7 +685,7 @@ class _SignedInProfileContent extends ConsumerWidget {
             'Western Malabar • UK Kerala Grocery',
             style: TextStyle(
               fontSize: 12,
-              color: Colors.black54,
+              color: _wmProfileTextSoft,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -688,7 +694,7 @@ class _SignedInProfileContent extends ConsumerWidget {
             'App Version 1.0.0',
             style: TextStyle(
               fontSize: 11,
-              color: Colors.black38,
+              color: _wmProfileTextMuted,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -736,14 +742,14 @@ class _OperationsAccessCard extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [
-            WMTheme.royalPurple,
-            Color(0xFF8A56C9),
+            _wmProfilePrimaryDark,
+            _wmProfilePrimary,
           ],
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x22000000),
+            color: Color(0x18000000),
             blurRadius: 16,
             offset: Offset(0, 8),
           ),
@@ -757,10 +763,10 @@ class _OperationsAccessCard extends StatelessWidget {
                 width: 54,
                 height: 54,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.14),
+                  color: Colors.white.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.18),
+                    color: Colors.white.withOpacity(0.16),
                   ),
                 ),
                 child: Icon(
@@ -787,7 +793,7 @@ class _OperationsAccessCard extends StatelessWidget {
                     Text(
                       subtitle,
                       style: const TextStyle(
-                        color: Colors.white70,
+                        color: Color(0xFFE5E7EB),
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         height: 1.35,
@@ -800,10 +806,10 @@ class _OperationsAccessCard extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.14),
+                  color: Colors.white.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.18),
+                    color: Colors.white.withOpacity(0.16),
                   ),
                 ),
                 child: Text(
@@ -914,9 +920,9 @@ class _OpsActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = filled ? Colors.white : Colors.white.withValues(alpha: 0.08);
-    final fg = filled ? WMTheme.royalPurple : Colors.white;
-    final border = filled ? Colors.white : Colors.white.withValues(alpha: 0.65);
+    final bg = filled ? Colors.white : Colors.white.withOpacity(0.08);
+    final fg = filled ? _wmProfilePrimary : Colors.white;
+    final border = filled ? Colors.white : Colors.white.withOpacity(0.65);
 
     return Material(
       color: bg,
@@ -984,13 +990,13 @@ class _ProfileHeroCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            WMTheme.royalPurple,
-            Color(0xFF8A56C9),
+            _wmProfilePrimaryDark,
+            _wmProfilePrimary,
           ],
         ),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x22000000),
+            color: Color(0x18000000),
             blurRadius: 16,
             offset: Offset(0, 8),
           ),
@@ -1003,10 +1009,10 @@ class _ProfileHeroCard extends StatelessWidget {
             width: 82,
             height: 82,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.16),
+              color: Colors.white.withOpacity(0.14),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.24),
+                color: Colors.white.withOpacity(0.18),
               ),
             ),
             alignment: Alignment.center,
@@ -1042,7 +1048,7 @@ class _ProfileHeroCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.92),
+                      color: Colors.white.withOpacity(0.92),
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
@@ -1054,7 +1060,7 @@ class _ProfileHeroCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.92),
+                      color: Colors.white.withOpacity(0.92),
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
@@ -1104,9 +1110,9 @@ class _MiniPill extends StatelessWidget {
       height: 34,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.14),
+        color: Colors.white.withOpacity(0.12),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+        border: Border.all(color: Colors.white.withOpacity(0.14)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1142,9 +1148,9 @@ class _RewardsCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _wmProfileSurface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF2E4B2)),
+        border: Border.all(color: const Color(0xFFFED7AA)),
         boxShadow: const [
           BoxShadow(
             color: Color(0x12000000),
@@ -1163,8 +1169,8 @@ class _RewardsCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [
-                      Color(0xFFF0C53E),
-                      Color(0xFFFFD96A),
+                      _wmProfileAmber,
+                      Color(0xFFFBBF24),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(18),
@@ -1185,7 +1191,7 @@ class _RewardsCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w900,
-                        color: Colors.black87,
+                        color: _wmProfileTextStrong,
                       ),
                     ),
                     SizedBox(height: 2),
@@ -1193,7 +1199,7 @@ class _RewardsCard extends StatelessWidget {
                       'Earn points on every order',
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.black54,
+                        color: _wmProfileTextSoft,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1202,9 +1208,12 @@ class _RewardsCard extends StatelessWidget {
               ),
               TextButton(
                 onPressed: null,
-                child: const Text(
+                child: Text(
                   'Redeem',
-                  style: TextStyle(fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: _wmProfileTextMuted,
+                  ),
                 ),
               ),
             ],
@@ -1216,7 +1225,7 @@ class _RewardsCard extends StatelessWidget {
                 child: _StatChip(
                   label: 'Current Points',
                   value: '${profile.rewardPoints}',
-                  valueColor: WMTheme.royalPurple,
+                  valueColor: _wmProfilePrimary,
                 ),
               ),
               const SizedBox(width: 10),
@@ -1224,7 +1233,7 @@ class _RewardsCard extends StatelessWidget {
                 child: _StatChip(
                   label: 'Next Reward',
                   value: '${profile.nextRewardAt} pts',
-                  valueColor: const Color(0xFFF0C53E),
+                  valueColor: _wmProfileAmberDark,
                 ),
               ),
             ],
@@ -1235,9 +1244,9 @@ class _RewardsCard extends StatelessWidget {
             child: LinearProgressIndicator(
               value: profile.rewardProgress,
               minHeight: 10,
-              backgroundColor: const Color(0xFFF2EDF8),
+              backgroundColor: const Color(0xFFFDE7C7),
               valueColor: const AlwaysStoppedAnimation<Color>(
-                WMTheme.royalPurple,
+                _wmProfileAmber,
               ),
             ),
           ),
@@ -1248,7 +1257,7 @@ class _RewardsCard extends StatelessWidget {
                 : 'Only $remaining more points to unlock your next reward.',
             style: const TextStyle(
               fontSize: 13,
-              color: Colors.black54,
+              color: _wmProfileTextSoft,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -1274,9 +1283,9 @@ class _StatChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFBF9FE),
+        color: const Color(0xFFF9FAFB),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFEAE2F5)),
+        border: Border.all(color: _wmProfileBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1285,7 +1294,7 @@ class _StatChip extends StatelessWidget {
             label,
             style: const TextStyle(
               fontSize: 12,
-              color: Colors.black54,
+              color: _wmProfileTextSoft,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -1319,11 +1328,12 @@ class _InfoSectionCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.96),
+        color: _wmProfileSurface,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _wmProfileBorder),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x10000000),
+            color: Color(0x0C000000),
             blurRadius: 12,
             offset: Offset(0, 6),
           ),
@@ -1337,7 +1347,7 @@ class _InfoSectionCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w900,
-              color: Colors.black87,
+              color: _wmProfileTextStrong,
             ),
           ),
           const SizedBox(height: 14),
@@ -1364,7 +1374,7 @@ class _ProfileMenuTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFFFCFBFE),
+      color: const Color(0xFFF9FAFB),
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: onTap,
@@ -1373,7 +1383,7 @@ class _ProfileMenuTile extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFECE5F6)),
+            border: Border.all(color: _wmProfileBorder),
           ),
           child: Row(
             children: [
@@ -1381,12 +1391,12 @@ class _ProfileMenuTile extends StatelessWidget {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF4EDFB),
+                  color: const Color(0xFFF3F4F6),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(
                   icon,
-                  color: WMTheme.royalPurple,
+                  color: _wmProfilePrimary,
                 ),
               ),
               const SizedBox(width: 14),
@@ -1399,7 +1409,7 @@ class _ProfileMenuTile extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
-                        color: Colors.black87,
+                        color: _wmProfileTextStrong,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -1408,7 +1418,7 @@ class _ProfileMenuTile extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: Colors.black54,
+                        color: _wmProfileTextSoft,
                       ),
                     ),
                   ],
@@ -1417,7 +1427,7 @@ class _ProfileMenuTile extends StatelessWidget {
               const SizedBox(width: 8),
               const Icon(
                 Icons.chevron_right_rounded,
-                color: Colors.black38,
+                color: _wmProfileTextMuted,
               ),
             ],
           ),
@@ -1435,7 +1445,7 @@ class _ProfileLoadingView extends StatelessWidget {
     return const Center(
       child: CircularProgressIndicator(
         strokeWidth: 2.4,
-        color: WMTheme.royalPurple,
+        color: _wmProfilePrimary,
       ),
     );
   }
@@ -1459,8 +1469,9 @@ class _ProfileErrorView extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.96),
+            color: _wmProfileSurface,
             borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: _wmProfileBorder),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1468,7 +1479,7 @@ class _ProfileErrorView extends StatelessWidget {
               const Icon(
                 Icons.error_outline_rounded,
                 size: 42,
-                color: Colors.redAccent,
+                color: _wmProfileDanger,
               ),
               const SizedBox(height: 12),
               const Text(
@@ -1476,6 +1487,7 @@ class _ProfileErrorView extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
+                  color: _wmProfileTextStrong,
                 ),
               ),
               const SizedBox(height: 8),
@@ -1484,7 +1496,7 @@ class _ProfileErrorView extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 13,
-                  color: Colors.black54,
+                  color: _wmProfileTextSoft,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1492,7 +1504,7 @@ class _ProfileErrorView extends StatelessWidget {
               ElevatedButton(
                 onPressed: onRetry,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: WMTheme.royalPurple,
+                  backgroundColor: _wmProfilePrimary,
                   foregroundColor: Colors.white,
                 ),
                 child: const Text('Retry'),

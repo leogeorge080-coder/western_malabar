@@ -3,6 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:western_malabar/features/cart/providers/cart_provider.dart';
 import 'package:western_malabar/features/catalog/models/product_model.dart';
 
+const _wmAddPrimary = Color(0xFF2A2F3A);
+const _wmAddPrimaryDark = Color(0xFF171A20);
+const _wmAddBorder = Color(0xFFE5E7EB);
+const _wmAddSnackBg = Color(0xFF111827);
+
 class AddToCartControl extends ConsumerWidget {
   const AddToCartControl({
     super.key,
@@ -158,8 +163,6 @@ class _AddButtonState extends ConsumerStatefulWidget {
 
 class _AddButtonStateState extends ConsumerState<_AddButtonState>
     with SingleTickerProviderStateMixin {
-  static const _purple = Color(0xFF5A2D82);
-
   late final AnimationController _pressController;
   late final Animation<double> _scale;
 
@@ -195,7 +198,7 @@ class _AddButtonStateState extends ConsumerState<_AddButtonState>
       SnackBar(
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 94),
-        backgroundColor: const Color(0xFF1F1B24),
+        backgroundColor: _wmAddSnackBg,
         duration: const Duration(milliseconds: 1200),
         content: const Text(
           'This item is currently unavailable',
@@ -233,7 +236,7 @@ class _AddButtonStateState extends ConsumerState<_AddButtonState>
         height: widget.config.height,
         width: widget.config.addWidth,
         child: Material(
-          color: _purple,
+          color: _wmAddPrimary,
           borderRadius: BorderRadius.circular(widget.config.radius),
           child: InkWell(
             onTap: _handleTap,
@@ -282,15 +285,13 @@ class _StepperState extends ConsumerWidget {
   final VoidCallback? onAdded;
   final _AddToCartSizing config;
 
-  static const _purple = Color(0xFF5A2D82);
-
   void _showUnavailable(BuildContext context) {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 94),
-        backgroundColor: const Color(0xFF1F1B24),
+        backgroundColor: _wmAddSnackBg,
         duration: const Duration(milliseconds: 1200),
         content: const Text(
           'This item is currently unavailable',
@@ -308,7 +309,7 @@ class _StepperState extends ConsumerWidget {
       height: config.height,
       width: config.compactWidth,
       decoration: BoxDecoration(
-        color: _purple,
+        color: _wmAddPrimary,
         borderRadius: BorderRadius.circular(config.radius),
         boxShadow: const [
           BoxShadow(
