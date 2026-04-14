@@ -60,7 +60,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     _fullNameController =
         TextEditingController(text: checkout.address.fullName);
     _phoneController = TextEditingController(text: checkout.address.phone);
-    _emailController = TextEditingController();
+    _emailController = TextEditingController(
+      text: Supabase.instance.client.auth.currentUser?.email?.trim() ?? '',
+    );
     _postcodeController =
         TextEditingController(text: checkout.address.postcode);
     _address1Controller =
@@ -147,6 +149,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   void _clearControllers() {
     _fullNameController.clear();
     _phoneController.clear();
+    _emailController.text =
+        Supabase.instance.client.auth.currentUser?.email?.trim() ?? '';
     _postcodeController.clear();
     _address1Controller.clear();
     _address2Controller.clear();
@@ -400,7 +404,13 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }
 
   String _getCheckoutEmail() {
-    return _emailController.text.trim();
+    final typedEmail = _emailController.text.trim();
+    if (typedEmail.isNotEmpty) return typedEmail;
+
+    final authEmail = Supabase.instance.client.auth.currentUser?.email?.trim() ?? '';
+    if (authEmail.isNotEmpty) return authEmail;
+
+    return '';
   }
 
   List<Map<String, dynamic>> _buildEmailItems(List<dynamic> cartItems) {
@@ -538,7 +548,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }
 
   bool _canPlaceOrder(CheckoutState checkout) {
-    if (_emailController.text.trim().isEmpty) return false;
+    if (_getCheckoutEmail().isEmpty) return false;
 
     if (checkout.deliveryType.isEmpty ||
         checkout.deliverySlot.isEmpty ||
@@ -565,6 +575,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     final checkoutNotifier = ref.read(checkoutProvider.notifier);
     final cartItems = ref.read(cartProvider);
     final selectedSavedAddress = checkout.selectedSavedAddress;
+    final checkoutEmail = _getCheckoutEmail();
 
     if (cartItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -622,16 +633,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
         final placedOrder =
             await ref.read(checkoutServiceProvider).placeOrderAfterPayment(
-                  paymentIntentId: paymentResult.paymentIntentId,
-                  address: checkout.address,
-                  checkoutEmail: _getCheckoutEmail(),
-                  addressId: selectedSavedAddress?.id,
-                  deliveryType: checkout.deliveryType,
-                  deliverySlot: checkout.deliverySlot,
-                  paymentMethod: checkout.paymentMethod,
-                  useRewards: checkout.useRewards,
-                  cartItems: cartItems,
-                );
+              paymentIntentId: paymentResult.paymentIntentId,
+              address: checkout.address,
+              checkoutEmail: checkoutEmail,
+              addressId: selectedSavedAddress?.id,
+              deliveryType: checkout.deliveryType,
+              deliverySlot: checkout.deliverySlot,
+              paymentMethod: checkout.paymentMethod,
+              useRewards: checkout.useRewards,
+              cartItems: cartItems,
+            );
 
         try {
           await _saveAddressAfterSuccessfulOrder();
@@ -675,16 +686,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       final paymentStatus = confirmedTotalCents == 0 ? 'paid' : 'cod_pending';
 
       final placedOrder = await ref.read(checkoutServiceProvider).placeOrder(
-            address: checkout.address,
-            checkoutEmail: _getCheckoutEmail(),
-            addressId: selectedSavedAddress?.id,
-            deliveryType: checkout.deliveryType,
-            deliverySlot: checkout.deliverySlot,
-            paymentMethod: checkout.paymentMethod,
-            useRewards: checkout.useRewards,
-            cartItems: cartItems,
-            paymentStatus: paymentStatus,
-            stripePaymentIntentId: null,
+        address: checkout.address,
+        checkoutEmail: checkoutEmail,
+        addressId: selectedSavedAddress?.id,
+        deliveryType: checkout.deliveryType,
+        deliverySlot: checkout.deliverySlot,
+        paymentMethod: checkout.paymentMethod,
+        useRewards: checkout.useRewards,
+        cartItems: cartItems,
+        paymentStatus: paymentStatus,
+        stripePaymentIntentId: null,
           );
 
       try {
@@ -1081,6 +1092,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Show email field for all checkout modes
+          _CheckoutTextField(
+            label: 'Email Address',
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            onChanged: (_) {},
+          ),
+          const SizedBox(height: 12),
           if (checkout.deliveryType == 'local_pickup')
             const _AmazonInfoBanner(
               icon: Icons.storefront_outlined,
@@ -1128,13 +1147,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
                 onChanged: ref.read(checkoutProvider.notifier).updatePhone,
-              ),
-              const SizedBox(height: 12),
-              _CheckoutTextField(
-                label: 'Email Address',
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                onChanged: (_) {},
               ),
               const SizedBox(height: 12),
               Row(
@@ -1274,15 +1286,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               ],
             ],
           ],
-          if (checkout.deliveryType == 'local_pickup') ...[
-            const SizedBox(height: 12),
-            _CheckoutTextField(
-              label: 'Email Address',
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              onChanged: (_) {},
-            ),
-          ]
         ],
       ),
     );
