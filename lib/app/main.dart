@@ -13,7 +13,7 @@ import 'package:western_malabar/app/env.dart';
 import 'package:western_malabar/app/app_shell.dart';
 import 'package:western_malabar/app/auth_session_guard.dart';
 import 'package:western_malabar/shared/theme/theme.dart';
-import 'package:western_malabar/features/splash/splash_screen.dart';
+import 'package:western_malabar/shared/screens/splash_screen.dart';
 
 Future<void> main() async {
   FlutterError.onError = (FlutterErrorDetails details) {

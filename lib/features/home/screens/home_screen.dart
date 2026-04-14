@@ -200,11 +200,25 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _c = ScrollController();
-    _reloadHome();
     _startHintLoop();
+
+    _homeFuture = Future<_HomeRailBundle>.value(
+      const _HomeRailBundle(
+        buyItAgain: <WmProduct>[],
+        runningLow: <WmProduct>[],
+        weeklyEssentials: <WmProduct>[],
+        weeklyDeals: <WmProduct>[],
+        popularThisWeek: <WmProduct>[],
+        frozenFavourites: <WmProduct>[],
+        newInStore: <WmProduct>[],
+        categories: <CategoryModel>[],
+      ),
+    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+
+      setState(_reloadHome);
       ref.read(searchProvider.notifier).hydrate();
     });
   }
@@ -237,16 +251,25 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<_HomeRailBundle> _loadHomeBundle() async {
-    final categoriesFuture = CategoryService.fetchHomeCategories(limit: 12);
+    final results = await Future.wait<dynamic>([
+      _productSvc.fetchBuyItAgain(limit: 12),
+      _productSvc.fetchRunningLow(limit: 10),
+      _productSvc.fetchWeeklyEssentials(limit: 12),
+      _productSvc.fetchWeeklyDeals(limit: 12),
+      _productSvc.fetchPopularThisWeek(limit: 12),
+      _productSvc.fetchFrozenFavourites(limit: 12),
+      _productSvc.fetchNewInStore(limit: 12),
+      CategoryService.fetchHomeCategories(limit: 12),
+    ]);
 
-    final buyAgainRows = await _productSvc.fetchBuyItAgain(limit: 12);
-    final runningLowRows = await _productSvc.fetchRunningLow(limit: 10);
-    final essentialsRows = await _productSvc.fetchWeeklyEssentials(limit: 12);
-    final dealsRows = await _productSvc.fetchWeeklyDeals(limit: 12);
-    final popularRows = await _productSvc.fetchPopularThisWeek(limit: 12);
-    final frozenRows = await _productSvc.fetchFrozenFavourites(limit: 12);
-    final newRows = await _productSvc.fetchNewInStore(limit: 12);
-    final categories = await categoriesFuture;
+    final buyAgainRows = results[0] as List<WmProductDto>;
+    final runningLowRows = results[1] as List<WmProductDto>;
+    final essentialsRows = results[2] as List<WmProductDto>;
+    final dealsRows = results[3] as List<WmProductDto>;
+    final popularRows = results[4] as List<WmProductDto>;
+    final frozenRows = results[5] as List<WmProductDto>;
+    final newRows = results[6] as List<WmProductDto>;
+    final categories = results[7] as List<CategoryModel>;
 
     final priorityExcluded = <String>{};
 
