@@ -9,8 +9,37 @@ import 'package:western_malabar/features/admin/providers/admin_orders_provider.d
 import 'package:western_malabar/features/admin/screens/order_qr_scan_screen.dart';
 import 'package:western_malabar/features/admin/services/admin_orders_service.dart';
 import 'package:western_malabar/shared/theme/theme.dart';
-import 'package:western_malabar/shared/theme/wm_gradients.dart';
 import 'package:western_malabar/shared/widgets/wm_product_image.dart';
+
+const _wmBg = Color(0xFFF4F5F7);
+const _wmSurface = Colors.white;
+const _wmSurfaceSoft = Color(0xFFF8F9FB);
+
+const _wmTextStrong = Color(0xFF171A1F);
+const _wmTextSoft = Color(0xFF5F6875);
+const _wmTextMuted = Color(0xFF8A93A1);
+
+const _wmBorder = Color(0xFFE6EAF0);
+const _wmBorderStrong = Color(0xFFD7DDE6);
+
+const _wmPrimary = Color(0xFF5A2D82);
+const _wmPrimarySoft = Color(0xFFF4EDFB);
+
+const _wmSuccess = Color(0xFF1E8E3E);
+const _wmSuccessBg = Color(0xFFF1FAF3);
+const _wmSuccessBorder = Color(0xFFBFE3C7);
+
+const _wmWarning = Color(0xFFB26A00);
+const _wmWarningBg = Color(0xFFFFF6E8);
+const _wmWarningBorder = Color(0xFFFFD8A8);
+
+const _wmInfo = Color(0xFF1565C0);
+const _wmInfoBg = Color(0xFFEAF5FF);
+const _wmInfoBorder = Color(0xFFCFE6FF);
+
+const _wmDanger = Color(0xFFC62828);
+const _wmDangerBg = Color(0xFFFFF4F4);
+const _wmDangerBorder = Color(0xFFFFD1D1);
 
 class AdminOrderDetailScreen extends ConsumerStatefulWidget {
   final String orderId;
@@ -66,7 +95,7 @@ class _AdminOrderDetailScreenState
 
       if (!mounted) return;
 
-      _setFlash(result.success ? Colors.green : Colors.red);
+      _setFlash(result.success ? _wmSuccess : _wmDanger);
 
       if (result.success) {
         await ScanFeedback.success();
@@ -83,11 +112,11 @@ class _AdminOrderDetailScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result.message),
-          backgroundColor: result.success ? Colors.green : Colors.red,
+          backgroundColor: result.success ? _wmSuccess : _wmDanger,
         ),
       );
     } catch (e) {
-      _setFlash(Colors.red);
+      _setFlash(_wmDanger);
       await ScanFeedback.error();
 
       if (!mounted) return;
@@ -95,7 +124,7 @@ class _AdminOrderDetailScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Barcode verification failed: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: _wmDanger,
         ),
       );
     }
@@ -154,7 +183,7 @@ class _AdminOrderDetailScreenState
   ) async {
     await showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: _wmSurface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -179,6 +208,7 @@ class _AdminOrderDetailScreenState
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
+                    color: _wmTextStrong,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -187,7 +217,7 @@ class _AdminOrderDetailScreenState
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black54,
+                    color: _wmTextSoft,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -204,7 +234,7 @@ class _AdminOrderDetailScreenState
                       style: TextStyle(fontWeight: FontWeight.w800),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: WMTheme.royalPurple,
+                      backgroundColor: _wmPrimary,
                       foregroundColor: Colors.white,
                       minimumSize: const Size.fromHeight(52),
                       shape: RoundedRectangleBorder(
@@ -227,6 +257,8 @@ class _AdminOrderDetailScreenState
                       style: TextStyle(fontWeight: FontWeight.w800),
                     ),
                     style: OutlinedButton.styleFrom(
+                      foregroundColor: _wmPrimary,
+                      side: const BorderSide(color: _wmPrimary),
                       minimumSize: const Size.fromHeight(52),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
@@ -258,7 +290,7 @@ class _AdminOrderDetailScreenState
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('This order is already packed'),
-            backgroundColor: Colors.orange,
+            backgroundColor: _wmWarning,
           ),
         );
       }
@@ -284,21 +316,21 @@ class _AdminOrderDetailScreenState
         scanned == baseQr || scanned == normalBagQr || scanned == frozenBagQr;
 
     if (!matches) {
-      _setFlash(Colors.red);
+      _setFlash(_wmDanger);
       await ScanFeedback.error();
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Scanned QR does not match this order'),
-            backgroundColor: Colors.red,
+            backgroundColor: _wmDanger,
           ),
         );
       }
       return;
     }
 
-    _setFlash(Colors.green);
+    _setFlash(_wmSuccess);
     await ScanFeedback.success();
 
     if (!mounted) return;
@@ -311,7 +343,7 @@ class _AdminOrderDetailScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Bag QR verified. Confirm pack to continue.'),
-          backgroundColor: Colors.green,
+          backgroundColor: _wmSuccess,
         ),
       );
     }
@@ -323,12 +355,12 @@ class _AdminOrderDetailScreenState
     final itemsAsync = ref.watch(adminOrderItemsProvider(orderId));
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: _wmBg,
       body: Stack(
         children: [
           Container(
             decoration: const BoxDecoration(
-              gradient: WMGradients.pageBackground,
+              color: _wmBg,
             ),
             child: SafeArea(
               child: Column(
@@ -337,11 +369,21 @@ class _AdminOrderDetailScreenState
                     padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                     child: Row(
                       children: [
-                        IconButton(
-                          onPressed: _bagQrVerified
-                              ? null
-                              : () => Navigator.maybePop(context),
-                          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: _wmSurface,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: _wmBorder),
+                          ),
+                          child: IconButton(
+                            onPressed: _bagQrVerified
+                                ? null
+                                : () => Navigator.maybePop(context),
+                            icon: const Icon(
+                              Icons.arrow_back_ios_new_rounded,
+                              color: _wmTextStrong,
+                            ),
+                          ),
                         ),
                         const Expanded(
                           child: Text(
@@ -350,14 +392,25 @@ class _AdminOrderDetailScreenState
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w900,
+                              color: _wmTextStrong,
                             ),
                           ),
                         ),
-                        IconButton(
-                          onPressed: _bagQrVerified
-                              ? null
-                              : () => _showHelpOptionsSheet(context, ref),
-                          icon: const Icon(Icons.help_outline_rounded),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: _wmSurface,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: _wmBorder),
+                          ),
+                          child: IconButton(
+                            onPressed: _bagQrVerified
+                                ? null
+                                : () => _showHelpOptionsSheet(context, ref),
+                            icon: const Icon(
+                              Icons.help_outline_rounded,
+                              color: _wmTextStrong,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -462,7 +515,7 @@ class _AdminOrderDetailScreenState
                                           ),
                                         ),
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: WMTheme.royalPurple,
+                                          backgroundColor: _wmPrimary,
                                           foregroundColor: Colors.white,
                                           minimumSize:
                                               const Size.fromHeight(52),
@@ -507,7 +560,7 @@ class _AdminOrderDetailScreenState
                                               content: Text(
                                                 'Order packed successfully.',
                                               ),
-                                              backgroundColor: Colors.green,
+                                              backgroundColor: _wmSuccess,
                                             ),
                                           );
                                           _resetQrVerification();
@@ -519,140 +572,52 @@ class _AdminOrderDetailScreenState
                                   Padding(
                                     padding: const EdgeInsets.fromLTRB(
                                         16, 0, 16, 12),
-                                    child: Container(
-                                      width: double.infinity,
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF1FAF3),
-                                        borderRadius: BorderRadius.circular(18),
-                                        border: Border.all(
-                                          color: const Color(0xFFBFE3C7),
-                                        ),
-                                      ),
-                                      child: const Row(
-                                        children: [
-                                          Icon(
-                                            Icons.check_circle_rounded,
-                                            color: Colors.green,
-                                          ),
-                                          SizedBox(width: 10),
-                                          Expanded(
-                                            child: Text(
-                                              'This order is already packed. QR verification is complete.',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w800,
-                                                color: Colors.black87,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                    child: _StateInfoCard(
+                                      icon: Icons.check_circle_rounded,
+                                      iconColor: _wmSuccess,
+                                      background: _wmSuccessBg,
+                                      border: _wmSuccessBorder,
+                                      text:
+                                          'This order is already packed. QR verification is complete.',
                                     ),
                                   ),
                                 if (showDriverModeInfo)
                                   Padding(
                                     padding: const EdgeInsets.fromLTRB(
                                         16, 0, 16, 12),
-                                    child: Container(
-                                      width: double.infinity,
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFEAF5FF),
-                                        borderRadius: BorderRadius.circular(18),
-                                        border: Border.all(
-                                          color: const Color(0xFFCFE6FF),
-                                        ),
-                                      ),
-                                      child: const Row(
-                                        children: [
-                                          Icon(
-                                            Icons.local_shipping_rounded,
-                                            color: Color(0xFF1565C0),
-                                          ),
-                                          SizedBox(width: 10),
-                                          Expanded(
-                                            child: Text(
-                                              'Packed successfully. Use Driver Mode to dispatch and complete delivery scanning.',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w800,
-                                                color: Colors.black87,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                    child: _StateInfoCard(
+                                      icon: Icons.local_shipping_rounded,
+                                      iconColor: _wmInfo,
+                                      background: _wmInfoBg,
+                                      border: _wmInfoBorder,
+                                      text:
+                                          'Packed successfully. Use Driver Mode to dispatch and complete delivery scanning.',
                                     ),
                                   ),
                                 if (showOutForDeliveryInfo)
                                   Padding(
                                     padding: const EdgeInsets.fromLTRB(
                                         16, 0, 16, 12),
-                                    child: Container(
-                                      width: double.infinity,
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFEAF5FF),
-                                        borderRadius: BorderRadius.circular(18),
-                                        border: Border.all(
-                                          color: const Color(0xFFCFE6FF),
-                                        ),
-                                      ),
-                                      child: const Row(
-                                        children: [
-                                          Icon(
-                                            Icons.local_shipping_rounded,
-                                            color: Color(0xFF1565C0),
-                                          ),
-                                          SizedBox(width: 10),
-                                          Expanded(
-                                            child: Text(
-                                              'This order is out for delivery. Complete the final handoff in Driver Mode.',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w800,
-                                                color: Colors.black87,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                    child: _StateInfoCard(
+                                      icon: Icons.local_shipping_rounded,
+                                      iconColor: _wmInfo,
+                                      background: _wmInfoBg,
+                                      border: _wmInfoBorder,
+                                      text:
+                                          'This order is out for delivery. Complete the final handoff in Driver Mode.',
                                     ),
                                   ),
                                 if (showDeliveredInfo)
                                   Padding(
                                     padding: const EdgeInsets.fromLTRB(
                                         16, 0, 16, 12),
-                                    child: Container(
-                                      width: double.infinity,
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF1FAF3),
-                                        borderRadius: BorderRadius.circular(18),
-                                        border: Border.all(
-                                          color: const Color(0xFFBFE3C7),
-                                        ),
-                                      ),
-                                      child: const Row(
-                                        children: [
-                                          Icon(
-                                            Icons.task_alt_rounded,
-                                            color: Colors.green,
-                                          ),
-                                          SizedBox(width: 10),
-                                          Expanded(
-                                            child: Text(
-                                              'This order has been delivered successfully.',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w800,
-                                                color: Colors.black87,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                    child: _StateInfoCard(
+                                      icon: Icons.task_alt_rounded,
+                                      iconColor: _wmSuccess,
+                                      background: _wmSuccessBg,
+                                      border: _wmSuccessBorder,
+                                      text:
+                                          'This order has been delivered successfully.',
                                     ),
                                   ),
                                 Expanded(
@@ -685,12 +650,11 @@ class _AdminOrderDetailScreenState
                                                   bottom: 10),
                                               padding: const EdgeInsets.all(12),
                                               decoration: BoxDecoration(
-                                                color: const Color(0xFFEAF5FF),
+                                                color: _wmInfoBg,
                                                 borderRadius:
                                                     BorderRadius.circular(14),
                                                 border: Border.all(
-                                                  color:
-                                                      const Color(0xFFCFE6FF),
+                                                  color: _wmInfoBorder,
                                                 ),
                                               ),
                                               child: const Text(
@@ -698,7 +662,7 @@ class _AdminOrderDetailScreenState
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.w700,
-                                                  color: Color(0xFF1565C0),
+                                                  color: _wmInfo,
                                                 ),
                                               ),
                                             ),
@@ -739,22 +703,30 @@ class _AdminOrderDetailScreenState
                               ],
                             );
                           },
-                          loading: () =>
-                              const Center(child: CircularProgressIndicator()),
+                          loading: () => const Center(
+                            child: CircularProgressIndicator(
+                              color: _wmPrimary,
+                            ),
+                          ),
                           error: (e, _) => Center(
                             child: Text(
                               'Failed to load items\n$e',
                               textAlign: TextAlign.center,
+                              style: const TextStyle(color: _wmTextSoft),
                             ),
                           ),
                         );
                       },
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
+                      loading: () => const Center(
+                        child: CircularProgressIndicator(
+                          color: _wmPrimary,
+                        ),
+                      ),
                       error: (e, _) => Center(
                         child: Text(
                           'Failed to load order\n$e',
                           textAlign: TextAlign.center,
+                          style: const TextStyle(color: _wmTextSoft),
                         ),
                       ),
                     ),
@@ -767,7 +739,7 @@ class _AdminOrderDetailScreenState
             IgnorePointer(
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
-                color: _flashColor!.withValues(alpha: 0.18),
+                color: _flashColor!.withValues(alpha: 0.14),
               ),
             ),
         ],
@@ -802,13 +774,14 @@ class _TopSummary extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        color: _wmSurface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _wmBorder),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x12000000),
-            blurRadius: 10,
-            offset: Offset(0, 6),
+            color: Color(0x0F000000),
+            blurRadius: 12,
+            offset: Offset(0, 5),
           ),
         ],
       ),
@@ -820,7 +793,7 @@ class _TopSummary extends StatelessWidget {
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w900,
-              color: WMTheme.royalPurple,
+              color: _wmTextStrong,
             ),
           ),
           const SizedBox(height: 6),
@@ -829,6 +802,7 @@ class _TopSummary extends StatelessWidget {
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w800,
+              color: _wmTextStrong,
             ),
           ),
           const SizedBox(height: 12),
@@ -836,8 +810,8 @@ class _TopSummary extends StatelessWidget {
             value: progress,
             minHeight: 8,
             borderRadius: BorderRadius.circular(999),
-            backgroundColor: const Color(0xFFEDE7F6),
-            valueColor: const AlwaysStoppedAnimation(WMTheme.royalPurple),
+            backgroundColor: Color(0xFFECEFF4),
+            valueColor: AlwaysStoppedAnimation(_wmPrimary),
           ),
           const SizedBox(height: 8),
           Text(
@@ -845,7 +819,7 @@ class _TopSummary extends StatelessWidget {
             style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w800,
-              color: Colors.black54,
+              color: _wmTextSoft,
             ),
           ),
           const SizedBox(height: 10),
@@ -855,7 +829,13 @@ class _TopSummary extends StatelessWidget {
             children: [
               _MetaChip(label: paymentStatus.toUpperCase()),
               _MetaChip(label: adminStatus.replaceAll('_', ' ').toUpperCase()),
-              if (hasFrozenItems) const _MetaChip(label: 'FROZEN ITEMS'),
+              if (hasFrozenItems)
+                const _MetaChip(
+                  label: 'FROZEN ITEMS',
+                  background: _wmInfoBg,
+                  foreground: _wmInfo,
+                  borderColor: _wmInfoBorder,
+                ),
             ],
           ),
         ],
@@ -883,14 +863,14 @@ class _VerifiedFocusCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1FAF3),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFBFE3C7)),
+        color: _wmSuccessBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _wmSuccessBorder),
         boxShadow: const [
           BoxShadow(
             color: Color(0x12000000),
             blurRadius: 10,
-            offset: Offset(0, 6),
+            offset: Offset(0, 5),
           ),
         ],
       ),
@@ -899,7 +879,7 @@ class _VerifiedFocusCard extends StatelessWidget {
           const Icon(
             Icons.check_circle_rounded,
             size: 52,
-            color: Colors.green,
+            color: _wmSuccess,
           ),
           const SizedBox(height: 10),
           const Text(
@@ -907,6 +887,7 @@ class _VerifiedFocusCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w900,
+              color: _wmTextStrong,
             ),
           ),
           const SizedBox(height: 6),
@@ -916,7 +897,7 @@ class _VerifiedFocusCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: Colors.black54,
+              color: _wmTextSoft,
             ),
           ),
           const SizedBox(height: 8),
@@ -928,7 +909,7 @@ class _VerifiedFocusCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: Colors.black54,
+              color: _wmTextSoft,
             ),
           ),
           const SizedBox(height: 16),
@@ -938,12 +919,18 @@ class _VerifiedFocusCard extends StatelessWidget {
                 child: OutlinedButton(
                   onPressed: onCancel,
                   style: OutlinedButton.styleFrom(
+                    foregroundColor: _wmTextStrong,
+                    side: const BorderSide(color: _wmBorderStrong),
                     minimumSize: const Size.fromHeight(48),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
+                    backgroundColor: _wmSurface,
                   ),
-                  child: const Text('Cancel'),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -951,7 +938,7 @@ class _VerifiedFocusCard extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: onConfirm,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
+                    backgroundColor: _wmSuccess,
                     foregroundColor: Colors.white,
                     minimumSize: const Size.fromHeight(48),
                     shape: RoundedRectangleBorder(
@@ -972,11 +959,62 @@ class _VerifiedFocusCard extends StatelessWidget {
   }
 }
 
+class _StateInfoCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final Color background;
+  final Color border;
+  final String text;
+
+  const _StateInfoCard({
+    required this.icon,
+    required this.iconColor,
+    required this.background,
+    required this.border,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: iconColor),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: _wmTextStrong,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _MetaChip extends StatelessWidget {
   final String label;
+  final Color background;
+  final Color foreground;
+  final Color borderColor;
 
   const _MetaChip({
     required this.label,
+    this.background = _wmSurfaceSoft,
+    this.foreground = _wmTextSoft,
+    this.borderColor = _wmBorder,
   });
 
   @override
@@ -984,15 +1022,16 @@ class _MetaChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F1FB),
+        color: background,
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: borderColor),
       ),
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w900,
-          color: WMTheme.royalPurple,
+          color: foreground,
         ),
       ),
     );
@@ -1011,6 +1050,7 @@ class _SectionTitle extends StatelessWidget {
       style: const TextStyle(
         fontSize: 17,
         fontWeight: FontWeight.w900,
+        color: _wmTextStrong,
       ),
     );
   }
@@ -1031,15 +1071,22 @@ class _ItemTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: _wmSurface,
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: complete
-              ? const Color(0xFFBFE3C7)
+              ? _wmSuccessBorder
               : partial
-                  ? const Color(0xFFFFD8A8)
-                  : const Color(0xFFE6DFF0),
+                  ? _wmWarningBorder
+                  : _wmBorder,
         ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -1047,7 +1094,7 @@ class _ItemTile extends StatelessWidget {
             width: 54,
             height: 54,
             decoration: BoxDecoration(
-              color: const Color(0xFFF6F0FB),
+              color: _wmSurfaceSoft,
               borderRadius: BorderRadius.circular(14),
             ),
             child: WmProductImage(
@@ -1067,6 +1114,7 @@ class _ItemTile extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
+                    color: _wmTextStrong,
                   ),
                 ),
                 if ((item.brandName ?? '').isNotEmpty) ...[
@@ -1076,7 +1124,7 @@ class _ItemTile extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: Colors.black54,
+                      color: _wmTextSoft,
                     ),
                   ),
                 ],
@@ -1089,12 +1137,9 @@ class _ItemTile extends StatelessWidget {
                     _TinyBadge(label: 'Picked ${item.pickedQty}/${item.qty}'),
                     _TinyBadge(
                       label: item.isFrozen ? 'Frozen' : 'Non-Frozen',
-                      background: item.isFrozen
-                          ? const Color(0xFFEAF5FF)
-                          : const Color(0xFFF4F4F4),
-                      foreground: item.isFrozen
-                          ? const Color(0xFF1565C0)
-                          : Colors.black87,
+                      background:
+                          item.isFrozen ? _wmInfoBg : const Color(0xFFF4F4F4),
+                      foreground: item.isFrozen ? _wmInfo : _wmTextStrong,
                     ),
                   ],
                 ),
@@ -1109,10 +1154,10 @@ class _ItemTile extends StatelessWidget {
                     ? Icons.timelapse_rounded
                     : Icons.radio_button_unchecked_rounded,
             color: complete
-                ? Colors.green
+                ? _wmSuccess
                 : partial
-                    ? Colors.orange
-                    : Colors.black38,
+                    ? _wmWarning
+                    : _wmTextMuted,
           ),
         ],
       ),
@@ -1127,8 +1172,8 @@ class _TinyBadge extends StatelessWidget {
 
   const _TinyBadge({
     required this.label,
-    this.background = const Color(0xFFF6F0FB),
-    this.foreground = WMTheme.royalPurple,
+    this.background = _wmSurfaceSoft,
+    this.foreground = _wmTextSoft,
   });
 
   @override
@@ -1138,6 +1183,7 @@ class _TinyBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: _wmBorder),
       ),
       child: Text(
         label,
@@ -1169,11 +1215,14 @@ class _BottomActions extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: _wmSurface,
+        border: Border(
+          top: BorderSide(color: _wmBorder),
+        ),
         boxShadow: [
           BoxShadow(
             color: Color(0x12000000),
-            blurRadius: 10,
+            blurRadius: 12,
             offset: Offset(0, -4),
           ),
         ],
@@ -1187,17 +1236,17 @@ class _BottomActions extends StatelessWidget {
                 child: OutlinedButton(
                   onPressed: onStartPicking,
                   style: OutlinedButton.styleFrom(
+                    foregroundColor: _wmPrimary,
                     minimumSize: const Size.fromHeight(52),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    side: const BorderSide(color: WMTheme.royalPurple),
+                    side: const BorderSide(color: _wmPrimary),
                   ),
                   child: const Text(
                     'Start Picking',
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
-                      color: WMTheme.royalPurple,
                     ),
                   ),
                 ),
@@ -1208,8 +1257,10 @@ class _BottomActions extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: canPack ? onMarkPacked : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: WMTheme.royalPurple,
+                  backgroundColor: _wmPrimary,
                   foregroundColor: Colors.white,
+                  disabledBackgroundColor: const Color(0xFFD6D9E0),
+                  disabledForegroundColor: const Color(0xFF7E8591),
                   minimumSize: const Size.fromHeight(52),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -1274,14 +1325,17 @@ class _ManualCodeEntryScreenState extends State<_ManualCodeEntryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F3FB),
+      backgroundColor: _wmBg,
       appBar: AppBar(
         title: Text(
           widget.title,
-          style: const TextStyle(fontWeight: FontWeight.w800),
+          style: const TextStyle(
+            fontWeight: FontWeight.w800,
+            color: _wmTextStrong,
+          ),
         ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        backgroundColor: _wmSurface,
+        foregroundColor: _wmTextStrong,
         elevation: 0,
       ),
       body: SafeArea(
@@ -1293,8 +1347,9 @@ class _ManualCodeEntryScreenState extends State<_ManualCodeEntryScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: _wmSurface,
                   borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: _wmBorder),
                   boxShadow: const [
                     BoxShadow(
                       color: Color(0x12000000),
@@ -1311,6 +1366,7 @@ class _ManualCodeEntryScreenState extends State<_ManualCodeEntryScreen> {
                       style: const TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w900,
+                        color: _wmTextStrong,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -1325,8 +1381,20 @@ class _ManualCodeEntryScreenState extends State<_ManualCodeEntryScreen> {
                       onSubmitted: (_) => _submit(),
                       decoration: InputDecoration(
                         hintText: widget.hintText,
+                        filled: true,
+                        fillColor: _wmSurfaceSoft,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: _wmBorder),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: _wmBorder),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide:
+                              const BorderSide(color: _wmPrimary, width: 1.4),
                         ),
                       ),
                     ),
@@ -1343,17 +1411,17 @@ class _ManualCodeEntryScreenState extends State<_ManualCodeEntryScreen> {
                         height: 52,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: _wmSurface,
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: const Color(0xFFD7CCE7),
+                            color: _wmBorderStrong,
                           ),
                         ),
                         child: const Text(
                           'Cancel',
                           style: TextStyle(
                             fontWeight: FontWeight.w800,
-                            color: Colors.black87,
+                            color: _wmTextStrong,
                           ),
                         ),
                       ),
@@ -1367,7 +1435,7 @@ class _ManualCodeEntryScreenState extends State<_ManualCodeEntryScreen> {
                         height: 52,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: WMTheme.royalPurple,
+                          color: _wmPrimary,
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: const Text(

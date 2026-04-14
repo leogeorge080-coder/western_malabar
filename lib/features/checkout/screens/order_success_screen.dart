@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:western_malabar/shared/widgets/mh_monogram_animation.dart';
 
 const _wmSuccessBg = Color(0xFFF7F7F7);
 const _wmSuccessSurface = Colors.white;
@@ -37,28 +38,10 @@ class OrderSuccessScreen extends StatelessWidget {
           child: Column(
             children: [
               const SizedBox(height: 20),
-              Container(
-                width: 96,
-                height: 96,
-                decoration: BoxDecoration(
-                  color: _wmSuccessGreenSoft,
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(
-                    color: const Color(0xFFBBF7D0),
-                  ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x0C000000),
-                      blurRadius: 18,
-                      offset: Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.check_circle_rounded,
-                  size: 58,
-                  color: _wmSuccessGreen,
-                ),
+              MhMonogramAnimation(
+                size: 100,
+                backgroundColor: Colors.transparent,
+                showTile: false,
               ),
               const SizedBox(height: 24),
               const Text(
