@@ -123,7 +123,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
       _autoAppliedAddressId = null;
       _showManualAddressForm = false;
-      _clearControllers();
+      _clearControllers(preserveEmail: false);
     });
 
     ref.listenManual(profileProvider, (previous, next) {
@@ -183,15 +183,21 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     super.dispose();
   }
 
-  void _clearControllers() {
+  void _clearControllers({bool preserveEmail = true}) {
+    final existingEmail = _emailController.text.trim();
+    final authEmail =
+        Supabase.instance.client.auth.currentUser?.email?.trim() ?? '';
+
     _fullNameController.clear();
     _phoneController.clear();
-    _emailController.text =
-        Supabase.instance.client.auth.currentUser?.email?.trim() ?? '';
     _postcodeController.clear();
     _address1Controller.clear();
     _address2Controller.clear();
     _cityController.clear();
+
+    _emailController.text = preserveEmail
+        ? (existingEmail.isNotEmpty ? existingEmail : authEmail)
+        : authEmail;
   }
 
   void _applyCheckoutAddressToControllers({
@@ -256,7 +262,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       _autoAppliedAddressId = null;
     });
     ref.read(checkoutProvider.notifier).resetAddressState();
-    _clearControllers();
+    _clearControllers(preserveEmail: true);
   }
 
   Future<void> _showSavedAddressesSheet(List<AddressModel> addresses) async {
