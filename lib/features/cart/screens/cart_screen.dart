@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:western_malabar/features/auth/utils/require_checkout_login.dart';
 import 'package:western_malabar/features/cart/services/cart_pricing.dart';
 import 'package:western_malabar/features/checkout/screens/checkout_screen.dart';
 import 'package:western_malabar/features/catalog/models/product_model.dart';
@@ -7,8 +8,8 @@ import 'package:western_malabar/features/catalog/services/product_service.dart';
 import 'package:western_malabar/features/cart/providers/cart_provider.dart';
 import 'package:western_malabar/shared/theme/theme.dart';
 import 'package:western_malabar/shared/theme/wm_gradients.dart';
-import 'package:western_malabar/features/cart/widgets/free_delivery_progress_card.dart';
 import 'package:western_malabar/shared/widgets/product_card.dart';
+import 'package:western_malabar/shared/widgets/wm_product_image.dart';
 
 class CartScreen extends ConsumerWidget {
   const CartScreen({super.key});
@@ -29,6 +30,10 @@ class CartScreen extends ConsumerWidget {
     final unlockedFreeDelivery = pricing.unlockedFreeDelivery;
     final appliedDeliveryFeeCents = pricing.deliveryFeeCents;
     final totalCents = pricing.totalCents;
+    final hasInvalidPricedItems = cartItems.any((e) {
+      final cents = e.product.salePriceCents ?? e.product.priceCents ?? 0;
+      return cents <= 0;
+    });
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -54,7 +59,13 @@ class CartScreen extends ConsumerWidget {
                             unlockedFreeDelivery: unlockedFreeDelivery,
                             freeDeliveryThresholdCents:
                                 pricing.freeDeliveryThresholdCents,
-                            onCheckout: () {
+                            hasInvalidPricedItems: hasInvalidPricedItems,
+                            onCheckout: () async {
+                              final canContinue =
+                                  await requireCheckoutLogin(context);
+                              if (!canContinue) return;
+
+                              if (!context.mounted) return;
                               Navigator.of(context).push(
                                 MaterialPageRoute<void>(
                                   builder: (_) => const CheckoutScreen(),
@@ -376,6 +387,7 @@ class _CartItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasBrand = (brandName ?? '').trim().isNotEmpty;
+    final hasValidPrice = unitCents > 0;
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -433,11 +445,14 @@ class _CartItemCard extends StatelessWidget {
                   runSpacing: 4,
                   children: [
                     Text(
-                      '${_money(unitCents)} each',
-                      style: const TextStyle(
-                        color: Colors.black54,
+                      hasValidPrice
+                          ? '${_money(unitCents)} each'
+                          : 'Price unavailable',
+                      style: TextStyle(
+                        color:
+                            hasValidPrice ? Colors.black54 : Colors.redAccent,
                         fontWeight: FontWeight.w700,
-                        fontSize: 12.5,
+                        fontSize: 13,
                       ),
                     ),
                     Container(
@@ -449,9 +464,13 @@ class _CartItemCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Line total ${_money(lineTotalCents)}',
-                      style: const TextStyle(
-                        color: WMTheme.royalPurple,
+                      hasValidPrice
+                          ? 'Line total ${_money(lineTotalCents)}'
+                          : 'Unavailable',
+                      style: TextStyle(
+                        color: hasValidPrice
+                            ? WMTheme.royalPurple
+                            : Colors.redAccent,
                         fontWeight: FontWeight.w900,
                         fontSize: 13,
                       ),
@@ -509,36 +528,12 @@ class _CartItemImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = imageUrl != null && imageUrl!.trim().isNotEmpty;
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        width: 86,
-        height: 86,
-        color: const Color(0xFFF5F2F8),
-        child: hasImage
-            ? Image.network(
-                imageUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) {
-                  return const Center(
-                    child: Icon(
-                      Icons.broken_image_outlined,
-                      color: Colors.black26,
-                      size: 28,
-                    ),
-                  );
-                },
-              )
-            : const Center(
-                child: Icon(
-                  Icons.image_outlined,
-                  color: Colors.black26,
-                  size: 28,
-                ),
-              ),
-      ),
+    return WmProductImage(
+      imageUrl: imageUrl,
+      width: 86,
+      height: 86,
+      borderRadius: 14,
+      placeholderIcon: Icons.image_outlined,
     );
   }
 }
@@ -632,6 +627,7 @@ class _CartTopSummaryCard extends StatelessWidget {
     required this.totalCents,
     required this.unlockedFreeDelivery,
     required this.freeDeliveryThresholdCents,
+    required this.hasInvalidPricedItems,
     required this.onCheckout,
   });
 
@@ -641,6 +637,7 @@ class _CartTopSummaryCard extends StatelessWidget {
   final int totalCents;
   final bool unlockedFreeDelivery;
   final int freeDeliveryThresholdCents;
+  final bool hasInvalidPricedItems;
   final VoidCallback onCheckout;
 
   String _money(int cents) => '£${(cents / 100).toStringAsFixed(2)}';
@@ -682,10 +679,21 @@ class _CartTopSummaryCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
+          if (hasInvalidPricedItems) ...[
+            const Text(
+              'Some items in your basket need price correction before checkout',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: Colors.redAccent,
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: onCheckout,
+              onPressed: hasInvalidPricedItems ? null : onCheckout,
               style: ElevatedButton.styleFrom(
                 backgroundColor: WMTheme.royalPurple,
                 foregroundColor: Colors.white,
@@ -826,6 +834,10 @@ class _YouMayAlsoLikeSectionState
               ratingCount: p.ratingCount,
               categoryName: null,
               categorySlug: null,
+              isFrozen: p.isFrozen,
+              barcode: p.barcode,
+              sellerId: p.sellerId,
+              sellerBasePriceCents: p.sellerBasePriceCents,
             ),
           )
           .take(8)
@@ -955,5 +967,3 @@ class _YouMayAlsoLikeSectionState
     );
   }
 }
-
-

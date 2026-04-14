@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../services/product_service.dart';
-import '../utils/debounce.dart';
+import 'package:western_malabar/features/catalog/services/product_service.dart';
+import 'package:western_malabar/shared/utils/debounce.dart';
 
 /// ─────────────────────────────────────────────────────────────
 /// Search Page State – Full pagination + Riverpod integration
@@ -156,7 +156,3 @@ class SearchPageController extends StateNotifier<SearchPageState> {
     super.dispose();
   }
 }
-
-
-
-

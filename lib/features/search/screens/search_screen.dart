@@ -1,8 +1,9 @@
 // lib/screens/customer/search_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../state/search_page_provider.dart';
+import 'package:western_malabar/features/search/providers/search_page_provider.dart';
 import 'package:western_malabar/features/catalog/services/product_service.dart';
+import 'package:western_malabar/shared/widgets/wm_product_image.dart';
 
 /// ─────────────────────────────────────────────────────────────
 /// Full-featured Search Screen with:
@@ -218,25 +219,13 @@ class _SuggestionsOverlay extends StatelessWidget {
               final p = suggestions[i];
               return ListTile(
                 dense: true,
-                leading: p.firstImageUrl == null
-                    ? const CircleAvatar(
-                        backgroundColor: Color(0xFFEDE7F6),
-                        child: Icon(Icons.search, color: Color(0xFF5A2D82)),
-                      )
-                    : ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Image.network(
-                          p.firstImageUrl!,
-                          width: 44,
-                          height: 44,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const CircleAvatar(
-                            backgroundColor: Color(0xFFEDE7F6),
-                            child: Icon(Icons.image,
-                                color: Color(0xFF5A2D82), size: 20),
-                          ),
-                        ),
-                      ),
+                leading: WmProductImage(
+                  imageUrl: p.firstImageUrl,
+                  width: 44,
+                  height: 44,
+                  borderRadius: 10,
+                  placeholderIcon: Icons.search,
+                ),
                 title: Text(
                   p.name,
                   maxLines: 1,
@@ -335,7 +324,7 @@ class _ResultsGrid extends StatelessWidget {
               crossAxisCount: 2,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
-              childAspectRatio: .78,
+              childAspectRatio: 0.60,
             ),
             delegate: SliverChildBuilderDelegate(
               (context, i) => _ResultTile(p: items[i]),
@@ -405,24 +394,13 @@ class _ResultTile extends StatelessWidget {
               child: ClipRRect(
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(18)),
-                child: p.firstImageUrl == null
-                    ? Container(
-                        color: const Color(0xFFF1F1F4),
-                        alignment: Alignment.center,
-                        child: const Icon(Icons.image,
-                            size: 44, color: Colors.black26),
-                      )
-                    : Image.network(
-                        p.firstImageUrl!,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        errorBuilder: (_, __, ___) => Container(
-                          color: const Color(0xFFF1F1F4),
-                          alignment: Alignment.center,
-                          child: const Icon(Icons.broken_image,
-                              size: 44, color: Colors.black26),
-                        ),
-                      ),
+                child: WmProductImage(
+                  imageUrl: p.firstImageUrl,
+                  width: double.infinity,
+                  height: 180,
+                  borderRadius: 0,
+                  placeholderIcon: Icons.image,
+                ),
               ),
             ),
             Padding(
@@ -471,7 +449,7 @@ class _ResultsSkeleton extends StatelessWidget {
         crossAxisCount: 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: .78,
+        childAspectRatio: 0.60,
       ),
       itemBuilder: (_, __) => Container(
         decoration: BoxDecoration(
@@ -521,7 +499,3 @@ class _EmptyState extends StatelessWidget {
     );
   }
 }
-
-
-
-

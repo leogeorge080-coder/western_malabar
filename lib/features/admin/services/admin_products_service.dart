@@ -1,6 +1,8 @@
 import 'dart:io';
 
-import 'package:image_picker/image_picker.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:western_malabar/features/admin/models/admin_product_edit_model.dart';
 
@@ -20,7 +22,14 @@ class AdminProductsService {
           description,
           is_active,
           is_frozen,
-          barcode
+          barcode,
+          seller_base_price_cents,
+          is_weekly_deal,
+          deal_price_cents,
+          deal_starts_at,
+          deal_ends_at,
+          deal_badge_text,
+          product_variants(id, price_cents, sale_price_cents)
         ''').order('name', ascending: true);
 
     return (rows as List)
@@ -39,10 +48,26 @@ class AdminProductsService {
           description,
           is_active,
           is_frozen,
-          barcode
+          barcode,
+          seller_base_price_cents,
+          is_weekly_deal,
+          deal_price_cents,
+          deal_starts_at,
+          deal_ends_at,
+          deal_badge_text,
+          product_variants(id, price_cents, sale_price_cents)
         ''').eq('id', productId).single();
 
     return AdminProductEditModel.fromMap(row);
+  }
+
+  Future<void> setProductActiveStatus({
+    required String productId,
+    required bool isActive,
+  }) async {
+    await supabase
+        .from('products')
+        .update({'is_active': isActive}).eq('id', productId);
   }
 
   Future<List<AdminBrandOption>> fetchBrands() async {
@@ -71,13 +96,44 @@ class AdminProductsService {
   }
 
   Future<String> uploadProductImage(File file) async {
-    final ext = file.path.split('.').last.toLowerCase();
-    final fileName = 'product_${DateTime.now().millisecondsSinceEpoch}.$ext';
-    final path = 'product-images/$fileName';
+    final compressedFile = await _compressProductImage(file);
 
-    await supabase.storage.from('product-images').upload(path, file);
+    final fileName = 'product_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final storagePath = fileName;
 
-    return supabase.storage.from('product-images').getPublicUrl(path);
+    await supabase.storage.from('product-images').upload(
+          storagePath,
+          compressedFile,
+          fileOptions: const FileOptions(
+            contentType: 'image/jpeg',
+            upsert: false,
+          ),
+        );
+
+    return supabase.storage.from('product-images').getPublicUrl(storagePath);
+  }
+
+  Future<File> _compressProductImage(File file) async {
+    final tempDir = await getTemporaryDirectory();
+    final targetPath = p.join(
+      tempDir.path,
+      'wm_product_${DateTime.now().millisecondsSinceEpoch}.jpg',
+    );
+
+    final result = await FlutterImageCompress.compressAndGetFile(
+      file.absolute.path,
+      targetPath,
+      quality: 80,
+      minWidth: 1400,
+      minHeight: 1400,
+      format: CompressFormat.jpeg,
+    );
+
+    if (result == null) {
+      return file;
+    }
+
+    return File(result.path);
   }
 
   Future<void> updateProduct({
@@ -91,7 +147,26 @@ class AdminProductsService {
     required bool isActive,
     required bool isFrozen,
     String? barcode,
+    required int? priceCents,
+    required int? salePriceCents,
+    required bool isWeeklyDeal,
+    int? dealPriceCents,
+    DateTime? dealStartsAt,
+    DateTime? dealEndsAt,
+    String? dealBadgeText,
   }) async {
+    final cleanedDescription =
+        (description == null || description.trim().isEmpty)
+            ? null
+            : description.trim();
+    final cleanedBarcode =
+        (barcode == null || barcode.trim().isEmpty) ? null : barcode.trim();
+    final cleanedDealBadgeText = !isWeeklyDeal
+        ? null
+        : (dealBadgeText == null || dealBadgeText.trim().isEmpty)
+            ? 'Weekly Deal'
+            : dealBadgeText.trim();
+
     await supabase.from('products').update({
       'name': name,
       'slug': slug,
@@ -99,11 +174,34 @@ class AdminProductsService {
       'category_id':
           (categoryId == null || categoryId.isEmpty) ? null : categoryId,
       'images': images,
-      'description': (description ?? '').trim().isEmpty ? null : description,
+      'description': cleanedDescription,
       'is_active': isActive,
       'is_frozen': isFrozen,
-      'barcode': (barcode ?? '').trim().isEmpty ? null : barcode!.trim(),
+      'barcode': cleanedBarcode,
+      'seller_base_price_cents': priceCents,
+      'is_weekly_deal': isWeeklyDeal,
+      'deal_price_cents': isWeeklyDeal ? dealPriceCents : null,
+      'deal_starts_at': isWeeklyDeal ? dealStartsAt?.toIso8601String() : null,
+      'deal_ends_at': isWeeklyDeal ? dealEndsAt?.toIso8601String() : null,
+      'deal_badge_text': cleanedDealBadgeText,
     }).eq('id', productId);
+
+    final variantRows = await supabase
+        .from('product_variants')
+        .select('id')
+        .eq('product_id', productId)
+        .limit(1);
+
+    if (variantRows.isNotEmpty) {
+      final variantId = variantRows.first['id']?.toString();
+
+      if (variantId != null && variantId.isNotEmpty) {
+        await supabase.from('product_variants').update({
+          'price_cents': priceCents,
+          'sale_price_cents': salePriceCents,
+        }).eq('id', variantId);
+      }
+    }
   }
 
   String buildSlugFromName(String name) {
@@ -116,7 +214,3 @@ class AdminProductsService {
         .replaceAll(RegExp(r'-+'), '-');
   }
 }
-
-
-
-

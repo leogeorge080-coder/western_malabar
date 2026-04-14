@@ -1,4 +1,4 @@
-﻿name: western_malabar
+name: western_malabar
 description: Western Malabar â€“ Customer App (Flutter + Supabase)
 publish_to: "none"
 
@@ -42,9 +42,15 @@ dependencies:
   mobile_scanner: ^7.0.1
   # 🖼️ Image picker for product uploads
   image_picker: ^1.1.2
-  # 🔊 Audio playback for feedback
+  # �️ Image compression for uploads
+  flutter_image_compress: ^2.3.0
+  # 📂 File system path utilities
+  path_provider: ^2.1.4
+  path: ^1.9.0  # 🎯 MIME type detection for uploads
+  mime: ^1.0.6  # �🔊 Audio playback for feedback
   audioplayers: ^6.0.0
-  # Google Maps for location picking
+  # Google authentication
+  google_sign_in: 6.2.1  # Google Maps for location picking
   google_maps_flutter: ^2.5.0
   # Environment variables
   flutter_dotenv: ^5.1.0
@@ -56,6 +62,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_lints: ^4.0.0
   flutter_launcher_icons: ^0.13.1
   flutter_native_splash: ^2.4.1
 

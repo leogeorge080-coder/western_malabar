@@ -1,20 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:western_malabar/features/catalog/models/product_model.dart';
 import 'package:western_malabar/features/cart/widgets/add_to_cart_control.dart';
+import 'package:western_malabar/shared/widgets/wm_product_image.dart';
 
 /// Minimal product type for this grid.
 /// If you already have a model, just map to these fields when you pass [products].
 class WmProduct {
   final String id;
   final String name;
+  final String? brandName;
   final int priceCents; // e.g. 1299 for £12.99
+  final int? salePriceCents;
   final String? imageUrl; // can be null -> shows placeholder
+  final double? avgRating;
+  final int? ratingCount;
+  final String? categoryName;
+  final String? categorySlug;
+  final bool isFrozen;
+  final String? barcode;
+  final String? sellerId;
+  final int? sellerBasePriceCents;
 
   const WmProduct({
     required this.id,
     required this.name,
     required this.priceCents,
+    this.brandName,
+    this.salePriceCents,
     this.imageUrl,
+    this.avgRating,
+    this.ratingCount,
+    this.categoryName,
+    this.categorySlug,
+    this.isFrozen = false,
+    this.barcode,
+    this.sellerId,
+    this.sellerBasePriceCents,
   });
 }
 
@@ -101,9 +122,18 @@ class _ProductTileState extends State<_ProductTile> {
     final productModel = ProductModel(
       id: p.id,
       name: p.name,
+      brandName: p.brandName,
       image: p.imageUrl,
       priceCents: p.priceCents,
-      salePriceCents: null,
+      salePriceCents: p.salePriceCents,
+      avgRating: p.avgRating,
+      ratingCount: p.ratingCount,
+      categoryName: p.categoryName,
+      categorySlug: p.categorySlug,
+      isFrozen: p.isFrozen,
+      barcode: p.barcode,
+      sellerId: p.sellerId,
+      sellerBasePriceCents: p.sellerBasePriceCents,
     );
 
     return Material(
@@ -141,37 +171,13 @@ class _ProductTileState extends State<_ProductTile> {
                         const BorderRadius.vertical(top: Radius.circular(18)),
                     child: SizedBox(
                       width: double.infinity,
-                      child: p.imageUrl == null || p.imageUrl!.isEmpty
-                          ? Container(
-                              color: const Color(0xFFF1F1F4),
-                              alignment: Alignment.center,
-                              child: const Icon(
-                                Icons.image,
-                                size: 48,
-                                color: Colors.black26,
-                              ),
-                            )
-                          : Image.network(
-                              p.imageUrl!,
-                              fit: BoxFit.cover,
-                              loadingBuilder: (context, child, progress) {
-                                if (progress == null) return child;
-                                return const Center(
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                );
-                              },
-                              errorBuilder: (_, __, ___) => Container(
-                                color: const Color(0xFFF1F1F4),
-                                alignment: Alignment.center,
-                                child: const Icon(
-                                  Icons.broken_image_outlined,
-                                  size: 44,
-                                  color: Colors.black26,
-                                ),
-                              ),
-                            ),
+                      child: WmProductImage(
+                        imageUrl: p.imageUrl,
+                        width: double.infinity,
+                        height: 108,
+                        borderRadius: 0,
+                        placeholderIcon: Icons.image,
+                      ),
                     ),
                   ),
                 ),
@@ -223,7 +229,3 @@ String _gbp(int cents) {
   final pounds = cents / 100.0;
   return '£${pounds.toStringAsFixed(2)}';
 }
-
-
-
-

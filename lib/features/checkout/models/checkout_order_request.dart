@@ -1,4 +1,4 @@
-import 'checkout_address.dart';
+import 'package:western_malabar/features/checkout/models/checkout_address.dart';
 
 class CheckoutOrderRequest {
   final CheckoutAddress address;
@@ -19,7 +19,3 @@ class CheckoutOrderRequest {
     required this.totalCents,
   });
 }
-
-
-
-

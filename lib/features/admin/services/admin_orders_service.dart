@@ -27,6 +27,7 @@ class AdminOrdersService {
         id,
         order_number,
         customer_name,
+        customer_email,
         phone,
         address_line1,
         address_line2,
@@ -42,6 +43,7 @@ class AdminOrdersService {
         delivery_status,
         total_cents,
         has_frozen_items,
+        printed_label_count,
         freezer_status,
         created_at,
         out_for_delivery_at,
@@ -58,6 +60,7 @@ class AdminOrdersService {
         id,
         order_number,
         customer_name,
+        customer_email,
         phone,
         address_line1,
         address_line2,
@@ -73,6 +76,7 @@ class AdminOrdersService {
         delivery_status,
         total_cents,
         has_frozen_items,
+        printed_label_count,
         freezer_status,
         created_at,
         out_for_delivery_at,
@@ -80,6 +84,31 @@ class AdminOrdersService {
       ''').eq('id', orderId).single();
 
     return AdminOrderModel.fromMap(row);
+  }
+
+  Future<void> _sendOrderStatusEmail({
+    required String email,
+    required String customerName,
+    required String orderNumber,
+    required String statusTitle,
+    required String statusMessage,
+  }) async {
+    final response = await supabase.functions.invoke(
+      'send-order-status-email',
+      body: {
+        'email': email,
+        'customerName': customerName,
+        'orderNumber': orderNumber,
+        'statusTitle': statusTitle,
+        'statusMessage': statusMessage,
+      },
+    );
+
+    if (response.status != 200) {
+      throw Exception(
+        'Status email failed: ${response.status} ${response.data}',
+      );
+    }
   }
 
   Future<List<AdminOrderItemModel>> fetchOrderItems(String orderId) async {
@@ -130,22 +159,6 @@ class AdminOrdersService {
       );
     }
 
-    final productRows = await supabase
-        .from('products')
-        .select('id, name, barcode, is_frozen')
-        .eq('barcode', cleanBarcode)
-        .limit(1);
-
-    if ((productRows as List).isEmpty) {
-      return BarcodePickResult(
-        success: false,
-        message: 'Barcode not found: $cleanBarcode',
-      );
-    }
-
-    final product = productRows.first as Map<String, dynamic>;
-    final productId = product['id'] as String;
-
     final itemRows = await supabase.from('order_items').select('''
           id,
           order_id,
@@ -154,20 +167,21 @@ class AdminOrdersService {
           qty,
           is_frozen,
           picked_qty,
-          packed_qty
-        ''').eq('order_id', orderId).eq('product_id', productId).limit(1);
+          packed_qty,
+          barcode
+        ''').eq('order_id', orderId).eq('barcode', cleanBarcode).limit(1);
 
     if ((itemRows as List).isEmpty) {
       return const BarcodePickResult(
         success: false,
-        message: 'This item is not part of the current order',
+        message: 'This barcode does not match any item in this order',
       );
     }
 
-    final item = itemRows.first as Map<String, dynamic>;
-    final itemId = item['id'] as String;
-    final qty = item['qty'] as int? ?? 0;
-    final pickedQty = item['picked_qty'] as int? ?? 0;
+    final item = itemRows.first;
+    final itemId = item['id'].toString();
+    final qty = (item['qty'] as num?)?.toInt() ?? 0;
+    final pickedQty = (item['picked_qty'] as num?)?.toInt() ?? 0;
     final isFrozen = item['is_frozen'] as bool? ?? false;
     final productName = (item['product_name'] as String?) ?? 'Unknown item';
 
@@ -188,6 +202,23 @@ class AdminOrdersService {
       'picked_at': DateTime.now().toIso8601String(),
       'picking_status': isComplete ? 'picked' : 'partial',
     }).eq('id', itemId);
+
+    final allItems = await supabase
+        .from('order_items')
+        .select('qty, picked_qty')
+        .eq('order_id', orderId);
+
+    final allPicked = (allItems as List).every((row) {
+      final map = row as Map<String, dynamic>;
+      final qty = (map['qty'] as num?)?.toInt() ?? 0;
+      final picked = (map['picked_qty'] as num?)?.toInt() ?? 0;
+      return picked >= qty;
+    });
+
+    await supabase.from('orders').update({
+      'status': allPicked ? 'picked' : 'picking',
+      'admin_status': allPicked ? 'picked' : 'picking',
+    }).eq('id', orderId);
 
     return BarcodePickResult(
       success: true,
@@ -221,7 +252,7 @@ class AdminOrdersService {
     for (final row in (itemRows as List)) {
       final map = row as Map<String, dynamic>;
       final itemId = map['id'] as String;
-      final qty = map['qty'] as int? ?? 0;
+      final qty = (map['qty'] as num?)?.toInt() ?? 0;
 
       await supabase.from('order_items').update({
         'picking_status': 'packed',
@@ -234,6 +265,12 @@ class AdminOrdersService {
   Future<void> markOrderOutForDelivery({
     required String orderId,
   }) async {
+    final order = await supabase
+        .from('orders')
+        .select('order_number, customer_name, customer_email')
+        .eq('id', orderId)
+        .single();
+
     final now = DateTime.now().toIso8601String();
 
     await supabase.from('orders').update({
@@ -241,11 +278,42 @@ class AdminOrdersService {
       'status': 'out_for_delivery',
       'out_for_delivery_at': now,
     }).eq('id', orderId);
+
+    final email = (order['customer_email'] as String?)?.trim();
+    final customerName =
+        ((order['customer_name'] as String?) ?? '').trim().isEmpty
+            ? 'Customer'
+            : (order['customer_name'] as String).trim();
+    final orderNumber =
+        ((order['order_number'] as String?) ?? '').trim().isEmpty
+            ? orderId
+            : (order['order_number'] as String).trim();
+
+    if (email != null && email.isNotEmpty) {
+      try {
+        await _sendOrderStatusEmail(
+          email: email,
+          customerName: customerName,
+          orderNumber: orderNumber,
+          statusTitle: 'Out for delivery',
+          statusMessage:
+              'Your order is now out for delivery and should reach you soon.',
+        );
+      } catch (e) {
+        // Do not block delivery flow if email fails.
+      }
+    }
   }
 
   Future<void> markOrderDelivered({
     required String orderId,
   }) async {
+    final order = await supabase
+        .from('orders')
+        .select('order_number, customer_name, customer_email')
+        .eq('id', orderId)
+        .single();
+
     final now = DateTime.now().toIso8601String();
 
     await supabase.from('orders').update({
@@ -254,13 +322,34 @@ class AdminOrdersService {
       'admin_status': 'delivered',
       'delivered_at': now,
     }).eq('id', orderId);
+
+    final email = (order['customer_email'] as String?)?.trim();
+    final customerName =
+        ((order['customer_name'] as String?) ?? '').trim().isEmpty
+            ? 'Customer'
+            : (order['customer_name'] as String).trim();
+    final orderNumber =
+        ((order['order_number'] as String?) ?? '').trim().isEmpty
+            ? orderId
+            : (order['order_number'] as String).trim();
+
+    if (email != null && email.isNotEmpty) {
+      try {
+        await _sendOrderStatusEmail(
+          email: email,
+          customerName: customerName,
+          orderNumber: orderNumber,
+          statusTitle: 'Order delivered',
+          statusMessage:
+              'Your order has been delivered successfully. Thank you for shopping with Malabar Hub.',
+        );
+      } catch (e) {
+        // Do not block delivery flow if email fails.
+      }
+    }
   }
 }
 
 final adminOrdersServiceProvider = Provider<AdminOrdersService>((ref) {
   return AdminOrdersService(Supabase.instance.client);
 });
-
-
-
-

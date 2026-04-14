@@ -1,0 +1,39 @@
+{
+  "name": "western_malabar",
+  "version": "1.0.0",
+  "description": "A new Flutter project.",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/leogeorge080-coder/western_malabar.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/leogeorge080-coder/western_malabar/issues"
+  },
+  "homepage": "https://github.com/leogeorge080-coder/western_malabar#readme",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.103.0",
+    "body-parser": "^2.2.2",
+    "canvas": "^3.2.3",
+    "cors": "^2.8.6",
+    "escpos": "^3.0.0-alpha.6",
+    "escpos-usb": "^3.0.0-alpha.4",
+    "express": "^5.2.1",
+    "node-thermal-printer": "^4.6.0",
+    "pdf-to-printer": "^5.7.0",
+    "pdfkit": "^0.18.0",
+    "qrcode": "^1.5.4"
+  }
+}

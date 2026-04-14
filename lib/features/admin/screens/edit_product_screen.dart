@@ -28,6 +28,10 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   final _slugController = TextEditingController();
   final _barcodeController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _priceController = TextEditingController();
+  final _salePriceController = TextEditingController();
+  final _dealPriceController = TextEditingController();
+  final _dealBadgeController = TextEditingController();
 
   final ImagePicker _picker = ImagePicker();
 
@@ -35,6 +39,10 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   bool _saving = false;
   bool _isFrozen = false;
   bool _isActive = true;
+  bool _isWeeklyDeal = false;
+
+  DateTime? _dealStartsAt;
+  DateTime? _dealEndsAt;
 
   String? _selectedBrandId;
   String? _selectedCategoryId;
@@ -46,6 +54,10 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     _slugController.dispose();
     _barcodeController.dispose();
     _descriptionController.dispose();
+    _priceController.dispose();
+    _salePriceController.dispose();
+    _dealPriceController.dispose();
+    _dealBadgeController.dispose();
     super.dispose();
   }
 
@@ -56,13 +68,63 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     _slugController.text = product.slug;
     _barcodeController.text = product.barcode ?? '';
     _descriptionController.text = product.description ?? '';
+    _priceController.text =
+        product.priceCents != null && product.priceCents! > 0
+            ? (product.priceCents! / 100).toStringAsFixed(2)
+            : '';
+    _salePriceController.text =
+        product.salePriceCents != null && product.salePriceCents! > 0
+            ? (product.salePriceCents! / 100).toStringAsFixed(2)
+            : '';
+
     _selectedBrandId = product.brandId;
     _selectedCategoryId = product.categoryId;
     _images = List<String>.from(product.images);
     _isFrozen = product.isFrozen;
     _isActive = product.isActive;
+    _isWeeklyDeal = product.isWeeklyDeal;
+
+    _dealPriceController.text = product.dealPriceCents != null
+        ? (product.dealPriceCents! / 100).toStringAsFixed(2)
+        : '';
+    _dealBadgeController.text = (product.dealBadgeText ?? 'Weekly Deal').trim();
+
+    _dealStartsAt = product.dealStartsAt;
+    _dealEndsAt = product.dealEndsAt;
 
     _initialized = true;
+  }
+
+  Future<void> _pickDealStartDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _dealStartsAt ?? now,
+      firstDate: now.subtract(const Duration(days: 30)),
+      lastDate: now.add(const Duration(days: 365)),
+    );
+    if (picked == null) return;
+    setState(() => _dealStartsAt = picked);
+  }
+
+  Future<void> _pickDealEndDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _dealEndsAt ?? _dealStartsAt ?? now,
+      firstDate: _dealStartsAt ?? now.subtract(const Duration(days: 30)),
+      lastDate: now.add(const Duration(days: 365)),
+    );
+    if (picked == null) return;
+    setState(() => _dealEndsAt = picked);
+  }
+
+  String _formatDate(DateTime? value) {
+    if (value == null) return 'Not set';
+    final y = value.year.toString().padLeft(4, '0');
+    final m = value.month.toString().padLeft(2, '0');
+    final d = value.day.toString().padLeft(2, '0');
+    return '$d/$m/$y';
   }
 
   Future<void> _pickImageFromCamera() async {
@@ -72,7 +134,6 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     );
 
     if (file == null || !mounted) return;
-
     await _uploadPickedImage(File(file.path));
   }
 
@@ -83,7 +144,6 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     );
 
     if (file == null || !mounted) return;
-
     await _uploadPickedImage(File(file.path));
   }
 
@@ -139,14 +199,81 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final service = ref.read(adminProductsServiceProvider);
+
+    final computedSlug = _slugController.text.trim().isEmpty
+        ? service.buildSlugFromName(_nameController.text)
+        : _slugController.text.trim();
+
+    final baseRaw = _priceController.text.trim();
+    final baseValue = double.tryParse(baseRaw);
+
+    if (baseRaw.isEmpty || baseValue == null || baseValue <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Enter a valid base price'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final parsedBasePriceCents = (baseValue * 100).round();
+
+    int? parsedSalePriceCents;
+    final saleRaw = _salePriceController.text.trim();
+    if (saleRaw.isNotEmpty) {
+      final saleValue = double.tryParse(saleRaw);
+      if (saleValue == null || saleValue <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Enter a valid sale price'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      parsedSalePriceCents = (saleValue * 100).round();
+      if (parsedSalePriceCents >= parsedBasePriceCents) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Sale price must be lower than base price'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
+    int? parsedDealPriceCents;
+    if (_isWeeklyDeal) {
+      final dealRaw = _dealPriceController.text.trim();
+      final dealValue = double.tryParse(dealRaw);
+      if (dealValue == null || dealValue <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Enter a valid weekly deal price'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      parsedDealPriceCents = (dealValue * 100).round();
+      if (parsedDealPriceCents >= parsedBasePriceCents) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Deal price must be lower than base price'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
     try {
       setState(() => _saving = true);
-
-      final service = ref.read(adminProductsServiceProvider);
-
-      final computedSlug = _slugController.text.trim().isEmpty
-          ? service.buildSlugFromName(_nameController.text)
-          : _slugController.text.trim();
 
       await service.updateProduct(
         productId: widget.productId,
@@ -159,6 +286,13 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
         isActive: _isActive,
         isFrozen: _isFrozen,
         barcode: _barcodeController.text.trim(),
+        priceCents: parsedBasePriceCents,
+        salePriceCents: parsedSalePriceCents,
+        isWeeklyDeal: _isWeeklyDeal,
+        dealPriceCents: parsedDealPriceCents,
+        dealStartsAt: _isWeeklyDeal ? _dealStartsAt : null,
+        dealEndsAt: _isWeeklyDeal ? _dealEndsAt : null,
+        dealBadgeText: _isWeeklyDeal ? _dealBadgeController.text.trim() : null,
       );
 
       if (!mounted) return;
@@ -172,6 +306,8 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
           backgroundColor: Colors.green,
         ),
       );
+
+      Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
 
@@ -377,16 +513,6 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                                             }
                                             return null;
                                           },
-                                          onChanged: (value) {
-                                            if (_slugController.text
-                                                .trim()
-                                                .isEmpty) {
-                                              _slugController.text = ref
-                                                  .read(
-                                                      adminProductsServiceProvider)
-                                                  .buildSlugFromName(value);
-                                            }
-                                          },
                                         ),
                                         const SizedBox(height: 12),
                                         _AppTextField(
@@ -407,7 +533,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                                               : null,
                                           items: brands
                                               .map(
-                                                (e) => DropdownMenuItem(
+                                                (e) => DropdownMenuItem<String>(
                                                   value: e.id,
                                                   child: Text(e.name),
                                                 ),
@@ -437,7 +563,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                                               : null,
                                           items: categories
                                               .map(
-                                                (e) => DropdownMenuItem(
+                                                (e) => DropdownMenuItem<String>(
                                                   value: e.id,
                                                   child: Text(e.name),
                                                 ),
@@ -498,6 +624,186 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                                             ),
                                           ),
                                         ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  _SectionCard(
+                                    title: 'Pricing',
+                                    child: Column(
+                                      children: [
+                                        _AppTextField(
+                                          controller: _priceController,
+                                          label: 'Base Price (£)',
+                                          keyboardType: const TextInputType
+                                              .numberWithOptions(
+                                            decimal: true,
+                                          ),
+                                          validator: (value) {
+                                            final raw = (value ?? '').trim();
+                                            if (raw.isEmpty) {
+                                              return 'Base price is required';
+                                            }
+                                            final parsed = double.tryParse(raw);
+                                            if (parsed == null || parsed <= 0) {
+                                              return 'Enter a valid base price';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                        const SizedBox(height: 12),
+                                        _AppTextField(
+                                          controller: _salePriceController,
+                                          label: 'Sale Price (£) — optional',
+                                          keyboardType: const TextInputType
+                                              .numberWithOptions(
+                                            decimal: true,
+                                          ),
+                                          validator: (value) {
+                                            final raw = (value ?? '').trim();
+                                            if (raw.isEmpty) return null;
+
+                                            final sale = double.tryParse(raw);
+                                            final base = double.tryParse(
+                                              _priceController.text.trim(),
+                                            );
+
+                                            if (sale == null || sale <= 0) {
+                                              return 'Enter a valid sale price';
+                                            }
+                                            if (base != null && sale >= base) {
+                                              return 'Sale price must be lower than base price';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                        const SizedBox(height: 10),
+                                        const Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            'Weekly deal below overrides sale price while active.',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.black54,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  _SectionCard(
+                                    title: 'Deal Settings',
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        SwitchListTile(
+                                          value: _isWeeklyDeal,
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _isWeeklyDeal = value;
+                                              if (_dealBadgeController.text
+                                                  .trim()
+                                                  .isEmpty) {
+                                                _dealBadgeController.text =
+                                                    'Weekly Deal';
+                                              }
+                                            });
+                                          },
+                                          activeColor: WMTheme.royalPurple,
+                                          contentPadding: EdgeInsets.zero,
+                                          title: const Text(
+                                            'Enable Weekly Deal',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                          subtitle: const Text(
+                                            'Show this product in Weekly Deals on home screen',
+                                          ),
+                                        ),
+                                        if (_isWeeklyDeal) ...[
+                                          const SizedBox(height: 12),
+                                          _AppTextField(
+                                            controller: _dealPriceController,
+                                            label: 'Deal Price (£)',
+                                            keyboardType: const TextInputType
+                                                .numberWithOptions(
+                                              decimal: true,
+                                            ),
+                                            validator: (_) {
+                                              if (!_isWeeklyDeal) return null;
+
+                                              final raw = _dealPriceController
+                                                  .text
+                                                  .trim();
+                                              if (raw.isEmpty) {
+                                                return 'Deal price is required';
+                                              }
+                                              final value =
+                                                  double.tryParse(raw);
+                                              if (value == null || value <= 0) {
+                                                return 'Enter a valid deal price';
+                                              }
+                                              return null;
+                                            },
+                                          ),
+                                          const SizedBox(height: 12),
+                                          _AppTextField(
+                                            controller: _dealBadgeController,
+                                            label: 'Deal Badge Text',
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: OutlinedButton.icon(
+                                                  onPressed: _pickDealStartDate,
+                                                  icon: const Icon(
+                                                    Icons.date_range_rounded,
+                                                  ),
+                                                  label: Text(
+                                                    'Start: ${_formatDate(_dealStartsAt)}',
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 10),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: OutlinedButton.icon(
+                                                  onPressed: _pickDealEndDate,
+                                                  icon: const Icon(
+                                                    Icons
+                                                        .event_available_rounded,
+                                                  ),
+                                                  label: Text(
+                                                    'End: ${_formatDate(_dealEndsAt)}',
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 10),
+                                          Row(
+                                            children: [
+                                              TextButton(
+                                                onPressed: () {
+                                                  setState(() {
+                                                    _dealStartsAt = null;
+                                                    _dealEndsAt = null;
+                                                  });
+                                                },
+                                                child:
+                                                    const Text('Clear Dates'),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
                                       ],
                                     ),
                                   ),
@@ -630,14 +936,14 @@ class _AppTextField extends StatelessWidget {
   final String label;
   final String? Function(String?)? validator;
   final int maxLines;
-  final void Function(String)? onChanged;
+  final TextInputType? keyboardType;
 
   const _AppTextField({
     required this.controller,
     required this.label,
     this.validator,
     this.maxLines = 1,
-    this.onChanged,
+    this.keyboardType,
   });
 
   @override
@@ -646,7 +952,7 @@ class _AppTextField extends StatelessWidget {
       controller: controller,
       validator: validator,
       maxLines: maxLines,
-      onChanged: onChanged,
+      keyboardType: keyboardType,
       decoration: InputDecoration(
         labelText: label,
         filled: true,
@@ -663,7 +969,3 @@ class _AppTextField extends StatelessWidget {
     );
   }
 }
-
-
-
-

@@ -164,7 +164,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
           ProductGridSkeleton(
             itemCount: 6,
             crossAxisCount: 2,
-            childAspectRatio: 0.65,
+            childAspectRatio: 0.60,
           ),
         ],
       ),
@@ -177,7 +177,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
       padding: const EdgeInsets.all(12),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.65,
+        childAspectRatio: 0.60,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
       ),
@@ -328,7 +328,3 @@ class _ProductResultCard extends StatelessWidget {
     );
   }
 }
-
-
-
-

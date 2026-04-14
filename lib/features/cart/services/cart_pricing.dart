@@ -1,58 +1,59 @@
 import 'package:western_malabar/features/cart/providers/cart_provider.dart';
 
-class CartPricingBreakdown {
-  final int subtotalCents;
-  final int deliveryFeeCents;
-  final int totalCents;
-  final bool unlockedFreeDelivery;
-  final int freeDeliveryThresholdCents;
-
-  const CartPricingBreakdown({
-    required this.subtotalCents,
-    required this.deliveryFeeCents,
-    required this.totalCents,
-    required this.unlockedFreeDelivery,
-    required this.freeDeliveryThresholdCents,
-  });
-}
-
 class CartPricing {
-  static const int freeDeliveryThresholdCents = 2000; // £20
-  static const int standardDeliveryFeeCents = 250; // £2.50
+  final int subtotalCents;
+  final int eligibleSubtotalCents;
+  final int deliveryFeeCents;
+  final int rewardDiscountCents;
+  final int totalCents;
+  final int freeDeliveryThresholdCents;
+  final bool unlockedFreeDelivery;
 
-  static int subtotalFromItems(List<CartItem> items) {
-    int sum = 0;
-    for (final e in items) {
-      final cents = e.product.salePriceCents ?? e.product.priceCents ?? 0;
-      sum += cents * e.qty;
-    }
-    return sum;
-  }
+  const CartPricing({
+    required this.subtotalCents,
+    required this.eligibleSubtotalCents,
+    required this.deliveryFeeCents,
+    required this.rewardDiscountCents,
+    required this.totalCents,
+    required this.freeDeliveryThresholdCents,
+    required this.unlockedFreeDelivery,
+  });
 
-  static CartPricingBreakdown fromItems(
+  factory CartPricing.fromItems(
     List<CartItem> items, {
     required String deliveryType,
+    int rewardDiscountCents = 0,
+    int freeDeliveryThresholdCents = 2000,
   }) {
-    final subtotalCents = subtotalFromItems(items);
+    final subtotal = items.fold<int>(
+      0,
+      (sum, item) {
+        final unitPrice =
+            item.product.salePriceCents ?? item.product.priceCents ?? 0;
+        return sum + (unitPrice * item.qty);
+      },
+    );
 
-    final isHomeDelivery = deliveryType == 'home_delivery';
-    final unlockedFreeDelivery =
-        isHomeDelivery && subtotalCents >= freeDeliveryThresholdCents;
+    final eligibleSubtotal = subtotal;
 
-    final deliveryFeeCents = !isHomeDelivery
-        ? 0
-        : (unlockedFreeDelivery ? 0 : standardDeliveryFeeCents);
+    final unlockedFreeDelivery = deliveryType == 'home_delivery' &&
+        subtotal >= freeDeliveryThresholdCents;
 
-    final totalCents = subtotalCents + deliveryFeeCents;
+    final deliveryFee =
+        deliveryType == 'home_delivery' ? (unlockedFreeDelivery ? 0 : 250) : 0;
 
-    return CartPricingBreakdown(
-      subtotalCents: subtotalCents,
-      deliveryFeeCents: deliveryFeeCents,
-      totalCents: totalCents,
-      unlockedFreeDelivery: unlockedFreeDelivery,
+    final safeRewardDiscount = rewardDiscountCents.clamp(0, eligibleSubtotal);
+    final total =
+        (subtotal + deliveryFee - safeRewardDiscount).clamp(0, 1 << 31);
+
+    return CartPricing(
+      subtotalCents: subtotal,
+      eligibleSubtotalCents: eligibleSubtotal,
+      deliveryFeeCents: deliveryFee,
+      rewardDiscountCents: safeRewardDiscount,
+      totalCents: total,
       freeDeliveryThresholdCents: freeDeliveryThresholdCents,
+      unlockedFreeDelivery: unlockedFreeDelivery,
     );
   }
 }
-
-

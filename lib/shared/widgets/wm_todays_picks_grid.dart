@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:western_malabar/shared/widgets/wm_product_image.dart';
 
 /// Minimal product type for this grid.
 /// If you already have a model, just map to these fields.
@@ -134,39 +135,13 @@ class _ProductTileState extends State<_ProductTile> {
                         const BorderRadius.vertical(top: Radius.circular(18)),
                     child: SizedBox(
                       width: double.infinity,
-                      child: (p.imageUrl == null || p.imageUrl!.isEmpty)
-                          ? Container(
-                              color: const Color(0xFFF1F1F4),
-                              alignment: Alignment.center,
-                              child: const Icon(
-                                Icons.image,
-                                size: 46,
-                                color: Colors.black26,
-                              ),
-                            )
-                          : Image.network(
-                              p.imageUrl!,
-                              fit: BoxFit.cover,
-                              loadingBuilder:
-                                  (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-
-                                return const Center(
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                );
-                              },
-                              errorBuilder: (_, __, ___) => Container(
-                                color: const Color(0xFFF1F1F4),
-                                alignment: Alignment.center,
-                                child: const Icon(
-                                  Icons.broken_image_outlined,
-                                  size: 44,
-                                  color: Colors.black26,
-                                ),
-                              ),
-                            ),
+                      child: WmProductImage(
+                        imageUrl: p.imageUrl,
+                        width: double.infinity,
+                        height: 108,
+                        borderRadius: 0,
+                        placeholderIcon: Icons.image,
+                      ),
                     ),
                   ),
                 ),
@@ -271,7 +246,3 @@ String _gbp(int cents) {
   final pounds = cents / 100.0;
   return '£${pounds.toStringAsFixed(2)}';
 }
-
-
-
-

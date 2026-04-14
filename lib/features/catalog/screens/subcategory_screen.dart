@@ -5,7 +5,7 @@ import 'package:western_malabar/features/search/screens/global_product_search_sc
 import 'package:western_malabar/features/catalog/services/category_service.dart';
 import 'package:western_malabar/shared/theme/wm_gradients.dart';
 import 'package:western_malabar/features/cart/widgets/sticky_cart_bar.dart';
-import 'subcategory_products_screen.dart';
+import 'package:western_malabar/features/catalog/screens/subcategory_products_screen.dart';
 
 class SubcategoryScreen extends ConsumerStatefulWidget {
   const SubcategoryScreen({
@@ -497,7 +497,3 @@ class _ShimmerBoxState extends State<_ShimmerBox>
     );
   }
 }
-
-
-
-

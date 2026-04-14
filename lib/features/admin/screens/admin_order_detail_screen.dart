@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:western_malabar/core/feedback/scan_feedback.dart';
 import 'package:western_malabar/features/admin/models/admin_order_item_model.dart';
 import 'package:western_malabar/features/admin/models/admin_order_model.dart';
@@ -9,6 +10,7 @@ import 'package:western_malabar/features/admin/screens/order_qr_scan_screen.dart
 import 'package:western_malabar/features/admin/services/admin_orders_service.dart';
 import 'package:western_malabar/shared/theme/theme.dart';
 import 'package:western_malabar/shared/theme/wm_gradients.dart';
+import 'package:western_malabar/shared/widgets/wm_product_image.dart';
 
 class AdminOrderDetailScreen extends ConsumerStatefulWidget {
   final String orderId;
@@ -44,6 +46,275 @@ class _AdminOrderDetailScreenState
     setState(() {
       _bagQrVerified = false;
     });
+  }
+
+  Future<void> _runBarcodeVerification({
+    required BuildContext context,
+    required WidgetRef ref,
+    required String rawBarcode,
+  }) async {
+    final barcode = rawBarcode.trim();
+    if (barcode.isEmpty) return;
+
+    try {
+      final result = await ref
+          .read(adminOrdersServiceProvider)
+          .verifyManualBarcodeForOrder(
+            orderId: orderId,
+            barcode: barcode,
+          );
+
+      if (!mounted) return;
+
+      _setFlash(result.success ? Colors.green : Colors.red);
+
+      if (result.success) {
+        await ScanFeedback.success();
+      } else {
+        await ScanFeedback.error();
+      }
+
+      if (!mounted) return;
+
+      ref.invalidate(adminOrderItemsProvider(orderId));
+      ref.invalidate(adminOrderProvider(orderId));
+      ref.invalidate(adminOrdersProvider);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.message),
+          backgroundColor: result.success ? Colors.green : Colors.red,
+        ),
+      );
+    } catch (e) {
+      _setFlash(Colors.red);
+      await ScanFeedback.error();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Barcode verification failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _scanItemBarcode(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final scannedValue = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => const _ItemBarcodeScanScreen(),
+      ),
+    );
+
+    if (!mounted) return;
+    if (scannedValue == null || scannedValue.trim().isEmpty) return;
+
+    await _runBarcodeVerification(
+      context: context,
+      ref: ref,
+      rawBarcode: scannedValue,
+    );
+  }
+
+  Future<void> _showManualBarcodeDialog(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final barcode = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => const _ManualCodeEntryScreen(
+          title: 'Enter Item Barcode',
+          hintText: 'e.g. 9000000000001',
+          keyboardType: TextInputType.number,
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    if (!mounted) return;
+    if (barcode == null || barcode.trim().isEmpty) return;
+
+    await _runBarcodeVerification(
+      context: context,
+      ref: ref,
+      rawBarcode: barcode,
+    );
+  }
+
+  Future<void> _showHelpOptionsSheet(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Center(
+                  child: SizedBox(
+                    width: 42,
+                    child: Divider(thickness: 4),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Item Picking Help',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Scan the barcode printed on the product pack. If scanning is not possible, enter the barcode manually.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black54,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      _scanItemBarcode(context, ref);
+                    },
+                    icon: const Icon(Icons.qr_code_scanner_rounded),
+                    label: const Text(
+                      'Scan Barcode',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: WMTheme.royalPurple,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(52),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      _showManualBarcodeDialog(context, ref);
+                    },
+                    icon: const Icon(Icons.keyboard_rounded),
+                    label: const Text(
+                      'Enter Barcode Manually',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(52),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _scanOrderQrAndPreparePack(
+    BuildContext context,
+    WidgetRef ref,
+    AdminOrderModel order,
+  ) async {
+    final isAlreadyPacked = (order.status ?? '').toLowerCase() == 'packed' ||
+        (order.adminStatus ?? '').toLowerCase() == 'packed' ||
+        (order.adminStatus ?? '').toLowerCase() == 'frozen_staged';
+
+    if (isAlreadyPacked) {
+      await ScanFeedback.error();
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('This order is already packed'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    final scannedValue = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => const OrderQrScanScreen(),
+      ),
+    );
+
+    if (scannedValue == null || scannedValue.trim().isEmpty) {
+      return;
+    }
+
+    final scanned = scannedValue.trim();
+    final baseQr = 'WM|ORDER|${order.id}|${order.orderNumber}';
+    final normalBagQr = '$baseQr-N';
+    final frozenBagQr = '$baseQr-F';
+
+    final matches =
+        scanned == baseQr || scanned == normalBagQr || scanned == frozenBagQr;
+
+    if (!matches) {
+      _setFlash(Colors.red);
+      await ScanFeedback.error();
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Scanned QR does not match this order'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    _setFlash(Colors.green);
+    await ScanFeedback.success();
+
+    if (!mounted) return;
+
+    setState(() {
+      _bagQrVerified = true;
+    });
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bag QR verified. Confirm pack to continue.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
 
   @override
@@ -85,8 +356,8 @@ class _AdminOrderDetailScreenState
                         IconButton(
                           onPressed: _bagQrVerified
                               ? null
-                              : () => _showManualBarcodeDialog(context, ref),
-                          icon: const Icon(Icons.qr_code_2_rounded),
+                              : () => _showHelpOptionsSheet(context, ref),
+                          icon: const Icon(Icons.help_outline_rounded),
                         ),
                       ],
                     ),
@@ -111,16 +382,49 @@ class _AdminOrderDetailScreenState
                             final canPack = items.isNotEmpty &&
                                 items.every((e) => e.pickedQty >= e.qty);
 
-                            final isAlreadyPacked =
-                                (order.status ?? '').toLowerCase() ==
-                                        'packed' ||
-                                    (order.adminStatus ?? '').toLowerCase() ==
-                                        'packed' ||
-                                    (order.adminStatus ?? '').toLowerCase() ==
-                                        'frozen_staged';
+                            final safeStatus =
+                                (order.status ?? '').toLowerCase();
+                            final safeAdminStatus =
+                                (order.adminStatus ?? '').toLowerCase();
+                            final safeDeliveryStatus =
+                                (order.deliveryStatus ?? '').toLowerCase();
+
+                            final isAlreadyPacked = safeStatus == 'packed' ||
+                                safeAdminStatus == 'packed' ||
+                                safeAdminStatus == 'frozen_staged';
+
+                            final isOutForDelivery =
+                                safeDeliveryStatus == 'out_for_delivery' ||
+                                    safeStatus == 'out_for_delivery';
 
                             final isDelivered =
-                                order.deliveryStatus == 'delivered';
+                                safeDeliveryStatus == 'delivered' ||
+                                    safeStatus == 'delivered' ||
+                                    safeAdminStatus == 'delivered';
+
+                            final showItemScan = !_bagQrVerified &&
+                                !isAlreadyPacked &&
+                                !isOutForDelivery &&
+                                !isDelivered &&
+                                !canPack;
+
+                            final showPackActions = !_bagQrVerified &&
+                                !isAlreadyPacked &&
+                                !isOutForDelivery &&
+                                !isDelivered;
+
+                            final showPackedInfo = isAlreadyPacked &&
+                                !isOutForDelivery &&
+                                !isDelivered;
+
+                            final showDriverModeInfo = isAlreadyPacked &&
+                                !isOutForDelivery &&
+                                !isDelivered;
+
+                            final showOutForDeliveryInfo =
+                                isOutForDelivery && !isDelivered;
+
+                            final showDeliveredInfo = isDelivered;
 
                             return Column(
                               children: [
@@ -133,60 +437,41 @@ class _AdminOrderDetailScreenState
                                         'Unknown customer',
                                     paymentStatus:
                                         order.paymentStatus ?? 'pending',
-                                    adminStatus: order.adminStatus ?? 'pending',
+                                    adminStatus: order.displayStatusLabel,
                                     pickedCount: pickedQty,
                                     totalCount: totalQty,
                                     hasFrozenItems: order.hasFrozenItems,
                                   ),
                                 ),
-                                if (!_bagQrVerified && !isAlreadyPacked)
+                                if (showItemScan)
                                   Padding(
                                     padding: const EdgeInsets.fromLTRB(
                                         16, 0, 16, 12),
-                                    child: Column(
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: OutlinedButton.icon(
-                                                onPressed: () =>
-                                                    _showManualBarcodeDialog(
-                                                        context, ref),
-                                                icon: const Icon(
-                                                    Icons.keyboard_rounded),
-                                                label: const Text(
-                                                    'Enter Item Barcode'),
-                                                style: OutlinedButton.styleFrom(
-                                                  minimumSize:
-                                                      const Size.fromHeight(48),
-                                                  side: const BorderSide(
-                                                    color: WMTheme.royalPurple,
-                                                  ),
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            14),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
+                                    child: SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton.icon(
+                                        onPressed: () =>
+                                            _scanItemBarcode(context, ref),
+                                        icon: const Icon(
+                                          Icons.qr_code_scanner_rounded,
                                         ),
-                                        const SizedBox(height: 8),
-                                        Align(
-                                          alignment: Alignment.centerRight,
-                                          child: TextButton.icon(
-                                            onPressed: () =>
-                                                _showManualOrderNumberDialog(
-                                                    context, ref, order),
-                                            icon:
-                                                const Icon(Icons.pin_outlined),
-                                            label: const Text(
-                                              'Enter Order Number Instead',
-                                            ),
+                                        label: const Text(
+                                          'Scan Item Barcode',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w800,
                                           ),
                                         ),
-                                      ],
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: WMTheme.royalPurple,
+                                          foregroundColor: Colors.white,
+                                          minimumSize:
+                                              const Size.fromHeight(52),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(14),
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 if (_bagQrVerified)
@@ -230,7 +515,7 @@ class _AdminOrderDetailScreenState
                                       },
                                     ),
                                   ),
-                                if (isAlreadyPacked)
+                                if (showPackedInfo)
                                   Padding(
                                     padding: const EdgeInsets.fromLTRB(
                                         16, 0, 16, 12),
@@ -241,7 +526,8 @@ class _AdminOrderDetailScreenState
                                         color: const Color(0xFFF1FAF3),
                                         borderRadius: BorderRadius.circular(18),
                                         border: Border.all(
-                                            color: const Color(0xFFBFE3C7)),
+                                          color: const Color(0xFFBFE3C7),
+                                        ),
                                       ),
                                       child: const Row(
                                         children: [
@@ -264,35 +550,108 @@ class _AdminOrderDetailScreenState
                                       ),
                                     ),
                                   ),
-                                if (isAlreadyPacked)
+                                if (showDriverModeInfo)
                                   Padding(
                                     padding: const EdgeInsets.fromLTRB(
                                         16, 0, 16, 12),
-                                    child: ElevatedButton(
-                                      onPressed: isDelivered
-                                          ? null
-                                          : () => _scanAndMarkDelivered(
-                                                context,
-                                                ref,
-                                                order,
-                                              ),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: WMTheme.royalPurple,
-                                        foregroundColor: Colors.white,
-                                        minimumSize: const Size.fromHeight(52),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(14),
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFEAF5FF),
+                                        borderRadius: BorderRadius.circular(18),
+                                        border: Border.all(
+                                          color: const Color(0xFFCFE6FF),
                                         ),
                                       ),
-                                      child: Text(
-                                        isDelivered
-                                            ? 'Delivered'
-                                            : 'Scan & Deliver',
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w800,
+                                      child: const Row(
+                                        children: [
+                                          Icon(
+                                            Icons.local_shipping_rounded,
+                                            color: Color(0xFF1565C0),
+                                          ),
+                                          SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              'Packed successfully. Use Driver Mode to dispatch and complete delivery scanning.',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w800,
+                                                color: Colors.black87,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                if (showOutForDeliveryInfo)
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                        16, 0, 16, 12),
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFEAF5FF),
+                                        borderRadius: BorderRadius.circular(18),
+                                        border: Border.all(
+                                          color: const Color(0xFFCFE6FF),
                                         ),
+                                      ),
+                                      child: const Row(
+                                        children: [
+                                          Icon(
+                                            Icons.local_shipping_rounded,
+                                            color: Color(0xFF1565C0),
+                                          ),
+                                          SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              'This order is out for delivery. Complete the final handoff in Driver Mode.',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w800,
+                                                color: Colors.black87,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                if (showDeliveredInfo)
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                        16, 0, 16, 12),
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF1FAF3),
+                                        borderRadius: BorderRadius.circular(18),
+                                        border: Border.all(
+                                          color: const Color(0xFFBFE3C7),
+                                        ),
+                                      ),
+                                      child: const Row(
+                                        children: [
+                                          Icon(
+                                            Icons.task_alt_rounded,
+                                            color: Colors.green,
+                                          ),
+                                          SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              'This order has been delivered successfully.',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w800,
+                                                color: Colors.black87,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
@@ -311,7 +670,8 @@ class _AdminOrderDetailScreenState
                                             ...nonFrozen.map(
                                               (item) => Padding(
                                                 padding: const EdgeInsets.only(
-                                                    bottom: 10),
+                                                  bottom: 10,
+                                                ),
                                                 child: _ItemTile(item: item),
                                               ),
                                             ),
@@ -345,7 +705,8 @@ class _AdminOrderDetailScreenState
                                             ...frozen.map(
                                               (item) => Padding(
                                                 padding: const EdgeInsets.only(
-                                                    bottom: 10),
+                                                  bottom: 10,
+                                                ),
                                                 child: _ItemTile(item: item),
                                               ),
                                             ),
@@ -355,9 +716,10 @@ class _AdminOrderDetailScreenState
                                     ),
                                   ),
                                 ),
-                                if (!_bagQrVerified && !isAlreadyPacked)
+                                if (showPackActions)
                                   _BottomActions(
                                     canPack: canPack,
+                                    pickingComplete: canPack,
                                     onStartPicking: () async {
                                       await ref
                                           .read(adminOrdersServiceProvider)
@@ -411,278 +773,6 @@ class _AdminOrderDetailScreenState
         ],
       ),
     );
-  }
-
-  Future<void> _scanOrderQrAndPreparePack(
-    BuildContext context,
-    WidgetRef ref,
-    AdminOrderModel order,
-  ) async {
-    final isAlreadyPacked = (order.status ?? '').toLowerCase() == 'packed' ||
-        (order.adminStatus ?? '').toLowerCase() == 'packed' ||
-        (order.adminStatus ?? '').toLowerCase() == 'frozen_staged';
-
-    if (isAlreadyPacked) {
-      await ScanFeedback.error();
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('This order is already packed'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-      return;
-    }
-
-    final scannedValue = await Navigator.of(context).push<String>(
-      MaterialPageRoute(
-        builder: (_) => const OrderQrScanScreen(),
-      ),
-    );
-
-    if (scannedValue == null || scannedValue.trim().isEmpty) {
-      return;
-    }
-
-    final expectedQr = 'WM|ORDER|${order.id}|${order.orderNumber}';
-
-    if (scannedValue.trim() != expectedQr) {
-      _setFlash(Colors.red);
-      await ScanFeedback.error();
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Scanned QR does not match this order'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      return;
-    }
-
-    _setFlash(Colors.green);
-    await ScanFeedback.success();
-
-    if (!mounted) return;
-
-    setState(() {
-      _bagQrVerified = true;
-    });
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Bag QR verified. Confirm pack to continue.'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
-  }
-
-  Future<void> _showManualOrderNumberDialog(
-    BuildContext context,
-    WidgetRef ref,
-    AdminOrderModel order,
-  ) async {
-    final isAlreadyPacked = (order.status ?? '').toLowerCase() == 'packed' ||
-        (order.adminStatus ?? '').toLowerCase() == 'packed' ||
-        (order.adminStatus ?? '').toLowerCase() == 'frozen_staged';
-
-    if (isAlreadyPacked) {
-      await ScanFeedback.error();
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('This order is already packed'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    final typedValue = await Navigator.of(context).push<String>(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (_) => const _ManualCodeEntryScreen(
-          title: 'Enter Order Number',
-          hintText: 'e.g. MH-260316-C52907',
-          keyboardType: TextInputType.text,
-          uppercase: true,
-        ),
-      ),
-    );
-
-    if (!mounted) return;
-    await Future<void>.delayed(const Duration(milliseconds: 80));
-    if (!mounted) return;
-    if (typedValue == null || typedValue.trim().isEmpty) return;
-
-    final typed = typedValue.trim().toUpperCase();
-    final expected = (order.orderNumber ?? '').trim().toUpperCase();
-
-    if (typed != expected) {
-      _setFlash(Colors.red);
-      await ScanFeedback.error();
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Entered order number does not match'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    _setFlash(Colors.green);
-    await ScanFeedback.success();
-
-    if (!mounted) return;
-
-    setState(() {
-      _bagQrVerified = true;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Order number verified. Confirm pack to continue.'),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
-
-  Future<void> _showManualBarcodeDialog(
-    BuildContext context,
-    WidgetRef ref,
-  ) async {
-    final barcode = await Navigator.of(context).push<String>(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (_) => const _ManualCodeEntryScreen(
-          title: 'Enter Item Barcode',
-          hintText: 'e.g. 9000000000001',
-          keyboardType: TextInputType.number,
-        ),
-      ),
-    );
-
-    if (!mounted) return;
-    await Future<void>.delayed(const Duration(milliseconds: 80));
-    if (!mounted) return;
-    if (barcode == null || barcode.trim().isEmpty) return;
-
-    try {
-      final result = await ref
-          .read(adminOrdersServiceProvider)
-          .verifyManualBarcodeForOrder(
-            orderId: orderId,
-            barcode: barcode.trim(),
-          );
-
-      if (!mounted) return;
-
-      _setFlash(result.success ? Colors.green : Colors.red);
-
-      if (result.success) {
-        await ScanFeedback.success();
-      } else {
-        await ScanFeedback.error();
-      }
-
-      if (!mounted) return;
-
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-
-        ref.invalidate(adminOrderItemsProvider(orderId));
-        ref.invalidate(adminOrderProvider(orderId));
-        ref.invalidate(adminOrdersProvider);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result.message),
-            backgroundColor: result.success ? Colors.green : Colors.red,
-          ),
-        );
-      });
-    } catch (e) {
-      _setFlash(Colors.red);
-      await ScanFeedback.error();
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Barcode verification failed: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  Future<void> _scanAndMarkDelivered(
-    BuildContext context,
-    WidgetRef ref,
-    AdminOrderModel order,
-  ) async {
-    final scannedValue = await Navigator.of(context).push<String>(
-      MaterialPageRoute(
-        builder: (_) => const OrderQrScanScreen(),
-      ),
-    );
-
-    if (scannedValue == null || scannedValue.trim().isEmpty) {
-      return;
-    }
-
-    final expectedQr = 'WM|ORDER|${order.id}|${order.orderNumber}';
-
-    if (scannedValue.trim() != expectedQr) {
-      await ScanFeedback.error();
-
-      if (!mounted) return;
-
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('QR does not match order'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      });
-      return;
-    }
-
-    await ref.read(adminOrdersServiceProvider).markOrderDelivered(
-          orderId: order.id,
-        );
-
-    if (!mounted) return;
-
-    await ScanFeedback.success();
-
-    if (!mounted) return;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      ref.invalidate(adminOrderProvider(order.id));
-      ref.invalidate(adminOrderItemsProvider(order.id));
-      ref.invalidate(adminOrdersProvider);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Order marked as delivered'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    });
   }
 }
 
@@ -960,22 +1050,12 @@ class _ItemTile extends StatelessWidget {
               color: const Color(0xFFF6F0FB),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: item.image != null && item.image!.isNotEmpty
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: Image.network(
-                      item.image!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(
-                        Icons.inventory_2_rounded,
-                        color: WMTheme.royalPurple,
-                      ),
-                    ),
-                  )
-                : const Icon(
-                    Icons.inventory_2_rounded,
-                    color: WMTheme.royalPurple,
-                  ),
+            child: WmProductImage(
+              imageUrl: item.image,
+              width: 54,
+              height: 54,
+              borderRadius: 14,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1073,11 +1153,13 @@ class _TinyBadge extends StatelessWidget {
 
 class _BottomActions extends StatelessWidget {
   final bool canPack;
+  final bool pickingComplete;
   final Future<void> Function() onStartPicking;
   final Future<void> Function() onMarkPacked;
 
   const _BottomActions({
     required this.canPack,
+    required this.pickingComplete,
     required this.onStartPicking,
     required this.onMarkPacked,
   });
@@ -1100,26 +1182,28 @@ class _BottomActions extends StatelessWidget {
         top: false,
         child: Row(
           children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: onStartPicking,
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(52),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+            if (!pickingComplete) ...[
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: onStartPicking,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    side: const BorderSide(color: WMTheme.royalPurple),
                   ),
-                  side: const BorderSide(color: WMTheme.royalPurple),
-                ),
-                child: const Text(
-                  'Start Picking',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: WMTheme.royalPurple,
+                  child: const Text(
+                    'Start Picking',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: WMTheme.royalPurple,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
+              const SizedBox(width: 12),
+            ],
             Expanded(
               child: ElevatedButton(
                 onPressed: canPack ? onMarkPacked : null,
@@ -1131,10 +1215,10 @@ class _BottomActions extends StatelessWidget {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                child: const Text(
-                  'Verify Bag QR & Pack',
+                child: Text(
+                  canPack ? 'Verify Bag QR & Pack' : 'Complete Item Scan First',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -1306,6 +1390,44 @@ class _ManualCodeEntryScreenState extends State<_ManualCodeEntryScreen> {
   }
 }
 
+class _ItemBarcodeScanScreen extends StatefulWidget {
+  const _ItemBarcodeScanScreen();
 
+  @override
+  State<_ItemBarcodeScanScreen> createState() => _ItemBarcodeScanScreenState();
+}
 
+class _ItemBarcodeScanScreenState extends State<_ItemBarcodeScanScreen> {
+  bool _handled = false;
 
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: const Text(
+          'Scan Item Barcode',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+      ),
+      body: MobileScanner(
+        onDetect: (capture) async {
+          if (_handled) return;
+
+          final codes = capture.barcodes;
+          if (codes.isEmpty) return;
+
+          final raw = codes.first.rawValue?.trim();
+          if (raw == null || raw.isEmpty) return;
+
+          _handled = true;
+          await ScanFeedback.soft();
+          if (!mounted) return;
+          Navigator.of(context).pop(raw);
+        },
+      ),
+    );
+  }
+}

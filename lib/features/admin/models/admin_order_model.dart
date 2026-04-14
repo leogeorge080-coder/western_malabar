@@ -2,6 +2,7 @@ class AdminOrderModel {
   final String id;
   final String? orderNumber;
   final String? customerName;
+  final String? customerEmail;
   final String? phone;
   final String? deliverySlot;
   final String? paymentMethod;
@@ -10,6 +11,7 @@ class AdminOrderModel {
   final String? adminStatus;
   final int? totalCents;
   final bool hasFrozenItems;
+  final int printedLabelCount;
   final String? freezerStatus;
   final String? deliveryStatus;
   final DateTime? createdAt;
@@ -29,6 +31,7 @@ class AdminOrderModel {
     required this.id,
     this.orderNumber,
     this.customerName,
+    this.customerEmail,
     this.phone,
     this.deliverySlot,
     this.paymentMethod,
@@ -37,6 +40,7 @@ class AdminOrderModel {
     this.adminStatus,
     this.totalCents,
     this.hasFrozenItems = false,
+    this.printedLabelCount = 1,
     this.freezerStatus,
     this.deliveryStatus,
     this.createdAt,
@@ -55,6 +59,7 @@ class AdminOrderModel {
       id: map['id'] as String,
       orderNumber: map['order_number'] as String?,
       customerName: map['customer_name'] as String?,
+      customerEmail: map['customer_email'] as String?,
       phone: map['phone'] as String?,
       deliverySlot: map['delivery_slot'] as String?,
       paymentMethod: map['payment_method'] as String?,
@@ -63,6 +68,7 @@ class AdminOrderModel {
       adminStatus: map['admin_status'] as String?,
       totalCents: map['total_cents'] as int?,
       hasFrozenItems: map['has_frozen_items'] as bool? ?? false,
+      printedLabelCount: (map['printed_label_count'] as num?)?.toInt() ?? 1,
       freezerStatus: map['freezer_status'] as String?,
       deliveryStatus: map['delivery_status'] as String?,
       createdAt: map['created_at'] != null
@@ -114,14 +120,24 @@ class AdminOrderModel {
         safeAdminStatus == 'frozen_staged';
   }
 
-  bool get isPicking {
+  bool get isPicked {
     if (isDelivered || isOutForDelivery || isPacked) return false;
 
-    return safeAdminStatus == 'picking';
+    return safeStatus == 'picked' || safeAdminStatus == 'picked';
+  }
+
+  bool get isPicking {
+    if (isDelivered || isOutForDelivery || isPacked || isPicked) return false;
+
+    return safeStatus == 'picking' || safeAdminStatus == 'picking';
   }
 
   bool get isPending {
-    return !isDelivered && !isOutForDelivery && !isPacked && !isPicking;
+    return !isDelivered &&
+        !isOutForDelivery &&
+        !isPacked &&
+        !isPicked &&
+        !isPicking;
   }
 
   bool get isFrozenStaged => safeAdminStatus == 'frozen_staged';
@@ -133,7 +149,8 @@ class AdminOrderModel {
   String get displayStatusLabel {
     if (isDelivered) return 'DELIVERED';
     if (isOutForDelivery) return 'OUT FOR DELIVERY';
-    if (isPacked) return hasFrozenItems || isFrozenStaged ? 'PACKED' : 'PACKED';
+    if (isPacked) return 'PACKED';
+    if (isPicked) return 'PICKED';
     if (isPicking) return 'PICKING';
     return 'PENDING';
   }
@@ -142,6 +159,7 @@ class AdminOrderModel {
     if (isDelivered) return 'delivered';
     if (isOutForDelivery) return 'out_for_delivery';
     if (isPacked) return 'packed';
+    if (isPicked) return 'picked';
     if (isPicking) return 'picking';
     return 'pending';
   }
@@ -150,8 +168,9 @@ class AdminOrderModel {
     if (isDelivered) return 0;
     if (isOutForDelivery) return 1;
     if (isPacked) return 2;
-    if (isPicking) return 3;
-    return 4;
+    if (isPicked) return 3;
+    if (isPicking) return 4;
+    return 5;
   }
 
   bool get hasPinnedLocation => latitude != null && longitude != null;
@@ -167,7 +186,3 @@ class AdminOrderModel {
     return parts.join(', ');
   }
 }
-
-
-
-

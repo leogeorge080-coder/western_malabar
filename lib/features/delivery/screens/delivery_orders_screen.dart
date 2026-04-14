@@ -201,30 +201,76 @@ class _DeliveryOrderCardState extends ConsumerState<_DeliveryOrderCard> {
     setState(() => _loading = true);
 
     try {
-      final scannedValue = await Navigator.of(context).push<String>(
-        MaterialPageRoute(
-          builder: (_) => const OrderQrScanScreen(),
-        ),
-      );
+      final requiredScans =
+          order.printedLabelCount > 1 ? order.printedLabelCount : 1;
+      final scannedSet = <String>{};
 
-      if (scannedValue == null || scannedValue.trim().isEmpty) {
-        return;
-      }
+      final baseQr = 'WM|ORDER|${order.id}|${order.orderNumber}';
+      final normalBagQr = '$baseQr-N';
+      final frozenBagQr = '$baseQr-F';
 
-      final expectedQr = 'WM|ORDER|${order.id}|${order.orderNumber}';
+      final validCodes = requiredScans > 1
+          ? <String>{normalBagQr, frozenBagQr}
+          : <String>{baseQr, normalBagQr, frozenBagQr};
 
-      if (scannedValue.trim() != expectedQr) {
-        _setFlash(Colors.red);
-        await ScanFeedback.error();
-
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Scanned QR does not match this order'),
-            backgroundColor: Colors.red,
+      while (scannedSet.length < requiredScans) {
+        final scannedValue = await Navigator.of(context).push<String>(
+          MaterialPageRoute(
+            builder: (_) => const OrderQrScanScreen(),
           ),
         );
-        return;
+
+        if (scannedValue == null || scannedValue.trim().isEmpty) {
+          return;
+        }
+
+        final scanned = scannedValue.trim();
+
+        if (!validCodes.contains(scanned)) {
+          _setFlash(Colors.red);
+          await ScanFeedback.error();
+
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('QR does not match this order'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          continue;
+        }
+
+        if (scannedSet.contains(scanned)) {
+          _setFlash(Colors.orange);
+          await ScanFeedback.error();
+
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('This label is already scanned'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          continue;
+        }
+
+        scannedSet.add(scanned);
+
+        _setFlash(Colors.green);
+        await ScanFeedback.success();
+
+        if (!mounted) return;
+
+        if (scannedSet.length < requiredScans) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Scan next label (${scannedSet.length}/$requiredScans)',
+              ),
+              backgroundColor: Colors.blue,
+            ),
+          );
+        }
       }
 
       if (order.canDispatch) {
@@ -289,11 +335,11 @@ class _DeliveryOrderCardState extends ConsumerState<_DeliveryOrderCard> {
 
     final statusLabel = order.displayStatusLabel;
 
-    final nextAction = order.isDelivered
-        ? 'Delivered'
-        : order.isOutForDelivery
-            ? 'Scan QR to Deliver'
-            : 'Scan QR to Dispatch';
+    final nextAction = order.canDeliver
+        ? 'Scan QR to Deliver'
+        : order.canDispatch
+            ? 'Scan QR to Dispatch'
+            : 'Completed';
 
     return Stack(
       children: [
@@ -408,18 +454,21 @@ class _DeliveryOrderCardState extends ConsumerState<_DeliveryOrderCard> {
                                 ),
                               )
                             : Icon(
-                                order.isDelivered
-                                    ? Icons.check_circle_rounded
-                                    : Icons.qr_code_scanner_rounded,
+                                order.canDeliver
+                                    ? Icons.qr_code_scanner_rounded
+                                    : order.canDispatch
+                                        ? Icons.local_shipping_rounded
+                                        : Icons.check_circle_rounded,
                               ),
                         label: Text(
                           nextAction,
                           textAlign: TextAlign.center,
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: order.isDelivered
-                              ? Colors.green
-                              : WMTheme.royalPurple,
+                          backgroundColor:
+                              (order.canDispatch || order.canDeliver)
+                                  ? WMTheme.royalPurple
+                                  : Colors.green,
                           foregroundColor: Colors.white,
                           minimumSize: const Size.fromHeight(48),
                           shape: RoundedRectangleBorder(
@@ -517,7 +566,3 @@ class _InfoRow extends StatelessWidget {
     );
   }
 }
-
-
-
-

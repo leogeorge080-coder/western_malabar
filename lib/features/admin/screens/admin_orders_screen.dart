@@ -160,7 +160,7 @@ class AdminOrdersScreen extends ConsumerWidget {
 
 class _Header extends StatelessWidget {
   final AdminOrdersViewMode mode;
-  final Function(AdminOrdersViewMode) onModeChanged;
+  final void Function(AdminOrdersViewMode) onModeChanged;
 
   const _Header({
     required this.mode,
@@ -263,7 +263,7 @@ class _OrderCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         onTap: () {
           Navigator.of(context).push(
-            MaterialPageRoute(
+            MaterialPageRoute<void>(
               builder: (_) => AdminOrderDetailScreen(orderId: order.id),
             ),
           );
@@ -394,6 +394,8 @@ class _OrderCard extends StatelessWidget {
         return const Color(0xFFEAF5FF);
       case 'PACKED':
         return const Color(0xFFFFF8E1);
+      case 'PICKED':
+        return const Color(0xFFE8F5E9);
       case 'PICKING':
         return const Color(0xFFF3E5F5);
       default:
@@ -409,6 +411,8 @@ class _OrderCard extends StatelessWidget {
         return const Color(0xFF1565C0);
       case 'PACKED':
         return const Color(0xFF9E7B00);
+      case 'PICKED':
+        return Colors.green;
       case 'PICKING':
         return WMTheme.royalPurple;
       default:
@@ -478,7 +482,3 @@ class _MiniChip extends StatelessWidget {
     );
   }
 }
-
-
-
-

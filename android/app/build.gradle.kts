@@ -7,11 +7,11 @@ plugins {
 }
 
 android {
-    namespace = "com.westernmalabar.western_malabar"
+    namespace = "com.malabarhub.app"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.westernmalabar.western_malabar"
+        applicationId = "com.malabarhub.app"
         minSdk = flutter.minSdkVersion
         targetSdk = 36
 

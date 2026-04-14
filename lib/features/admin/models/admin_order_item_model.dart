@@ -35,29 +35,25 @@ class AdminOrderItemModel {
 
   factory AdminOrderItemModel.fromMap(Map<String, dynamic> map) {
     return AdminOrderItemModel(
-      id: map['id'] as String,
-      orderId: map['order_id'] as String,
-      productId: map['product_id'] as String?,
-      productName: (map['product_name'] as String?) ?? 'Unknown Product',
-      brandName: map['brand_name'] as String?,
-      image: map['image'] as String?,
-      qty: map['qty'] as int? ?? 1,
-      unitPriceCents: map['unit_price_cents'] as int?,
-      lineTotalCents: map['line_total_cents'] as int?,
-      isFrozen: map['is_frozen'] as bool? ?? false,
-      pickingStatus: (map['picking_status'] as String?) ?? 'pending',
-      pickedQty: map['picked_qty'] as int? ?? 0,
-      packedQty: map['packed_qty'] as int? ?? 0,
+      id: (map['id'] ?? '').toString(),
+      orderId: (map['order_id'] ?? '').toString(),
+      productId: map['product_id']?.toString(),
+      productName: (map['product_name'] ?? 'Unknown Product').toString(),
+      brandName: map['brand_name']?.toString(),
+      image: map['image']?.toString(),
+      qty: (map['qty'] as num?)?.toInt() ?? 1,
+      unitPriceCents: (map['unit_price_cents'] as num?)?.toInt(),
+      lineTotalCents: (map['line_total_cents'] as num?)?.toInt(),
+      isFrozen: map['is_frozen'] == true,
+      pickingStatus: (map['picking_status'] ?? 'pending').toString(),
+      pickedQty: (map['picked_qty'] as num?)?.toInt() ?? 0,
+      packedQty: (map['packed_qty'] as num?)?.toInt() ?? 0,
       pickedAt: map['picked_at'] != null
-          ? DateTime.tryParse(map['picked_at'] as String)
+          ? DateTime.tryParse(map['picked_at'].toString())
           : null,
       packedAt: map['packed_at'] != null
-          ? DateTime.tryParse(map['packed_at'] as String)
+          ? DateTime.tryParse(map['packed_at'].toString())
           : null,
     );
   }
 }
-
-
-
-

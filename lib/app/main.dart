@@ -11,6 +11,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:western_malabar/app/env.dart';
 import 'package:western_malabar/app/app_shell.dart';
+import 'package:western_malabar/app/auth_session_guard.dart';
 import 'package:western_malabar/shared/theme/theme.dart';
 
 Future<void> main() async {
@@ -82,13 +83,15 @@ class WMApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Western Malabar',
-      debugShowCheckedModeBanner: false,
-      theme: wmLightTheme,
-      themeMode: ThemeMode.light,
-      scrollBehavior: const _WMScrollBehavior(), // ✅ custom scroll
-      home: const _InitGate(),
+    return AuthSessionGuard(
+      child: MaterialApp(
+        title: 'Western Malabar',
+        debugShowCheckedModeBanner: false,
+        theme: wmLightTheme,
+        themeMode: ThemeMode.light,
+        scrollBehavior: const _WMScrollBehavior(), // ✅ custom scroll
+        home: const _InitGate(),
+      ),
     );
   }
 }
@@ -146,5 +149,3 @@ class _WMScrollBehavior extends MaterialScrollBehavior {
         PointerDeviceKind.unknown,
       };
 }
-
-

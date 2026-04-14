@@ -9,6 +9,15 @@ class AdminProductEditModel {
   final bool isActive;
   final bool isFrozen;
   final String? barcode;
+  final bool isWeeklyDeal;
+  final int? dealPriceCents;
+  final DateTime? dealStartsAt;
+  final DateTime? dealEndsAt;
+  final String? dealBadgeText;
+  final int? priceCents;
+  final int? salePriceCents;
+  final int? sellerBasePriceCents;
+  final String? firstVariantId;
 
   const AdminProductEditModel({
     required this.id,
@@ -17,10 +26,19 @@ class AdminProductEditModel {
     this.brandId,
     this.categoryId,
     required this.images,
-    this.description,
     required this.isActive,
     required this.isFrozen,
+    this.description,
     this.barcode,
+    this.isWeeklyDeal = false,
+    this.dealPriceCents,
+    this.dealStartsAt,
+    this.dealEndsAt,
+    this.dealBadgeText,
+    this.priceCents,
+    this.salePriceCents,
+    this.sellerBasePriceCents,
+    this.firstVariantId,
   });
 
   factory AdminProductEditModel.fromMap(Map<String, dynamic> map) {
@@ -33,6 +51,14 @@ class AdminProductEditModel {
       parsedImages = const [];
     }
 
+    final variants = (map['product_variants'] as List?) ?? const [];
+    final firstVariant = variants.isNotEmpty
+        ? Map<String, dynamic>.from(variants.first as Map)
+        : null;
+
+    final variantPrice = (firstVariant?['price_cents'] as num?)?.toInt();
+    final fallbackBase = (map['seller_base_price_cents'] as num?)?.toInt();
+
     return AdminProductEditModel(
       id: map['id'] as String,
       name: map['name'] as String? ?? '',
@@ -44,6 +70,19 @@ class AdminProductEditModel {
       isActive: map['is_active'] as bool? ?? true,
       isFrozen: map['is_frozen'] as bool? ?? false,
       barcode: map['barcode'] as String?,
+      isWeeklyDeal: map['is_weekly_deal'] as bool? ?? false,
+      dealPriceCents: (map['deal_price_cents'] as num?)?.toInt(),
+      dealStartsAt: map['deal_starts_at'] != null
+          ? DateTime.tryParse(map['deal_starts_at'].toString())
+          : null,
+      dealEndsAt: map['deal_ends_at'] != null
+          ? DateTime.tryParse(map['deal_ends_at'].toString())
+          : null,
+      dealBadgeText: map['deal_badge_text'] as String?,
+      priceCents: variantPrice ?? fallbackBase,
+      salePriceCents: (firstVariant?['sale_price_cents'] as num?)?.toInt(),
+      sellerBasePriceCents: fallbackBase,
+      firstVariantId: firstVariant?['id']?.toString(),
     );
   }
 
@@ -58,6 +97,15 @@ class AdminProductEditModel {
     bool? isActive,
     bool? isFrozen,
     String? barcode,
+    bool? isWeeklyDeal,
+    int? dealPriceCents,
+    DateTime? dealStartsAt,
+    DateTime? dealEndsAt,
+    String? dealBadgeText,
+    int? priceCents,
+    int? salePriceCents,
+    int? sellerBasePriceCents,
+    String? firstVariantId,
   }) {
     return AdminProductEditModel(
       id: id ?? this.id,
@@ -70,11 +118,37 @@ class AdminProductEditModel {
       isActive: isActive ?? this.isActive,
       isFrozen: isFrozen ?? this.isFrozen,
       barcode: barcode ?? this.barcode,
+      isWeeklyDeal: isWeeklyDeal ?? this.isWeeklyDeal,
+      dealPriceCents: dealPriceCents ?? this.dealPriceCents,
+      dealStartsAt: dealStartsAt ?? this.dealStartsAt,
+      dealEndsAt: dealEndsAt ?? this.dealEndsAt,
+      dealBadgeText: dealBadgeText ?? this.dealBadgeText,
+      priceCents: priceCents ?? this.priceCents,
+      salePriceCents: salePriceCents ?? this.salePriceCents,
+      sellerBasePriceCents: sellerBasePriceCents ?? this.sellerBasePriceCents,
+      firstVariantId: firstVariantId ?? this.firstVariantId,
     );
   }
 
   bool get hasImage => images.isNotEmpty && images.first.trim().isNotEmpty;
   bool get hasBarcode => (barcode ?? '').trim().isNotEmpty;
+
+  bool get hasDeal =>
+      isWeeklyDeal && dealPriceCents != null && dealPriceCents! > 0;
+
+  int? get originalPriceCents {
+    if (priceCents != null && priceCents! > 0) return priceCents;
+    if (sellerBasePriceCents != null && sellerBasePriceCents! > 0) {
+      return sellerBasePriceCents;
+    }
+    return null;
+  }
+
+  int? get effectiveDisplayPriceCents {
+    if (hasDeal) return dealPriceCents;
+    if (salePriceCents != null && salePriceCents! > 0) return salePriceCents;
+    return originalPriceCents;
+  }
 
   int get completenessScore {
     int score = 0;
@@ -126,7 +200,3 @@ class AdminCategoryOption {
     );
   }
 }
-
-
-
-

@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:western_malabar/features/admin/models/admin_product_edit_model.dart';
 import 'package:western_malabar/features/admin/providers/admin_products_provider.dart';
-import 'package:western_malabar/features/admin/screens/edit_product_screen.dart';
+import 'package:western_malabar/features/admin/screens/edit_product_screen.dart'
+    show EditProductScreen;
 import 'package:western_malabar/shared/theme/theme.dart';
 import 'package:western_malabar/shared/theme/wm_gradients.dart';
+import 'package:western_malabar/shared/widgets/wm_product_image.dart';
 
 enum AdminProductFilter {
   all,
@@ -36,7 +38,7 @@ class _AdminProductsScreenState extends ConsumerState<AdminProductsScreen> {
   ) {
     final query = _searchController.text.trim().toLowerCase();
 
-    var filtered = products.where((product) {
+    final filtered = products.where((product) {
       final matchesSearch = query.isEmpty ||
           product.name.toLowerCase().contains(query) ||
           product.slug.toLowerCase().contains(query) ||
@@ -57,12 +59,9 @@ class _AdminProductsScreenState extends ConsumerState<AdminProductsScreen> {
     }).toList();
 
     filtered.sort((a, b) {
-      final aIncompleteRank = a.completenessScore;
-      final bIncompleteRank = b.completenessScore;
-
-      if (aIncompleteRank != bIncompleteRank) {
-        return aIncompleteRank.compareTo(bIncompleteRank);
-      }
+      final completenessCompare =
+          a.completenessScore.compareTo(b.completenessScore);
+      if (completenessCompare != 0) return completenessCompare;
 
       return a.name.toLowerCase().compareTo(b.name.toLowerCase());
     });
@@ -230,25 +229,91 @@ class _AdminProductsScreenState extends ConsumerState<AdminProductsScreen> {
   }
 }
 
-class _ProductCard extends StatelessWidget {
+class _ProductCard extends ConsumerWidget {
   final AdminProductEditModel product;
 
   const _ProductCard({
     required this.product,
   });
 
+  String _money(int? cents) {
+    if (cents == null || cents <= 0) return '—';
+    return '£${(cents / 100).toStringAsFixed(2)}';
+  }
+
+  Future<void> _toggleActive(BuildContext context, WidgetRef ref) async {
+    final shouldEnable = !product.isActive;
+
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(
+              shouldEnable ? 'Enable product?' : 'Disable product?',
+            ),
+            content: Text(
+              shouldEnable
+                  ? 'This product will become visible to customers again.'
+                  : 'This product will be hidden from customer app, search, and categories.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text(shouldEnable ? 'Enable' : 'Disable'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!confirmed) return;
+
+    try {
+      final service = ref.read(adminProductsServiceProvider);
+      await service.setProductActiveStatus(
+        productId: product.id,
+        isActive: shouldEnable,
+      );
+
+      ref.invalidate(adminProductsProvider);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              shouldEnable
+                  ? '${product.name} enabled'
+                  : '${product.name} disabled',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update product status: $e'),
+          ),
+        );
+      }
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final imageUrl = product.images.isNotEmpty ? product.images.first : null;
 
     return Material(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(22),
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(22),
         onTap: () {
           Navigator.of(context).push(
-            MaterialPageRoute(
+            MaterialPageRoute<void>(
               builder: (_) => EditProductScreen(productId: product.id),
             ),
           );
@@ -256,7 +321,7 @@ class _ProductCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(22),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x12000000),
@@ -266,32 +331,23 @@ class _ProductCard extends StatelessWidget {
             ],
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 68,
-                height: 68,
+                width: 76,
+                height: 76,
                 decoration: BoxDecoration(
                   color: const Color(0xFFF6F0FB),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(18),
                 ),
-                child: imageUrl == null || imageUrl.trim().isEmpty
-                    ? const Icon(
-                        Icons.inventory_2_rounded,
-                        color: WMTheme.royalPurple,
-                      )
-                    : ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(
-                            Icons.broken_image_rounded,
-                            color: Colors.redAccent,
-                          ),
-                        ),
-                      ),
+                child: WmProductImage(
+                  imageUrl: imageUrl,
+                  width: 76,
+                  height: 76,
+                  borderRadius: 18,
+                ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -301,7 +357,7 @@ class _ProductCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 15,
+                        fontSize: 15.5,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -311,16 +367,46 @@ class _ProductCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.w700,
                         color: Colors.black54,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       children: [
+                        _MiniBadge(
+                          label: product.isActive ? 'Active' : 'Disabled',
+                          background: product.isActive
+                              ? const Color(0xFFEAF8EE)
+                              : const Color(0xFFFFF1F1),
+                          foreground: product.isActive
+                              ? const Color(0xFF1B8E3E)
+                              : const Color(0xFFC62828),
+                        ),
+                        if (product.originalPriceCents != null)
+                          _MiniBadge(
+                            label: 'Base ${_money(product.originalPriceCents)}',
+                            background: const Color(0xFFF5F1FB),
+                            foreground: WMTheme.royalPurple,
+                          ),
+                        if (product.salePriceCents != null &&
+                            product.salePriceCents! > 0)
+                          _MiniBadge(
+                            label: 'Sale ${_money(product.salePriceCents)}',
+                            background: const Color(0xFFEAF8EE),
+                            foreground: const Color(0xFF1B8E3E),
+                          ),
+                        if (product.isWeeklyDeal)
+                          _MiniBadge(
+                            label: product.dealPriceCents != null
+                                ? 'Deal ${_money(product.dealPriceCents)}'
+                                : 'Weekly Deal',
+                            background: const Color(0xFFFFF4D9),
+                            foreground: const Color(0xFF8A6700),
+                          ),
                         if (!product.hasImage)
                           const _MiniBadge(
                             label: 'Missing Image',
@@ -347,13 +433,61 @@ class _ProductCard extends StatelessWidget {
                           ),
                       ],
                     ),
+                    const SizedBox(height: 14),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () => _toggleActive(context, ref),
+                          icon: Icon(
+                            product.isActive
+                                ? Icons.visibility_off_rounded
+                                : Icons.visibility_rounded,
+                            size: 18,
+                          ),
+                          label: Text(
+                            product.isActive ? 'Disable' : 'Enable',
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: product.isActive
+                                ? Colors.redAccent
+                                : const Color(0xFF1B8E3E),
+                            side: BorderSide(
+                              color: product.isActive
+                                  ? const Color(0xFFFFD6D6)
+                                  : const Color(0xFFCDEFD6),
+                            ),
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) =>
+                                    EditProductScreen(productId: product.id),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.edit_rounded, size: 18),
+                          label: const Text('Edit'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: WMTheme.royalPurple,
+                            side: const BorderSide(color: Color(0xFFE3DAEF)),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
               const SizedBox(width: 10),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: Colors.black38,
+              const Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  color: Colors.black38,
+                ),
               ),
             ],
           ),
@@ -433,7 +567,3 @@ class _MiniBadge extends StatelessWidget {
     );
   }
 }
-
-
-
-

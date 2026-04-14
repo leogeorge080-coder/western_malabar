@@ -26,6 +26,7 @@ class WMRepo {
     final rows = await _sb
         .from('products')
         .select('id,name,images,product_variants(price_cents,currency)')
+        .eq('is_active', true)
         .limit(limit);
 
     final List<ProductLite> out = [];
@@ -85,7 +86,3 @@ int? _asInt(dynamic v) {
   }
   return null;
 }
-
-
-
-

@@ -1,15 +1,24 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:western_malabar/features/cart/services/cart_pricing.dart';
 import 'package:western_malabar/features/admin/providers/admin_orders_provider.dart';
+import 'package:western_malabar/features/cart/providers/cart_provider.dart';
+import 'package:western_malabar/features/cart/services/cart_pricing.dart';
+import 'package:western_malabar/features/checkout/models/address_model.dart';
+import 'package:western_malabar/features/checkout/providers/address_provider.dart';
 import 'package:western_malabar/features/checkout/providers/checkout_provider.dart';
 import 'package:western_malabar/features/checkout/screens/order_success_screen.dart';
+import 'package:western_malabar/features/checkout/services/address_service.dart';
 import 'package:western_malabar/features/checkout/services/checkout_service.dart';
 import 'package:western_malabar/features/checkout/services/stripe_payment_service.dart';
+import 'package:western_malabar/features/profile/models/profile_model.dart';
+import 'package:western_malabar/features/profile/providers/profile_provider.dart';
 import 'package:western_malabar/shared/services/postcode_lookup_service.dart';
-import 'package:western_malabar/features/cart/providers/cart_provider.dart';
 import 'package:western_malabar/shared/theme/theme.dart';
 import 'package:western_malabar/shared/theme/wm_gradients.dart';
 
@@ -23,6 +32,7 @@ class CheckoutScreen extends ConsumerStatefulWidget {
 class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   late final TextEditingController _fullNameController;
   late final TextEditingController _phoneController;
+  late final TextEditingController _emailController;
   late final TextEditingController _postcodeController;
   late final TextEditingController _address1Controller;
   late final TextEditingController _address2Controller;
@@ -30,15 +40,27 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
   final StripePaymentService _stripePaymentService =
       const StripePaymentService();
+  final AddressService _addressService = AddressService();
+
+  StreamSubscription<AuthState>? _authStateSub;
+  String? _lastUserId;
+
+  bool _showManualAddressForm = false;
+  String? _autoAppliedAddressId;
+  String? _lastSummaryRefreshKey;
+  bool _summaryRefreshInFlight = false;
 
   @override
   void initState() {
     super.initState();
+
     final checkout = ref.read(checkoutProvider);
+    _lastUserId = Supabase.instance.client.auth.currentUser?.id;
 
     _fullNameController =
         TextEditingController(text: checkout.address.fullName);
     _phoneController = TextEditingController(text: checkout.address.phone);
+    _emailController = TextEditingController();
     _postcodeController =
         TextEditingController(text: checkout.address.postcode);
     _address1Controller =
@@ -46,17 +68,177 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     _address2Controller =
         TextEditingController(text: checkout.address.addressLine2);
     _cityController = TextEditingController(text: checkout.address.city);
+
+    _authStateSub =
+        Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      final currentUserId = data.session?.user.id;
+
+      if (currentUserId == _lastUserId) return;
+      _lastUserId = currentUserId;
+
+      if (!mounted) return;
+
+      ref.read(checkoutProvider.notifier).reset();
+      ref.invalidate(addressesProvider);
+      ref.invalidate(defaultAddressProvider);
+
+      _autoAppliedAddressId = null;
+      _showManualAddressForm = false;
+      _clearControllers();
+    });
+
+    ref.listenManual(profileProvider, (previous, next) {
+      final notifier = ref.read(checkoutProvider.notifier);
+
+      next.when(
+        loading: () {
+          notifier.setRewardsLoading(true);
+        },
+        error: (_, __) {
+          notifier.setRewardsLoading(false);
+          notifier.setRewardsMessage('Could not load rewards right now.');
+        },
+        data: (ProfileModel? profile) {
+          notifier.setRewardsLoading(false);
+
+          if (profile == null) {
+            notifier.setRewardsSummary(
+              availableRewardPence: 0,
+              pointsToNextReward: 200,
+              message: '',
+            );
+            return;
+          }
+
+          final rewardPoints = profile.rewardPoints as int? ?? 0;
+          const pointsPerRewardBlock = 200;
+          const rewardBlockValuePence = 200;
+
+          final unlockedBlocks = rewardPoints ~/ pointsPerRewardBlock;
+          final availableRewardPence = unlockedBlocks * rewardBlockValuePence;
+          final pointsIntoNext = rewardPoints % pointsPerRewardBlock;
+          final pointsToNext = rewardPoints == 0
+              ? pointsPerRewardBlock
+              : (pointsPerRewardBlock - pointsIntoNext);
+
+          notifier.setRewardsSummary(
+            availableRewardPence: availableRewardPence,
+            pointsToNextReward: pointsToNext,
+            message: '',
+          );
+        },
+      );
+    });
   }
 
   @override
   void dispose() {
+    _authStateSub?.cancel();
     _fullNameController.dispose();
     _phoneController.dispose();
+    _emailController.dispose();
     _postcodeController.dispose();
     _address1Controller.dispose();
     _address2Controller.dispose();
     _cityController.dispose();
     super.dispose();
+  }
+
+  void _clearControllers() {
+    _fullNameController.clear();
+    _phoneController.clear();
+    _postcodeController.clear();
+    _address1Controller.clear();
+    _address2Controller.clear();
+    _cityController.clear();
+  }
+
+  void _applyCheckoutAddressToControllers({
+    required String fullName,
+    required String phone,
+    required String postcode,
+    required String addressLine1,
+    required String addressLine2,
+    required String city,
+  }) {
+    _fullNameController.text = fullName;
+    _phoneController.text = phone;
+    _postcodeController.text = postcode;
+    _address1Controller.text = addressLine1;
+    _address2Controller.text = addressLine2;
+    _cityController.text = city;
+  }
+
+  void _applySavedAddressToControllers(AddressModel address) {
+    _applyCheckoutAddressToControllers(
+      fullName: address.fullName,
+      phone: address.phone,
+      postcode: address.postcode,
+      addressLine1: address.addressLine1,
+      addressLine2: address.addressLine2,
+      city: address.city,
+    );
+  }
+
+  void _ensureSavedAddressSelection(List<AddressModel> addresses) {
+    if (addresses.isEmpty) return;
+    if (_showManualAddressForm) return;
+
+    final checkout = ref.read(checkoutProvider);
+    final selectedSaved = checkout.selectedSavedAddress;
+
+    if (selectedSaved != null) {
+      final stillExists = addresses.any((a) => a.id == selectedSaved.id);
+      if (stillExists) return;
+    }
+
+    final preferred = addresses.cast<AddressModel?>().firstWhere(
+          (a) => a?.isDefault == true,
+          orElse: () => addresses.first,
+        );
+
+    if (preferred == null) return;
+    if (_autoAppliedAddressId == preferred.id) return;
+
+    _autoAppliedAddressId = preferred.id;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(checkoutProvider.notifier).applySavedAddress(preferred);
+      _applySavedAddressToControllers(preferred);
+    });
+  }
+
+  void _openManualAddressMode() {
+    setState(() {
+      _showManualAddressForm = true;
+      _autoAppliedAddressId = null;
+    });
+    ref.read(checkoutProvider.notifier).resetAddressState();
+    _clearControllers();
+  }
+
+  Future<void> _showSavedAddressesSheet(List<AddressModel> addresses) async {
+    final notifier = ref.read(checkoutProvider.notifier);
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _SavedAddressPickerSheet(
+        items: addresses,
+        onSelected: (address) {
+          notifier.applySavedAddress(address);
+          _applySavedAddressToControllers(address);
+          if (mounted) {
+            setState(() {
+              _showManualAddressForm = false;
+              _autoAppliedAddressId = address.id;
+            });
+          }
+        },
+      ),
+    );
   }
 
   Future<void> _findAddress() async {
@@ -120,10 +302,18 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           },
         ),
       );
-    } catch (e) {
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('Address lookup failed: $e');
+        debugPrint('$st');
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Address lookup failed: $e')),
+        const SnackBar(
+          content: Text(
+            'Could not find the address right now. Please try again.',
+          ),
+        ),
       );
     } finally {
       notifier.setCheckingPostcode(false);
@@ -131,19 +321,250 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     }
   }
 
-  Future<void> _onPlaceOrder() async {
+  Future<void> _saveAddressAfterSuccessfulOrder() async {
     final checkout = ref.read(checkoutProvider);
-    final checkoutNotifier = ref.read(checkoutProvider.notifier);
-    final cartItems = ref.read(cartProvider);
 
-    final pricing = CartPricing.fromItems(
-      cartItems,
-      deliveryType: checkout.deliveryType,
+    if (checkout.deliveryType != 'home_delivery') {
+      return;
+    }
+
+    final selectedSaved = checkout.selectedSavedAddress;
+    if (selectedSaved != null && selectedSaved.id.isNotEmpty) {
+      return;
+    }
+
+    final fullName = _fullNameController.text.trim();
+    final phone = _phoneController.text.trim();
+    final postcode = _postcodeController.text.trim();
+    final addressLine1 = _address1Controller.text.trim();
+    final addressLine2 = _address2Controller.text.trim();
+    final city = _cityController.text.trim();
+
+    if (fullName.isEmpty ||
+        phone.isEmpty ||
+        postcode.isEmpty ||
+        addressLine1.isEmpty ||
+        city.isEmpty) {
+      return;
+    }
+
+    await _addressService.saveAddressFromCheckout(
+      fullName: fullName,
+      phone: phone,
+      postcode: postcode,
+      addressLine1: addressLine1,
+      addressLine2: addressLine2,
+      city: city,
+      label: checkout.selectedAddressLabel.isNotEmpty
+          ? checkout.selectedAddressLabel
+          : 'Home',
     );
 
-    final subtotalCents = pricing.subtotalCents;
-    final deliveryFeeCents = pricing.deliveryFeeCents;
-    final totalCents = pricing.totalCents;
+    ref.invalidate(addressesProvider);
+    ref.invalidate(defaultAddressProvider);
+    ref.invalidate(profileProvider);
+  }
+
+  String _emailDeliveryTypeLabel(String value) {
+    switch (value) {
+      case 'home_delivery':
+        return 'Home Delivery';
+      case 'local_pickup':
+        return 'Local Pickup';
+      default:
+        return value.trim().isEmpty ? 'Delivery' : value;
+    }
+  }
+
+  String _resolveCustomerName(CheckoutState checkout) {
+    final fullName = _fullNameController.text.trim();
+    if (fullName.isNotEmpty) return fullName;
+
+    final savedName = checkout.selectedSavedAddress?.fullName.trim();
+    if (savedName != null && savedName.isNotEmpty) return savedName;
+
+    final addressName = checkout.address.fullName.trim();
+    if (addressName.isNotEmpty) return addressName;
+
+    final user = Supabase.instance.client.auth.currentUser;
+    final metaName = (user?.userMetadata?['full_name'] as String?)?.trim();
+    if (metaName != null && metaName.isNotEmpty) return metaName;
+
+    final email = user?.email?.trim();
+    if (email != null && email.isNotEmpty) {
+      final at = email.indexOf('@');
+      if (at > 0) return email.substring(0, at);
+    }
+
+    return 'Customer';
+  }
+
+  String _getCheckoutEmail() {
+    return _emailController.text.trim();
+  }
+
+  List<Map<String, dynamic>> _buildEmailItems(List<dynamic> cartItems) {
+    return cartItems.map<Map<String, dynamic>>((item) {
+      final cartItem = item as dynamic;
+      final product = cartItem.product;
+
+      final dynamic productName = product?.name ??
+          cartItem.name ??
+          cartItem.productName ??
+          cartItem.title ??
+          'Item';
+
+      final dynamic qty = cartItem.qty ?? cartItem.quantity ?? 1;
+
+      final dynamic priceCents = product?.salePriceCents ??
+          product?.priceCents ??
+          cartItem.priceCents ??
+          cartItem.salePriceCents ??
+          cartItem.unitPriceCents;
+
+      return {
+        'name': productName.toString(),
+        'qty': qty is int ? qty : int.tryParse(qty.toString()) ?? 1,
+        if (priceCents != null)
+          'priceCents': priceCents is int
+              ? priceCents
+              : int.tryParse(priceCents.toString()),
+      };
+    }).toList();
+  }
+
+  Future<void> _sendOrderConfirmationEmail({
+    required CheckoutState checkout,
+    required dynamic placedOrder,
+    required int totalCents,
+    required List<dynamic> cartItems,
+  }) async {
+    final email = _getCheckoutEmail();
+
+    if (email.isEmpty) {
+      debugPrint('EMAIL SKIPPED: empty email');
+      return;
+    }
+
+    final payload = {
+      'email': email,
+      'customerName': _resolveCustomerName(checkout),
+      'orderNumber': placedOrder.orderNumber,
+      'totalCents': totalCents,
+      'items': _buildEmailItems(cartItems),
+      'deliveryType': _emailDeliveryTypeLabel(checkout.deliveryType),
+      'deliverySlot': checkout.deliverySlot,
+    };
+
+    final response = await Supabase.instance.client.functions.invoke(
+      'send-order-email',
+      body: payload,
+    );
+
+    if (response.status != 200) {
+      throw Exception('send-order-email failed: ${response.data}');
+    }
+  }
+
+  Future<void> _refreshBackendSummary() async {
+    final checkout = ref.read(checkoutProvider);
+    final cartItems = ref.read(cartProvider);
+    final notifier = ref.read(checkoutProvider.notifier);
+
+    final requestKey = '${checkout.deliveryType}|${checkout.useRewards}|'
+        '${cartItems.map((e) => '${e.product.id}:${e.qty}').join(',')}';
+
+    if (cartItems.isEmpty || checkout.deliveryType.isEmpty) {
+      notifier.setBackendSummary(
+        subtotalCents: 0,
+        eligibleSubtotalCents: 0,
+        deliveryFeeCents: 0,
+        rewardDiscountCents: 0,
+        totalCents: 0,
+        pointsToRedeem: 0,
+      );
+      return;
+    }
+
+    try {
+      notifier.setBackendSummaryLoading(true);
+
+      final summary =
+          await ref.read(checkoutServiceProvider).getCheckoutSummary(
+                deliveryType: checkout.deliveryType,
+                useRewards: checkout.useRewards,
+                cartItems: cartItems,
+              );
+
+      final latestCheckout = ref.read(checkoutProvider);
+      final latestCartItems = ref.read(cartProvider);
+      final latestKey =
+          '${latestCheckout.deliveryType}|${latestCheckout.useRewards}|'
+          '${latestCartItems.map((e) => '${e.product.id}:${e.qty}').join(',')}';
+
+      if (requestKey != latestKey) return;
+
+      notifier.setBackendSummary(
+        subtotalCents: (summary['subtotal_cents'] as num?)?.toInt() ?? 0,
+        eligibleSubtotalCents:
+            (summary['eligible_subtotal_cents'] as num?)?.toInt() ?? 0,
+        deliveryFeeCents: (summary['delivery_fee_cents'] as num?)?.toInt() ?? 0,
+        rewardDiscountCents:
+            (summary['reward_discount_cents'] as num?)?.toInt() ?? 0,
+        totalCents: (summary['total_cents'] as num?)?.toInt() ?? 0,
+        pointsToRedeem: (summary['points_to_redeem'] as num?)?.toInt() ?? 0,
+      );
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('Backend checkout summary failed: $e');
+        debugPrint('$st');
+      }
+      notifier.setBackendSummaryError(
+        'Could not confirm latest checkout total right now.',
+      );
+    }
+  }
+
+  void _handleSummaryRefresh(String key) {
+    if (_summaryRefreshInFlight) return;
+    if (_lastSummaryRefreshKey == key) return;
+
+    _lastSummaryRefreshKey = key;
+    _summaryRefreshInFlight = true;
+
+    _refreshBackendSummary().whenComplete(() {
+      _summaryRefreshInFlight = false;
+    });
+  }
+
+  bool _canPlaceOrder(CheckoutState checkout) {
+    if (_emailController.text.trim().isEmpty) return false;
+
+    if (checkout.deliveryType.isEmpty ||
+        checkout.deliverySlot.isEmpty ||
+        checkout.paymentMethod.isEmpty) {
+      return false;
+    }
+
+    if (checkout.deliveryType == 'local_pickup') {
+      return true;
+    }
+
+    if (checkout.selectedSavedAddress != null) {
+      return true;
+    }
+
+    return checkout.address.isValid;
+  }
+
+  Future<void> _onPlaceOrder() async {
+    final current = ref.read(checkoutProvider);
+    if (current.isPlacingOrder) return;
+
+    final checkout = current;
+    final checkoutNotifier = ref.read(checkoutProvider.notifier);
+    final cartItems = ref.read(cartProvider);
+    final selectedSavedAddress = checkout.selectedSavedAddress;
 
     if (cartItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -152,16 +573,17 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       return;
     }
 
-    if (!checkoutNotifier.validate()) {
+    if (!_canPlaceOrder(checkout)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please fill all required checkout details'),
+          content: Text('Please complete the required checkout details'),
         ),
       );
       return;
     }
 
     if (checkout.deliveryType == 'home_delivery' &&
+        selectedSavedAddress == null &&
         !PostcodeLookupService.isDeliveryArea(checkout.address.postcode)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -176,39 +598,115 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     try {
       checkoutNotifier.setPlacingOrder(true);
 
-      String? stripePaymentIntentId;
-      String paymentStatus = 'pending';
+      await ensureSupabaseUser();
+      await _refreshBackendSummary();
+      final refreshedCheckout = ref.read(checkoutProvider);
 
-      if (checkout.paymentMethod == 'card') {
-        final result = await _stripePaymentService.pay(
-          amountCents: totalCents,
-          currency: 'GBP',
-          customerName: checkout.address.fullName,
-          customerPhone: checkout.address.phone,
-          customerEmail: '',
-          orderLabel: 'Malabar Hub Order',
-        );
-
-        stripePaymentIntentId = result.paymentIntentId;
-        paymentStatus = 'paid';
-      } else {
-        paymentStatus = 'cod_pending';
+      if (refreshedCheckout.backendSummaryError.isNotEmpty) {
+        throw Exception(refreshedCheckout.backendSummaryError);
       }
 
-      await ensureSupabaseUser();
+      final confirmedTotalCents = refreshedCheckout.backendTotalCents;
+
+      if (checkout.paymentMethod == 'card' && confirmedTotalCents > 0) {
+        final paymentResult =
+            await _stripePaymentService.createCheckoutPaymentIntent(
+          address: checkout.address,
+          addressId: selectedSavedAddress?.id,
+          deliveryType: checkout.deliveryType,
+          deliverySlot: checkout.deliverySlot,
+          paymentMethod: checkout.paymentMethod,
+          useRewards: checkout.useRewards,
+          cartItems: cartItems,
+        );
+
+        final placedOrder =
+            await ref.read(checkoutServiceProvider).placeOrderAfterPayment(
+                  paymentIntentId: paymentResult.paymentIntentId,
+                  address: checkout.address,
+                  checkoutEmail: _getCheckoutEmail(),
+                  addressId: selectedSavedAddress?.id,
+                  deliveryType: checkout.deliveryType,
+                  deliverySlot: checkout.deliverySlot,
+                  paymentMethod: checkout.paymentMethod,
+                  useRewards: checkout.useRewards,
+                  cartItems: cartItems,
+                );
+
+        try {
+          await _saveAddressAfterSuccessfulOrder();
+        } catch (e, st) {
+          debugPrint('SAVE ADDRESS AFTER ORDER FAILED: $e');
+          debugPrint('$st');
+        }
+
+        try {
+          await _sendOrderConfirmationEmail(
+            checkout: checkout,
+            placedOrder: placedOrder,
+            totalCents: confirmedTotalCents,
+            cartItems: cartItems,
+          );
+        } catch (e, st) {
+          if (kDebugMode) {
+            debugPrint('SEND ORDER EMAIL FAILED: $e');
+            debugPrint('$st');
+          }
+        }
+
+        ref.read(cartProvider.notifier).clear();
+        ref.invalidate(adminOrdersProvider);
+
+        if (!mounted) return;
+
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(
+            builder: (_) => OrderSuccessScreen(
+              orderId: placedOrder.orderId,
+              orderNumber: placedOrder.orderNumber,
+            ),
+          ),
+        );
+
+        return;
+      }
+
+      // COD or zero-total order path
+      final paymentStatus = confirmedTotalCents == 0 ? 'paid' : 'cod_pending';
 
       final placedOrder = await ref.read(checkoutServiceProvider).placeOrder(
             address: checkout.address,
+            checkoutEmail: _getCheckoutEmail(),
+            addressId: selectedSavedAddress?.id,
             deliveryType: checkout.deliveryType,
             deliverySlot: checkout.deliverySlot,
             paymentMethod: checkout.paymentMethod,
-            subtotalCents: subtotalCents,
-            deliveryFeeCents: deliveryFeeCents,
-            totalCents: totalCents,
+            useRewards: checkout.useRewards,
             cartItems: cartItems,
             paymentStatus: paymentStatus,
-            stripePaymentIntentId: stripePaymentIntentId,
+            stripePaymentIntentId: null,
           );
+
+      try {
+        await _saveAddressAfterSuccessfulOrder();
+      } catch (e, st) {
+        debugPrint('SAVE ADDRESS AFTER ORDER FAILED: $e');
+        debugPrint('$st');
+      }
+
+      try {
+        await _sendOrderConfirmationEmail(
+          checkout: checkout,
+          placedOrder: placedOrder,
+          totalCents: confirmedTotalCents,
+          cartItems: cartItems,
+        );
+      } catch (e, st) {
+        if (kDebugMode) {
+          debugPrint('SEND ORDER EMAIL FAILED: $e');
+          debugPrint('$st');
+        }
+      }
 
       ref.read(cartProvider.notifier).clear();
       ref.invalidate(adminOrdersProvider);
@@ -230,10 +728,18 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
-    } catch (e) {
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('Failed to place order: $e');
+        debugPrint('$st');
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to place order: $e')),
+        const SnackBar(
+          content: Text(
+            'Could not place your order right now. Please try again.',
+          ),
+        ),
       );
     } finally {
       checkoutNotifier.setPlacingOrder(false);
@@ -244,15 +750,66 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   Widget build(BuildContext context) {
     final checkout = ref.watch(checkoutProvider);
     final cartItems = ref.watch(cartProvider);
+    final addressesAsync = ref.watch(addressesProvider);
+
+    final summaryRefreshKey = '${checkout.deliveryType}|${checkout.useRewards}|'
+        '${cartItems.map((e) => '${e.product.id}:${e.qty}').join(',')}';
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _handleSummaryRefresh(summaryRefreshKey);
+    });
 
     final pricing = CartPricing.fromItems(
       cartItems,
       deliveryType: checkout.deliveryType,
+      rewardDiscountCents:
+          checkout.useRewards ? checkout.appliedRewardPence : 0,
     );
 
-    final subtotalCents = pricing.subtotalCents;
-    final deliveryFeeCents = pricing.deliveryFeeCents;
-    final totalCents = pricing.totalCents;
+    final hasBackendSummary = checkout.backendSummaryLoaded;
+
+    final subtotalCents = hasBackendSummary
+        ? checkout.backendSubtotalCents
+        : pricing.subtotalCents;
+
+    final eligibleSubtotalCents = hasBackendSummary
+        ? checkout.backendEligibleSubtotalCents
+        : pricing.eligibleSubtotalCents;
+
+    final deliveryFeeCents = hasBackendSummary
+        ? checkout.backendDeliveryFeeCents
+        : pricing.deliveryFeeCents;
+
+    final appliedRewardCents = hasBackendSummary
+        ? checkout.backendRewardDiscountCents
+        : pricing.rewardDiscountCents;
+
+    final totalCents =
+        hasBackendSummary ? checkout.backendTotalCents : pricing.totalCents;
+    final maxRewardUsableCents =
+        checkout.availableRewardPence.clamp(0, eligibleSubtotalCents);
+
+    final effectiveRewardDiscountCents = hasBackendSummary
+        ? checkout.backendRewardDiscountCents
+        : pricing.rewardDiscountCents;
+
+    if (checkout.useRewards &&
+        checkout.appliedRewardPence != effectiveRewardDiscountCents) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref
+            .read(checkoutProvider.notifier)
+            .setAppliedRewardPence(effectiveRewardDiscountCents);
+      });
+    }
+
+    if (!checkout.useRewards && checkout.appliedRewardPence != 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(checkoutProvider.notifier).setAppliedRewardPence(0);
+      });
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
@@ -268,163 +825,28 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(14, 8, 14, 24),
                   children: [
-                    _SectionCard(
-                      title: 'Delivery Address',
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const _AmazonInfoBanner(
-                            icon: Icons.info_outline_rounded,
-                            text:
-                                'Enter your postcode, find your address, and confirm your delivery details.',
-                          ),
-                          const SizedBox(height: 14),
-                          _CheckoutTextField(
-                            label: 'Full Name',
-                            controller: _fullNameController,
-                            onChanged: ref
-                                .read(checkoutProvider.notifier)
-                                .updateFullName,
-                          ),
-                          const SizedBox(height: 12),
-                          _CheckoutTextField(
-                            label: 'Phone Number',
-                            controller: _phoneController,
-                            keyboardType: TextInputType.phone,
-                            onChanged:
-                                ref.read(checkoutProvider.notifier).updatePhone,
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _CheckoutTextField(
-                                  label: 'Postcode',
-                                  controller: _postcodeController,
-                                  onChanged: ref
-                                      .read(checkoutProvider.notifier)
-                                      .updatePostcode,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              SizedBox(
-                                height: 54,
-                                child: ElevatedButton.icon(
-                                  onPressed: (checkout.isCheckingPostcode ||
-                                          checkout.isLookingUpAddress)
-                                      ? null
-                                      : _findAddress,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: WMTheme.royalPurple,
-                                    foregroundColor: Colors.white,
-                                    elevation: 0,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                  ),
-                                  icon: (checkout.isCheckingPostcode ||
-                                          checkout.isLookingUpAddress)
-                                      ? const SizedBox(
-                                          width: 18,
-                                          height: 18,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                      : const Icon(Icons.search_rounded),
-                                  label: const Text(
-                                    'Find Address',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (checkout.postcodeStatusMessage.isNotEmpty) ...[
-                            const SizedBox(height: 12),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: checkout.postcodeEligible
-                                    ? const Color(0xFFF1FAF3)
-                                    : const Color(0xFFFFF4F4),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: checkout.postcodeEligible
-                                      ? const Color(0xFFBFE3C7)
-                                      : const Color(0xFFFFD1D1),
-                                ),
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Icon(
-                                    checkout.postcodeEligible
-                                        ? Icons.check_circle_rounded
-                                        : Icons.info_rounded,
-                                    color: checkout.postcodeEligible
-                                        ? Colors.green
-                                        : Colors.redAccent,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      checkout.postcodeStatusMessage,
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                          if (checkout.selectedAddressLabel.isNotEmpty) ...[
-                            const SizedBox(height: 12),
-                            _AmazonSelectionCard(
-                              icon: Icons.home_rounded,
-                              title: 'Selected Address',
-                              subtitle: checkout.selectedAddressLabel,
-                              accent: WMTheme.royalPurple,
-                            ),
-                          ],
-                          const SizedBox(height: 12),
-                          _CheckoutTextField(
-                            label: 'Address Line 1',
-                            controller: _address1Controller,
-                            onChanged: ref
-                                .read(checkoutProvider.notifier)
-                                .updateAddressLine1,
-                          ),
-                          const SizedBox(height: 12),
-                          _CheckoutTextField(
-                            label: 'Address Line 2',
-                            controller: _address2Controller,
-                            onChanged: ref
-                                .read(checkoutProvider.notifier)
-                                .updateAddressLine2,
-                          ),
-                          const SizedBox(height: 12),
-                          _CheckoutTextField(
-                            label: 'City',
-                            controller: _cityController,
-                            onChanged:
-                                ref.read(checkoutProvider.notifier).updateCity,
-                          ),
-                        ],
+                    addressesAsync.when(
+                      loading: () => const _SectionCard(
+                        title: 'Delivery Address',
+                        child: _InlineLoadingRow(
+                          text: 'Loading saved addresses...',
+                        ),
                       ),
+                      error: (_, __) => _buildAddressSection(
+                        checkout: checkout,
+                        addresses: const [],
+                      ),
+                      data: (addresses) {
+                        _ensureSavedAddressSelection(addresses);
+                        return _buildAddressSection(
+                          checkout: checkout,
+                          addresses: addresses,
+                        );
+                      },
                     ),
                     const SizedBox(height: 14),
                     _SectionCard(
-                      title: 'Delivery Type',
+                      title: 'Delivery',
                       child: Column(
                         children: [
                           _ChoiceTile(
@@ -507,10 +929,40 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                       ),
                     ),
                     const SizedBox(height: 14),
+                    _RewardsCheckoutCard(
+                      availableRewardPence: checkout.availableRewardPence,
+                      appliedRewardPence: appliedRewardCents,
+                      pointsToNextReward: checkout.pointsToNextReward,
+                      useRewards: checkout.useRewards,
+                      maxRedeemablePence: maxRewardUsableCents,
+                      isLoading: checkout.rewardsLoading,
+                      message: checkout.rewardsMessage,
+                      onToggle: (value) {
+                        final notifier = ref.read(checkoutProvider.notifier);
+                        notifier.toggleUseRewards(value);
+                        notifier.setAppliedRewardPence(
+                          value ? maxRewardUsableCents : 0,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 14),
                     _SectionCard(
                       title: 'Order Summary',
                       child: Column(
                         children: [
+                          if (checkout.backendSummaryLoading) ...[
+                            const _InlineLoadingRow(
+                              text: 'Confirming latest total...',
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          if (checkout.backendSummaryError.isNotEmpty) ...[
+                            _AmazonInfoBanner(
+                              icon: Icons.info_outline_rounded,
+                              text: checkout.backendSummaryError,
+                            ),
+                            const SizedBox(height: 12),
+                          ],
                           _PriceRow(
                             label: 'Items',
                             value:
@@ -521,6 +973,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                             label: 'Subtotal',
                             value: _money(subtotalCents),
                           ),
+                          if (appliedRewardCents > 0) ...[
+                            const SizedBox(height: 10),
+                            _PriceRow(
+                              label: 'Rewards',
+                              value: '-${_money(appliedRewardCents)}',
+                              valueColor: const Color(0xFF1E8E3E),
+                            ),
+                          ],
                           const SizedBox(height: 10),
                           _PriceRow(
                             label: 'Delivery Fee',
@@ -559,7 +1019,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: WMTheme.royalPurple,
                         foregroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(54),
+                        minimumSize: const Size.fromHeight(56),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
@@ -591,7 +1051,603 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     );
   }
 
+  Widget _buildAddressSection({
+    required CheckoutState checkout,
+    required List<AddressModel> addresses,
+  }) {
+    final hasSavedAddresses = addresses.isNotEmpty;
+    final selectedSaved = checkout.selectedSavedAddress;
+    final matchedSelectedSaved = selectedSaved == null
+        ? null
+        : addresses.cast<AddressModel?>().firstWhere(
+              (a) => a?.id == selectedSaved.id,
+              orElse: () => null,
+            );
+
+    final preferredSavedAddress = matchedSelectedSaved ??
+        (hasSavedAddresses
+            ? addresses.cast<AddressModel?>().firstWhere(
+                  (a) => a?.isDefault == true,
+                  orElse: () => addresses.first,
+                )
+            : null);
+
+    final shouldShowManualForm = !hasSavedAddresses ||
+        _showManualAddressForm ||
+        checkout.deliveryType == 'local_pickup';
+
+    return _SectionCard(
+      title: 'Delivery Address',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (checkout.deliveryType == 'local_pickup')
+            const _AmazonInfoBanner(
+              icon: Icons.storefront_outlined,
+              text:
+                  'Pickup selected. You can collect your order from the store.',
+            )
+          else if (hasSavedAddresses && !shouldShowManualForm) ...[
+            if (preferredSavedAddress != null)
+              _CompactSavedAddressCard(
+                address: preferredSavedAddress,
+                onChangeTap: () => _showSavedAddressesSheet(addresses),
+                onNewAddressTap: _openManualAddressMode,
+              )
+            else
+              _SavedAddressesEntryCard(
+                count: addresses.length,
+                onTap: () => _showSavedAddressesSheet(addresses),
+                onNewAddressTap: _openManualAddressMode,
+              ),
+          ] else ...[
+            if (hasSavedAddresses) ...[
+              _SavedAddressesEntryCard(
+                count: addresses.length,
+                onTap: () => _showSavedAddressesSheet(addresses),
+                onNewAddressTap: _openManualAddressMode,
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (checkout.deliveryType == 'home_delivery')
+              const _AmazonInfoBanner(
+                icon: Icons.info_outline_rounded,
+                text:
+                    'Enter your postcode, find your address, and confirm your delivery details.',
+              ),
+            if (checkout.deliveryType == 'home_delivery') ...[
+              const SizedBox(height: 14),
+              _CheckoutTextField(
+                label: 'Full Name',
+                controller: _fullNameController,
+                onChanged: ref.read(checkoutProvider.notifier).updateFullName,
+              ),
+              const SizedBox(height: 12),
+              _CheckoutTextField(
+                label: 'Phone Number',
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                onChanged: ref.read(checkoutProvider.notifier).updatePhone,
+              ),
+              const SizedBox(height: 12),
+              _CheckoutTextField(
+                label: 'Email Address',
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                onChanged: (_) {},
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _CheckoutTextField(
+                      label: 'Postcode',
+                      controller: _postcodeController,
+                      onChanged:
+                          ref.read(checkoutProvider.notifier).updatePostcode,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  SizedBox(
+                    height: 54,
+                    child: ElevatedButton.icon(
+                      onPressed: (checkout.isCheckingPostcode ||
+                              checkout.isLookingUpAddress)
+                          ? null
+                          : _findAddress,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: WMTheme.royalPurple,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      icon: (checkout.isCheckingPostcode ||
+                              checkout.isLookingUpAddress)
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.search_rounded),
+                      label: const Text(
+                        'Find Address',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (checkout.postcodeStatusMessage.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: checkout.postcodeEligible
+                        ? const Color(0xFFF1FAF3)
+                        : const Color(0xFFFFF4F4),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: checkout.postcodeEligible
+                          ? const Color(0xFFBFE3C7)
+                          : const Color(0xFFFFD1D1),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        checkout.postcodeEligible
+                            ? Icons.check_circle_rounded
+                            : Icons.info_rounded,
+                        color: checkout.postcodeEligible
+                            ? Colors.green
+                            : Colors.redAccent,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          checkout.postcodeStatusMessage,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              if (checkout.selectedAddressLabel.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _AmazonSelectionCard(
+                  icon: Icons.home_rounded,
+                  title: 'Selected Address',
+                  subtitle: checkout.selectedAddressLabel,
+                  accent: WMTheme.royalPurple,
+                ),
+              ],
+              const SizedBox(height: 12),
+              _CheckoutTextField(
+                label: 'Address Line 1',
+                controller: _address1Controller,
+                onChanged:
+                    ref.read(checkoutProvider.notifier).updateAddressLine1,
+              ),
+              const SizedBox(height: 12),
+              _CheckoutTextField(
+                label: 'Address Line 2',
+                controller: _address2Controller,
+                onChanged:
+                    ref.read(checkoutProvider.notifier).updateAddressLine2,
+              ),
+              const SizedBox(height: 12),
+              _CheckoutTextField(
+                label: 'City',
+                controller: _cityController,
+                onChanged: ref.read(checkoutProvider.notifier).updateCity,
+              ),
+              if (hasSavedAddresses) ...[
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _showManualAddressForm = false;
+                      });
+                      _ensureSavedAddressSelection(addresses);
+                    },
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    label: const Text(
+                      'Use saved address instead',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ],
+          if (checkout.deliveryType == 'local_pickup') ...[
+            const SizedBox(height: 12),
+            _CheckoutTextField(
+              label: 'Email Address',
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              onChanged: (_) {},
+            ),
+          ]
+        ],
+      ),
+    );
+  }
+
   static String _money(int cents) => '£${(cents / 100).toStringAsFixed(2)}';
+}
+
+class _CompactSavedAddressCard extends StatelessWidget {
+  final AddressModel address;
+  final VoidCallback onChangeTap;
+  final VoidCallback onNewAddressTap;
+
+  const _CompactSavedAddressCard({
+    required this.address,
+    required this.onChangeTap,
+    required this.onNewAddressTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F2FC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE4D8F4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.location_on_rounded,
+                color: WMTheme.royalPurple,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Deliver to ${address.label}',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+              if (address.isDefault)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: WMTheme.royalPurple,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const Text(
+                    'Default',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            address.fullDisplay,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.black54,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              TextButton.icon(
+                onPressed: onChangeTap,
+                icon: const Icon(Icons.swap_horiz_rounded),
+                label: const Text(
+                  'Change',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: onNewAddressTap,
+                icon: const Icon(Icons.add_location_alt_outlined),
+                label: const Text(
+                  'New address',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SavedAddressesEntryCard extends StatelessWidget {
+  final int count;
+  final VoidCallback onTap;
+  final VoidCallback onNewAddressTap;
+
+  const _SavedAddressesEntryCard({
+    required this.count,
+    required this.onTap,
+    required this.onNewAddressTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F2FC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE4D8F4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.bookmark_border_rounded,
+              color: WMTheme.royalPurple,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Use a saved address',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$count saved address(es) available for this account',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black54,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 8,
+                  children: [
+                    TextButton(
+                      onPressed: onTap,
+                      child: const Text(
+                        'Choose',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: onNewAddressTap,
+                      child: const Text(
+                        'New address',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InlineLoadingRow extends StatelessWidget {
+  final String text;
+
+  const _InlineLoadingRow({
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.2,
+            color: WMTheme.royalPurple,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: Colors.black54,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SavedAddressPickerSheet extends StatelessWidget {
+  final List<AddressModel> items;
+  final ValueChanged<AddressModel> onSelected;
+
+  const _SavedAddressPickerSheet({
+    required this.items,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 560,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(24),
+        ),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 10),
+          Container(
+            width: 42,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.black12,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.bookmark_border_rounded,
+                  color: WMTheme.royalPurple,
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'Choose saved address',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView.separated(
+              itemCount: items.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final item = items[index];
+                return ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  leading: Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF6F0FB),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.home_rounded,
+                      color: WMTheme.royalPurple,
+                    ),
+                  ),
+                  title: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.label,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      if (item.isDefault)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: WMTheme.royalPurple,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: const Text(
+                            'Default',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      item.fullDisplay,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black54,
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
+                  trailing: const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Colors.black38,
+                  ),
+                  onTap: () {
+                    onSelected(item);
+                    Navigator.pop(context);
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _AddressPickerSheet extends StatelessWidget {
@@ -890,30 +1946,177 @@ class _ChoiceTile extends StatelessWidget {
   }
 }
 
+class _RewardsCheckoutCard extends StatelessWidget {
+  final int availableRewardPence;
+  final int appliedRewardPence;
+  final int pointsToNextReward;
+  final int maxRedeemablePence;
+  final bool useRewards;
+  final bool isLoading;
+  final String message;
+  final ValueChanged<bool> onToggle;
+
+  const _RewardsCheckoutCard({
+    required this.availableRewardPence,
+    required this.appliedRewardPence,
+    required this.pointsToNextReward,
+    required this.maxRedeemablePence,
+    required this.useRewards,
+    required this.isLoading,
+    required this.message,
+    required this.onToggle,
+  });
+
+  static String _money(int cents) => '£${(cents / 100).toStringAsFixed(2)}';
+
+  @override
+  Widget build(BuildContext context) {
+    final canRedeem =
+        availableRewardPence > 0 && maxRedeemablePence > 0 && !isLoading;
+    final effectiveRedeemable =
+        availableRewardPence.clamp(0, maxRedeemablePence);
+
+    return _SectionCard(
+      title: 'Rewards',
+      child: isLoading
+          ? const _InlineLoadingRow(text: 'Checking your rewards...')
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: canRedeem
+                        ? const Color(0xFFF6F0FB)
+                        : const Color(0xFFFBFBFB),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: canRedeem
+                          ? const Color(0xFFE4D8F4)
+                          : const Color(0xFFEAEAEA),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: canRedeem
+                              ? WMTheme.royalPurple
+                              : const Color(0xFFD7D7D7),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.card_giftcard_rounded,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              canRedeem
+                                  ? '${_money(effectiveRedeemable)} available'
+                                  : 'No rewards available yet',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              canRedeem
+                                  ? appliedRewardPence > 0
+                                      ? '${_money(appliedRewardPence)} reward discount applied to this order.'
+                                      : 'Apply your rewards to reduce this order total.'
+                                  : pointsToNextReward > 0
+                                      ? 'Only $pointsToNextReward more points to unlock your next £2 reward.'
+                                      : 'Rewards will appear here once available.',
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black54,
+                                height: 1.35,
+                              ),
+                            ),
+                            if (message.trim().isNotEmpty) ...[
+                              const SizedBox(height: 6),
+                              Text(
+                                message,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black45,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      Switch.adaptive(
+                        value: canRedeem ? useRewards : false,
+                        onChanged: canRedeem ? onToggle : null,
+                        activeThumbColor: WMTheme.royalPurple,
+                        activeTrackColor:
+                            WMTheme.royalPurple.withValues(alpha: 0.45),
+                      ),
+                    ],
+                  ),
+                ),
+                if (canRedeem && availableRewardPence > maxRedeemablePence) ...[
+                  const SizedBox(height: 10),
+                  const _AmazonInfoBanner(
+                    icon: Icons.info_outline_rounded,
+                    text:
+                        'Only product subtotal can be discounted. Delivery fee is not reduced by rewards.',
+                  ),
+                ],
+              ],
+            ),
+    );
+  }
+}
+
 class _PriceRow extends StatelessWidget {
   final String label;
   final String value;
   final bool bold;
+  final Color? valueColor;
 
   const _PriceRow({
     required this.label,
     required this.value,
     this.bold = false,
+    this.valueColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    final style = TextStyle(
+    final labelStyle = TextStyle(
       fontSize: bold ? 17 : 15,
       fontWeight: bold ? FontWeight.w900 : FontWeight.w700,
       color: bold ? WMTheme.royalPurple : Colors.black87,
     );
 
+    final resolvedValueColor =
+        valueColor ?? (bold ? WMTheme.royalPurple : Colors.black87);
+
+    final valueStyle = TextStyle(
+      fontSize: bold ? 17 : 15,
+      fontWeight: bold ? FontWeight.w900 : FontWeight.w700,
+      color: resolvedValueColor,
+    );
+
     return Row(
       children: [
-        Text(label, style: style),
+        Text(label, style: labelStyle),
         const Spacer(),
-        Text(value, style: style),
+        Text(value, style: valueStyle),
       ],
     );
   }
@@ -980,7 +2183,7 @@ class _AmazonSelectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: accent.withOpacity(0.20)),
+        border: Border.all(color: accent.withValues(alpha: 51)),
         boxShadow: const [
           BoxShadow(
             color: Color(0x08000000),
@@ -996,7 +2199,7 @@ class _AmazonSelectionCard extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: accent.withOpacity(0.10),
+              color: accent.withValues(alpha: 26),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: accent),
@@ -1030,5 +2233,3 @@ class _AmazonSelectionCard extends StatelessWidget {
     );
   }
 }
-
-
