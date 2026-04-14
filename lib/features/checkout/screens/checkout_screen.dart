@@ -30,6 +30,26 @@ class CheckoutScreen extends ConsumerStatefulWidget {
 }
 
 class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
+  // --- Guest checkout and email helpers ---
+  bool get _isGuestCheckout {
+    final user = Supabase.instance.client.auth.currentUser;
+    return user == null || user.isAnonymous;
+  }
+
+  bool _isValidEmail(String value) {
+    final email = value.trim();
+    if (email.isEmpty) return false;
+
+    final emailRegex = RegExp(
+      r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
+    );
+    return emailRegex.hasMatch(email);
+  }
+
+  String _guestCheckoutBenefitsText() {
+    return 'Sign in or create an account to collect rewards, save addresses, and track your orders.';
+  }
+
   late final TextEditingController _fullNameController;
   late final TextEditingController _phoneController;
   late final TextEditingController _emailController;
@@ -407,7 +427,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     final typedEmail = _emailController.text.trim();
     if (typedEmail.isNotEmpty) return typedEmail;
 
-    final authEmail = Supabase.instance.client.auth.currentUser?.email?.trim() ?? '';
+    final authEmail =
+        Supabase.instance.client.auth.currentUser?.email?.trim() ?? '';
     if (authEmail.isNotEmpty) return authEmail;
 
     return '';
@@ -548,7 +569,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }
 
   bool _canPlaceOrder(CheckoutState checkout) {
-    if (_getCheckoutEmail().isEmpty) return false;
+    if (!_isValidEmail(_getCheckoutEmail())) return false;
 
     if (checkout.deliveryType.isEmpty ||
         checkout.deliverySlot.isEmpty ||
@@ -580,6 +601,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     if (cartItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Your cart is empty')),
+      );
+      return;
+    }
+
+    if (!_isValidEmail(_getCheckoutEmail())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content:
+              Text('Please enter a valid email address for order updates.'),
+        ),
       );
       return;
     }
@@ -633,16 +664,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
         final placedOrder =
             await ref.read(checkoutServiceProvider).placeOrderAfterPayment(
-              paymentIntentId: paymentResult.paymentIntentId,
-              address: checkout.address,
-              checkoutEmail: checkoutEmail,
-              addressId: selectedSavedAddress?.id,
-              deliveryType: checkout.deliveryType,
-              deliverySlot: checkout.deliverySlot,
-              paymentMethod: checkout.paymentMethod,
-              useRewards: checkout.useRewards,
-              cartItems: cartItems,
-            );
+                  paymentIntentId: paymentResult.paymentIntentId,
+                  address: checkout.address,
+                  checkoutEmail: checkoutEmail,
+                  addressId: selectedSavedAddress?.id,
+                  deliveryType: checkout.deliveryType,
+                  deliverySlot: checkout.deliverySlot,
+                  paymentMethod: checkout.paymentMethod,
+                  useRewards: checkout.useRewards,
+                  cartItems: cartItems,
+                );
 
         try {
           await _saveAddressAfterSuccessfulOrder();
@@ -686,16 +717,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       final paymentStatus = confirmedTotalCents == 0 ? 'paid' : 'cod_pending';
 
       final placedOrder = await ref.read(checkoutServiceProvider).placeOrder(
-        address: checkout.address,
-        checkoutEmail: checkoutEmail,
-        addressId: selectedSavedAddress?.id,
-        deliveryType: checkout.deliveryType,
-        deliverySlot: checkout.deliverySlot,
-        paymentMethod: checkout.paymentMethod,
-        useRewards: checkout.useRewards,
-        cartItems: cartItems,
-        paymentStatus: paymentStatus,
-        stripePaymentIntentId: null,
+            address: checkout.address,
+            checkoutEmail: checkoutEmail,
+            addressId: selectedSavedAddress?.id,
+            deliveryType: checkout.deliveryType,
+            deliverySlot: checkout.deliverySlot,
+            paymentMethod: checkout.paymentMethod,
+            useRewards: checkout.useRewards,
+            cartItems: cartItems,
+            paymentStatus: paymentStatus,
+            stripePaymentIntentId: null,
           );
 
       try {
@@ -822,6 +853,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       });
     }
 
+    final isGuestCheckout = _isGuestCheckout;
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       body: Container(
@@ -947,8 +979,13 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                       useRewards: checkout.useRewards,
                       maxRedeemablePence: maxRewardUsableCents,
                       isLoading: checkout.rewardsLoading,
-                      message: checkout.rewardsMessage,
+                      message: isGuestCheckout
+                          ? _guestCheckoutBenefitsText()
+                          : checkout.rewardsMessage,
+                      isGuestCheckout: isGuestCheckout,
                       onToggle: (value) {
+                        if (isGuestCheckout) return;
+
                         final notifier = ref.read(checkoutProvider.notifier);
                         notifier.toggleUseRewards(value);
                         notifier.setAppliedRewardPence(
@@ -1100,6 +1137,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             onChanged: (_) {},
           ),
           const SizedBox(height: 12),
+          if (_isGuestCheckout) ...[
+            const _AmazonInfoBanner(
+              icon: Icons.stars_rounded,
+              text:
+                  'Guest checkout is available. Sign in to collect rewards, save addresses, and track your orders more easily.',
+            ),
+            const SizedBox(height: 12),
+          ],
           if (checkout.deliveryType == 'local_pickup')
             const _AmazonInfoBanner(
               icon: Icons.storefront_outlined,
@@ -1956,6 +2001,7 @@ class _RewardsCheckoutCard extends StatelessWidget {
   final int maxRedeemablePence;
   final bool useRewards;
   final bool isLoading;
+  final bool isGuestCheckout;
   final String message;
   final ValueChanged<bool> onToggle;
 
@@ -1966,6 +2012,7 @@ class _RewardsCheckoutCard extends StatelessWidget {
     required this.maxRedeemablePence,
     required this.useRewards,
     required this.isLoading,
+    required this.isGuestCheckout,
     required this.message,
     required this.onToggle,
   });
@@ -1974,10 +2021,29 @@ class _RewardsCheckoutCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final canRedeem =
-        availableRewardPence > 0 && maxRedeemablePence > 0 && !isLoading;
+    final canRedeem = !isGuestCheckout &&
+        availableRewardPence > 0 &&
+        maxRedeemablePence > 0 &&
+        !isLoading;
+
     final effectiveRedeemable =
         availableRewardPence.clamp(0, maxRedeemablePence);
+
+    final titleText = isGuestCheckout
+        ? 'Sign in to collect rewards'
+        : canRedeem
+            ? '${_money(effectiveRedeemable)} available'
+            : 'No rewards available yet';
+
+    final subtitleText = isGuestCheckout
+        ? 'Create an account or sign in to earn points on this order, unlock rewards, save addresses, and track future orders.'
+        : canRedeem
+            ? appliedRewardPence > 0
+                ? '${_money(appliedRewardPence)} reward discount applied to this order.'
+                : 'Apply your rewards to reduce this order total.'
+            : pointsToNextReward > 0
+                ? 'Only $pointsToNextReward more points to unlock your next £2 reward.'
+                : 'Rewards will appear here once available.';
 
     return _SectionCard(
       title: 'Rewards',
@@ -1990,29 +2056,38 @@ class _RewardsCheckoutCard extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: canRedeem
-                        ? const Color(0xFFF6F0FB)
-                        : const Color(0xFFFBFBFB),
+                    color: isGuestCheckout
+                        ? const Color(0xFFFFF8E7)
+                        : canRedeem
+                            ? const Color(0xFFF6F0FB)
+                            : const Color(0xFFFBFBFB),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: canRedeem
-                          ? const Color(0xFFE4D8F4)
-                          : const Color(0xFFEAEAEA),
+                      color: isGuestCheckout
+                          ? const Color(0xFFF0D98D)
+                          : canRedeem
+                              ? const Color(0xFFE4D8F4)
+                              : const Color(0xFFEAEAEA),
                     ),
                   ),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
                         width: 46,
                         height: 46,
                         decoration: BoxDecoration(
-                          color: canRedeem
-                              ? WMTheme.royalPurple
-                              : const Color(0xFFD7D7D7),
+                          color: isGuestCheckout
+                              ? const Color(0xFF8A6700)
+                              : canRedeem
+                                  ? WMTheme.royalPurple
+                                  : const Color(0xFFD7D7D7),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: const Icon(
-                          Icons.card_giftcard_rounded,
+                        child: Icon(
+                          isGuestCheckout
+                              ? Icons.stars_rounded
+                              : Icons.card_giftcard_rounded,
                           color: Colors.white,
                         ),
                       ),
@@ -2022,9 +2097,7 @@ class _RewardsCheckoutCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              canRedeem
-                                  ? '${_money(effectiveRedeemable)} available'
-                                  : 'No rewards available yet',
+                              titleText,
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w900,
@@ -2033,13 +2106,7 @@ class _RewardsCheckoutCard extends StatelessWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              canRedeem
-                                  ? appliedRewardPence > 0
-                                      ? '${_money(appliedRewardPence)} reward discount applied to this order.'
-                                      : 'Apply your rewards to reduce this order total.'
-                                  : pointsToNextReward > 0
-                                      ? 'Only $pointsToNextReward more points to unlock your next £2 reward.'
-                                      : 'Rewards will appear here once available.',
+                              subtitleText,
                               style: const TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w700,
@@ -2047,7 +2114,8 @@ class _RewardsCheckoutCard extends StatelessWidget {
                                 height: 1.35,
                               ),
                             ),
-                            if (message.trim().isNotEmpty) ...[
+                            if (message.trim().isNotEmpty &&
+                                !isGuestCheckout) ...[
                               const SizedBox(height: 6),
                               Text(
                                 message,
@@ -2061,13 +2129,14 @@ class _RewardsCheckoutCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      Switch.adaptive(
-                        value: canRedeem ? useRewards : false,
-                        onChanged: canRedeem ? onToggle : null,
-                        activeThumbColor: WMTheme.royalPurple,
-                        activeTrackColor:
-                            WMTheme.royalPurple.withValues(alpha: 0.45),
-                      ),
+                      if (!isGuestCheckout)
+                        Switch.adaptive(
+                          value: canRedeem ? useRewards : false,
+                          onChanged: canRedeem ? onToggle : null,
+                          activeThumbColor: WMTheme.royalPurple,
+                          activeTrackColor:
+                              WMTheme.royalPurple.withValues(alpha: 0.45),
+                        ),
                     ],
                   ),
                 ),
