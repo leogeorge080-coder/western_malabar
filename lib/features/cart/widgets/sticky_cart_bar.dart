@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:western_malabar/features/cart/screens/cart_screen.dart';
 import 'package:western_malabar/features/cart/providers/cart_provider.dart';
-import 'package:western_malabar/shared/theme/theme.dart';
+import 'package:western_malabar/features/cart/screens/cart_screen.dart';
+
+const _wmStickyBg = Color(0xFF1F2329);
+const _wmStickyBgSoft = Color(0xFF2A2F36);
+const _wmStickySurface = Colors.white;
+const _wmStickyTextStrong = Colors.white;
+const _wmStickyTextSoft = Color(0xFFD5D9DF);
 
 class StickyCartBar extends ConsumerWidget {
   const StickyCartBar({
@@ -31,16 +36,18 @@ class StickyCartBar extends ConsumerWidget {
       totalCents += cents * e.qty;
     }
 
+    final totalText = '£${(totalCents / 100).toStringAsFixed(2)}';
+    final itemText = cartCount == 1 ? '1 item' : '$cartCount items';
+
     return Positioned(
       left: left,
       right: right,
       bottom: bottom,
       child: Material(
-        elevation: 10,
-        borderRadius: BorderRadius.circular(18),
         color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
         child: InkWell(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute<void>(
@@ -48,34 +55,44 @@ class StickyCartBar extends ConsumerWidget {
               ),
             );
           },
-          child: Container(
-            height: 58,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Ink(
+            height: 62,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
-              color: WMTheme.royalPurple,
-              borderRadius: BorderRadius.circular(18),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  _wmStickyBg,
+                  _wmStickyBgSoft,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(20),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x22000000),
-                  blurRadius: 14,
-                  offset: Offset(0, 8),
+                  color: Color(0x26000000),
+                  blurRadius: 20,
+                  offset: Offset(0, 10),
                 ),
               ],
             ),
             child: Row(
               children: [
                 Container(
-                  width: 34,
-                  height: 34,
+                  width: 38,
+                  height: 38,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(10),
+                    color: Colors.white.withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.08),
+                    ),
                   ),
                   alignment: Alignment.center,
                   child: Text(
                     '$cartCount',
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: _wmStickyTextStrong,
                       fontWeight: FontWeight.w900,
                       fontSize: 13,
                     ),
@@ -83,22 +100,49 @@ class StickyCartBar extends ConsumerWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    '£${(totalCents / 100).toStringAsFixed(2)} • View Cart',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
-                    ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$totalText • View basket',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: _wmStickyTextStrong,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14.2,
+                          height: 1.05,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        itemText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: _wmStickyTextSoft,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11.8,
+                          height: 1.0,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(
-                  Icons.arrow_forward_rounded,
-                  color: Colors.white,
-                  size: 20,
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: _wmStickySurface,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.arrow_forward_rounded,
+                    color: _wmStickyBg,
+                    size: 19,
+                  ),
                 ),
               ],
             ),
@@ -108,5 +152,3 @@ class StickyCartBar extends ConsumerWidget {
     );
   }
 }
-
-

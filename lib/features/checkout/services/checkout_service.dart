@@ -358,15 +358,27 @@ class CheckoutService {
 Future<void> ensureSupabaseUser() async {
   final supabase = Supabase.instance.client;
 
-  int attempts = 0;
+  // Already signed in or already anonymous.
+  if (supabase.auth.currentUser != null) {
+    return;
+  }
 
+  // Create anonymous guest session for checkout.
+  final authResponse = await supabase.auth.signInAnonymously();
+
+  if (authResponse.user != null) {
+    return;
+  }
+
+  // Small fallback wait in case auth state is still propagating.
+  int attempts = 0;
   while (supabase.auth.currentUser == null && attempts < 10) {
     await Future<void>.delayed(const Duration(milliseconds: 200));
     attempts++;
   }
 
   if (supabase.auth.currentUser == null) {
-    throw Exception('Supabase user session not restored');
+    throw Exception('Could not create guest checkout session');
   }
 }
 
