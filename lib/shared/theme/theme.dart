@@ -70,9 +70,12 @@ ThemeData _buildLightTheme() {
         borderRadius: BorderRadius.circular(24),
         borderSide: const BorderSide(color: WMTheme.divider),
       ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(24),
-        borderSide: const BorderSide(color: WMTheme.purple, width: 1.2),
+      focusedBorder: const OutlineInputBorder(
+        borderSide: BorderSide(
+          color: Color(0xFFBCC3CC),
+          width: 1,
+        ),
+        borderRadius: BorderRadius.all(Radius.circular(24)),
       ),
       prefixIconColor: WMTheme.purple,
       suffixIconColor: WMTheme.purple,
@@ -80,6 +83,13 @@ ThemeData _buildLightTheme() {
         color: WMTheme.subText,
         fontWeight: FontWeight.w600,
       ),
+    ),
+
+    // Text selection
+    textSelectionTheme: const TextSelectionThemeData(
+      cursorColor: Color(0xFF202124),
+      selectionColor: Color(0x1A000000),
+      selectionHandleColor: Color(0xFFBDBDBD),
     ),
 
     // Buttons
@@ -133,7 +143,3 @@ ThemeData _buildLightTheme() {
     // Flutter SDKs. Style individual Cards where needed.
   );
 }
-
-
-
-

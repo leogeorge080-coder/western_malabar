@@ -11,13 +11,12 @@ const _wmCardText = Color(0xFF111827);
 const _wmCardSoftText = Color(0xFF6B7280);
 const _wmCardMutedText = Color(0xFF9CA3AF);
 const _wmCardSurface = Color(0xFFF8FAFC);
-const _wmCardSurfaceAlt = Color(0xFFF3F4F6);
 
 const _wmCardPrimary = Color(0xFF2A2F3A);
-const _wmCardPrimaryDark = Color(0xFF171A20);
 const _wmCardSuccess = Color(0xFF15803D);
 const _wmCardDeal = Color(0xFFF59E0B);
 const _wmCardDanger = Color(0xFFDC2626);
+const _wmCardGold = Color(0xFFD97706);
 
 class ProductCard extends StatelessWidget {
   final ProductModel p;
@@ -57,9 +56,25 @@ class ProductCard extends StatelessWidget {
 
   int get _basePriceCents => p.priceCents ?? 0;
 
+  int get _savingCents {
+    if (!_hasDiscount) return 0;
+    return _basePriceCents - _displayPriceCents;
+  }
+
   String _money(int cents) => '£${(cents / 100).toStringAsFixed(2)}';
 
   bool get _showMetaPills => p.isWeeklyDeal == true || p.isFrozen == true;
+
+  String? get _trustLabel {
+    final avg = p.avgRating ?? 0;
+    final count = p.ratingCount ?? 0;
+
+    if (p.isWeeklyDeal == true) return 'Worth adding this week';
+    if (avg >= 4.6 && count >= 8) return 'Customers love this';
+    if (count >= 12) return 'Popular in baskets';
+    if (count > 0) return 'Getting noticed';
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -84,32 +99,43 @@ class _CompactProductCard extends StatelessWidget {
 
     return Material(
       color: _wmCardBg,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(20),
       elevation: parent.showShadow ? 0.5 : 0,
       shadowColor: const Color(0x0A000000),
       child: InkWell(
         onTap: parent.onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: _wmCardBorder,
-            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: _wmCardBorder),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _ProductImage(
-                imageUrl: p.image,
-                size: 84,
-                borderRadius: 14,
+              Stack(
+                children: [
+                  _ProductImage(
+                    imageUrl: p.image,
+                    size: 92,
+                    borderRadius: 16,
+                  ),
+                  if (parent._hasDiscount)
+                    Positioned(
+                      left: 8,
+                      top: 8,
+                      child: _DiscountBadge(
+                        originalPrice: parent._basePriceCents,
+                        salePrice: parent._displayPriceCents,
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: SizedBox(
-                  height: 98,
+                  height: 100,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -133,7 +159,7 @@ class _CompactProductCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontWeight: FontWeight.w800,
-                          fontSize: 14,
+                          fontSize: 14.4,
                           height: 1.2,
                           color: _wmCardText,
                         ),
@@ -150,35 +176,49 @@ class _CompactProductCard extends StatelessWidget {
                           size: 12,
                         ),
                       ],
+                      if (parent._trustLabel != null) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          parent._trustLabel!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: _wmCardMutedText,
+                            height: 1.05,
+                          ),
+                        ),
+                      ],
                       const Spacer(),
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Expanded(
-                            child: SizedBox(
-                              height: 36,
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: _PriceBlock(
-                                  displayPrice:
-                                      parent._money(parent._displayPriceCents),
-                                  originalPrice: parent._hasDiscount
-                                      ? parent._money(parent._basePriceCents)
-                                      : null,
-                                  dense: true,
-                                ),
-                              ),
+                            child: _PriceBlock(
+                              displayPrice:
+                                  parent._money(parent._displayPriceCents),
+                              originalPrice: parent._hasDiscount
+                                  ? parent._money(parent._basePriceCents)
+                                  : null,
+                              savingText: parent._hasDiscount
+                                  ? 'Save ${parent._money(parent._savingCents)}'
+                                  : null,
+                              dense: true,
                             ),
                           ),
                           if (parent.showAddButton) ...[
                             const SizedBox(width: 8),
-                            AddToCartControl(
-                              product: p,
-                              compact: true,
-                              onAdded: () {
-                                Haptic.heavy(context);
-                                parent.onAdd();
-                              },
+                            SizedBox(
+                              height: 34,
+                              child: AddToCartControl(
+                                product: p,
+                                compact: true,
+                                onAdded: () {
+                                  Haptic.heavy(context);
+                                  parent.onAdd();
+                                },
+                              ),
                             ),
                           ],
                         ],
@@ -202,6 +242,13 @@ class _GridProductCard extends StatelessWidget {
     required this.parent,
   });
 
+  static const double _imageHeight = 108;
+  static const double _metaRowHeight = 22;
+  static const double _ratingRowHeight = 16;
+  static const double _trustRowHeight = 14;
+  static const double _priceAreaMinHeight = 54;
+  static const double _addButtonHeight = 36;
+
   @override
   Widget build(BuildContext context) {
     final p = parent.p;
@@ -211,19 +258,17 @@ class _GridProductCard extends StatelessWidget {
     return RepaintBoundary(
       child: Material(
         color: _wmCardBg,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         elevation: parent.showShadow ? 0.35 : 0,
         shadowColor: const Color(0x08000000),
         child: InkWell(
           onTap: parent.onTap,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           child: Container(
             width: parent.width ?? 182,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: _wmCardBorder,
-              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: _wmCardBorder),
             ),
             child: Padding(
               padding: const EdgeInsets.all(10),
@@ -233,12 +278,16 @@ class _GridProductCard extends StatelessWidget {
                   Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      const _ImageSurface(),
+                      SizedBox(
+                        height: _imageHeight,
+                        width: double.infinity,
+                        child: const _ImageSurface(),
+                      ),
                       _ProductImage(
                         imageUrl: p.image,
                         width: double.infinity,
-                        height: 114,
-                        borderRadius: 14,
+                        height: _imageHeight,
+                        borderRadius: 16,
                       ),
                       if (parent._hasDiscount)
                         Positioned(
@@ -256,7 +305,7 @@ class _GridProductCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (parent.showBrand && brand.isNotEmpty) ...[
+                        if (parent.showBrand && brand.isNotEmpty)
                           Text(
                             brand,
                             maxLines: 1,
@@ -267,25 +316,24 @@ class _GridProductCard extends StatelessWidget {
                               color: _wmCardSoftText,
                               height: 1.05,
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                        ] else ...[
-                          const SizedBox(height: 2),
-                        ],
+                          )
+                        else
+                          const SizedBox(height: 12),
+                        const SizedBox(height: 4),
                         Text(
                           p.name,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontWeight: FontWeight.w800,
-                            fontSize: 13.7,
-                            height: 1.18,
+                            fontSize: 14.2,
+                            height: 1.16,
                             color: _wmCardText,
                           ),
                         ),
                         const SizedBox(height: 6),
                         SizedBox(
-                          height: parent._showMetaPills ? 22 : 0,
+                          height: _metaRowHeight,
                           child: parent._showMetaPills
                               ? Align(
                                   alignment: Alignment.centerLeft,
@@ -293,49 +341,70 @@ class _GridProductCard extends StatelessWidget {
                                 )
                               : const SizedBox.shrink(),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 4),
                         SizedBox(
-                          height: 17,
+                          height: _ratingRowHeight,
                           child: hasRating
                               ? StarRatingBadge(
                                   avgRating: p.avgRating,
                                   ratingCount: p.ratingCount,
-                                  size: 11.3,
+                                  size: 11.2,
+                                )
+                              : const SizedBox.shrink(),
+                        ),
+                        const SizedBox(height: 4),
+                        SizedBox(
+                          height: _trustRowHeight,
+                          child: parent._trustLabel != null
+                              ? Text(
+                                  parent._trustLabel!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 10.8,
+                                    fontWeight: FontWeight.w700,
+                                    color: _wmCardMutedText,
+                                    height: 1.0,
+                                  ),
                                 )
                               : const SizedBox.shrink(),
                         ),
                         const Spacer(),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Flexible(
-                              fit: FlexFit.tight,
-                              child: SizedBox(
-                                height: 34,
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: _PriceBlock(
-                                    displayPrice: parent
-                                        ._money(parent._displayPriceCents),
-                                    originalPrice: parent._hasDiscount
-                                        ? parent._money(parent._basePriceCents)
-                                        : null,
-                                    dense: false,
-                                  ),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(
+                              minHeight: _priceAreaMinHeight),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Expanded(
+                                child: _PriceBlock(
+                                  displayPrice:
+                                      parent._money(parent._displayPriceCents),
+                                  originalPrice: parent._hasDiscount
+                                      ? parent._money(parent._basePriceCents)
+                                      : null,
+                                  savingText: parent._hasDiscount
+                                      ? 'Save ${parent._money(parent._savingCents)}'
+                                      : null,
+                                  dense: false,
                                 ),
                               ),
-                            ),
-                            if (parent.showAddButton) ...[
-                              const SizedBox(width: 6),
-                              _GridAddButton(
-                                product: p,
-                                onAdded: () {
-                                  Haptic.heavy(context);
-                                  parent.onAdd();
-                                },
-                              ),
+                              if (parent.showAddButton) ...[
+                                const SizedBox(width: 8),
+                                SizedBox(
+                                  height: _addButtonHeight,
+                                  child: AddToCartControl(
+                                    product: p,
+                                    compact: false,
+                                    onAdded: () {
+                                      Haptic.heavy(context);
+                                      parent.onAdd();
+                                    },
+                                  ),
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
                       ],
                     ),
@@ -350,36 +419,15 @@ class _GridProductCard extends StatelessWidget {
   }
 }
 
-class _GridAddButton extends StatelessWidget {
-  const _GridAddButton({
-    required this.product,
-    required this.onAdded,
-  });
-
-  final ProductModel product;
-  final VoidCallback onAdded;
-
-  @override
-  Widget build(BuildContext context) {
-    return AddToCartControl(
-      product: product,
-      compact: false,
-      onAdded: onAdded,
-    );
-  }
-}
-
 class _ImageSurface extends StatelessWidget {
   const _ImageSurface();
 
   @override
   Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: _wmCardSurface,
-          borderRadius: BorderRadius.circular(14),
-        ),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: _wmCardSurface,
+        borderRadius: BorderRadius.circular(16),
       ),
     );
   }
@@ -499,7 +547,7 @@ class _MetaPillRow extends StatelessWidget {
       children: [
         for (int i = 0; i < pills.length; i++) ...[
           if (i > 0) const SizedBox(width: 6),
-          pills[i],
+          Flexible(child: pills[i]),
         ],
       ],
     );
@@ -545,11 +593,13 @@ class _MetaPill extends StatelessWidget {
 class _PriceBlock extends StatelessWidget {
   final String displayPrice;
   final String? originalPrice;
+  final String? savingText;
   final bool dense;
 
   const _PriceBlock({
     required this.displayPrice,
     this.originalPrice,
+    this.savingText,
     this.dense = false,
   });
 
@@ -557,7 +607,7 @@ class _PriceBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     final priceStyle = TextStyle(
       fontWeight: FontWeight.w900,
-      fontSize: dense ? 15 : 15.8,
+      fontSize: dense ? 15.4 : 16.0,
       color: _wmCardSuccess,
       letterSpacing: -0.22,
       height: 1.0,
@@ -565,9 +615,16 @@ class _PriceBlock extends StatelessWidget {
 
     final oldPriceStyle = TextStyle(
       fontWeight: FontWeight.w700,
-      fontSize: dense ? 11.3 : 11.8,
+      fontSize: dense ? 11.2 : 11.6,
       color: const Color(0xFF7E7E7E),
       decoration: TextDecoration.lineThrough,
+      height: 1.0,
+    );
+
+    final savingStyle = TextStyle(
+      fontWeight: FontWeight.w800,
+      fontSize: dense ? 10.8 : 11.2,
+      color: _wmCardGold,
       height: 1.0,
     );
 
@@ -588,6 +645,15 @@ class _PriceBlock extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: oldPriceStyle,
+          ),
+        ],
+        if (savingText != null) ...[
+          const SizedBox(height: 3),
+          Text(
+            savingText!,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: savingStyle,
           ),
         ],
       ],

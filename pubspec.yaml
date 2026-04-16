@@ -97,13 +97,14 @@ flutter:
 
 # -------------------- FLUTTER NATIVE SPLASH --------------------
 flutter_native_splash:
-  color: "#FFF7E6"
-  image: assets/icon/wm_mark.png
+  color: "#F7F7F7"
+  image: assets/icon/app_icon.png
 
   android_12:
-    color: "#FFF7E6"
-    image: assets/icon/wm_mark_mono.png
+    color: "#F7F7F7"
+    image: assets/icon/app_icon.png
+    icon_background_color: "#F7F7F7"
 
+  ios: true
   android: true
-  ios: false
 

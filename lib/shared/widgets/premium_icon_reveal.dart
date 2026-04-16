@@ -5,7 +5,7 @@ class PremiumIconReveal extends StatefulWidget {
     super.key,
     required this.imagePath,
     this.size = 180,
-    this.backgroundColor = const Color(0xFFFAFAFA),
+    this.backgroundColor = const Color(0xFFF4EEDC),
     this.useTile = false,
     this.tileColor = const Color(0xFFF7F7F7),
     this.onCompleted,
@@ -25,12 +25,10 @@ class PremiumIconReveal extends StatefulWidget {
 class _PremiumIconRevealState extends State<PremiumIconReveal>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-
   late final Animation<double> _iconOpacity;
   late final Animation<double> _iconScale;
   late final Animation<Offset> _iconSlide;
   late final Animation<double> _settleScale;
-  late final Animation<double> _shadowOpacity;
   late final Animation<double> _tileOpacity;
   late final Animation<double> _tileScale;
 
@@ -40,65 +38,58 @@ class _PremiumIconRevealState extends State<PremiumIconReveal>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1450),
+      duration: const Duration(milliseconds: 900),
     );
 
     _tileOpacity = CurvedAnimation(
       parent: _controller,
-      curve: const Interval(0.00, 0.20, curve: Curves.easeOut),
+      curve: const Interval(0.00, 0.18, curve: Curves.easeOut),
     );
 
-    _tileScale = Tween<double>(begin: 0.965, end: 1.0).animate(
+    _tileScale = Tween<double>(begin: 0.975, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.00, 0.24, curve: Curves.easeOutCubic),
+        curve: const Interval(0.00, 0.22, curve: Curves.easeOutCubic),
       ),
     );
 
     _iconOpacity = CurvedAnimation(
       parent: _controller,
-      curve: const Interval(0.12, 0.58, curve: Curves.easeOut),
+      curve: const Interval(0.08, 0.55, curve: Curves.easeOut),
     );
 
     _iconScale = Tween<double>(begin: 0.94, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.12, 0.62, curve: Curves.easeOutQuart),
+        curve: const Interval(0.08, 0.60, curve: Curves.easeOutCubic),
       ),
     );
 
     _iconSlide = Tween<Offset>(
-      begin: const Offset(0, 0.045),
+      begin: const Offset(0, 0.035),
       end: Offset.zero,
     ).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.12, 0.62, curve: Curves.easeOutCubic),
-      ),
-    );
-
-    _shadowOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.14, 0.52, curve: Curves.easeOut),
+        curve: const Interval(0.08, 0.60, curve: Curves.easeOutCubic),
       ),
     );
 
     _settleScale = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 1.014)
+        tween: Tween<double>(begin: 1.0, end: 1.01)
             .chain(CurveTween(curve: Curves.easeOut)),
-        weight: 52,
+        weight: 50,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.014, end: 1.0)
+        tween: Tween<double>(begin: 1.01, end: 1.0)
             .chain(CurveTween(curve: Curves.easeOut)),
-        weight: 48,
+        weight: 50,
       ),
     ]).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.72, 1.0),
+        curve: const Interval(0.62, 1.0),
       ),
     );
 
@@ -142,43 +133,10 @@ class _PremiumIconRevealState extends State<PremiumIconReveal>
                             decoration: BoxDecoration(
                               color: widget.tileColor,
                               borderRadius: BorderRadius.circular(size * 0.18),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.10),
-                                  blurRadius: size * 0.07,
-                                  offset: Offset(0, size * 0.022),
-                                ),
-                                BoxShadow(
-                                  color: Colors.white.withOpacity(0.70),
-                                  blurRadius: size * 0.028,
-                                  offset: Offset(0, -size * 0.008),
-                                  spreadRadius: -1,
-                                ),
-                              ],
                             ),
                           ),
                         ),
                       ),
-                    FadeTransition(
-                      opacity: _shadowOpacity,
-                      child: Transform.translate(
-                        offset: Offset(0, size * 0.02),
-                        child: Container(
-                          width: size * 0.74,
-                          height: size * 0.74,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.08),
-                                blurRadius: size * 0.08,
-                                spreadRadius: size * 0.005,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
                     FadeTransition(
                       opacity: _iconOpacity,
                       child: SlideTransition(

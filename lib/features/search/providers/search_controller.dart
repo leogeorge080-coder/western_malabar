@@ -349,6 +349,12 @@ class SearchController extends StateNotifier<SearchSessionState> {
     if (q.isEmpty) {
       _debouncer.cancel();
 
+      // Critical fix:
+      // invalidate any in-flight suggestion/result response so stale async
+      // callbacks cannot write "a", "r", etc. back into the field.
+      _suggestionRequestId++;
+      _resultRequestId++;
+
       state = state.copyWith(
         query: '',
         suggestionProducts: const [],
@@ -444,6 +450,9 @@ class SearchController extends StateNotifier<SearchSessionState> {
     final searchKey = _searchKey(q);
 
     if (q.isEmpty) {
+      _resultRequestId++;
+      _suggestionRequestId++;
+
       state = state.copyWith(
         query: '',
         committedQuery: '',
@@ -452,6 +461,10 @@ class SearchController extends StateNotifier<SearchSessionState> {
         isOverlayVisible: false,
         shouldRequestFocus: requestFocus,
         selectedCategorySlug: '',
+        suggestionProducts: const [],
+        suggestionCategories: const [],
+        isSuggesting: false,
+        clearErrorMessage: true,
       );
       return;
     }

@@ -8,8 +8,6 @@ import 'package:western_malabar/features/rewards/screens/rewards_screen.dart';
 import 'package:western_malabar/features/profile/screens/profile_screen.dart';
 
 import 'package:western_malabar/shared/utils/haptic.dart';
-import 'package:western_malabar/shared/utils/cart_fly_target.dart';
-import 'package:western_malabar/shared/widgets/ask_malabar_overlay.dart';
 import 'package:western_malabar/features/cart/providers/cart_provider.dart';
 
 const _wmNavBg = Colors.white;
@@ -18,7 +16,6 @@ const _wmNavText = Color(0xFF6B7280);
 const _wmNavTextActive = Color(0xFF111827);
 const _wmNavPrimary = Color(0xFF2A2F3A);
 const _wmNavPrimaryDark = Color(0xFF171A20);
-const _wmNavAmber = Color(0xFFF59E0B);
 const _wmNavDanger = Color(0xFFDC2626);
 
 class AppShell extends ConsumerStatefulWidget {
@@ -102,12 +99,6 @@ class _AppShellState extends ConsumerState<AppShell> {
       ),
     );
   }
-
-  @override
-  void dispose() {
-    AskMalabarOverlay.hide();
-    super.dispose();
-  }
 }
 
 class _WMCustomBottomNav extends StatelessWidget {
@@ -124,7 +115,7 @@ class _WMCustomBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 84,
+      height: 86,
       padding: const EdgeInsets.only(bottom: 8),
       decoration: const BoxDecoration(
         color: _wmNavBg,
@@ -144,6 +135,7 @@ class _WMCustomBottomNav extends StatelessWidget {
       ),
       child: Stack(
         alignment: Alignment.center,
+        clipBehavior: Clip.none,
         children: [
           Row(
             children: [
@@ -181,7 +173,6 @@ class _WMCustomBottomNav extends StatelessWidget {
           Positioned(
             top: -4,
             child: _AnimatedCartButton(
-              key: const ValueKey('animated-cart-button'),
               count: cartCount,
               isActive: currentIndex == 2,
               onTap: () => onTap(2),
@@ -250,7 +241,6 @@ class _AnimatedCartButton extends StatefulWidget {
   final VoidCallback onTap;
 
   const _AnimatedCartButton({
-    super.key,
     required this.count,
     required this.isActive,
     required this.onTap,
@@ -372,7 +362,7 @@ class _AnimatedCartButtonState extends State<_AnimatedCartButton>
                         height: 72,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: _wmNavPrimary.withOpacity(0.08),
+                          color: _wmNavPrimary.withValues(alpha: 0.08),
                         ),
                       ),
                     ),
@@ -384,7 +374,7 @@ class _AnimatedCartButtonState extends State<_AnimatedCartButton>
                         height: 64,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: _wmNavPrimary.withOpacity(0.05),
+                          color: _wmNavPrimary.withValues(alpha: 0.05),
                         ),
                       ),
                     ),
@@ -396,7 +386,7 @@ class _AnimatedCartButtonState extends State<_AnimatedCartButton>
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: _wmNavPrimary.withOpacity(0.16),
+                          color: _wmNavPrimary.withValues(alpha: 0.16),
                           blurRadius: 12,
                           offset: const Offset(0, 6),
                         ),
@@ -489,85 +479,6 @@ class _AnimatedCartBadge extends StatelessWidget {
               height: 1.0,
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AskMalabarSheet extends StatelessWidget {
-  const _AskMalabarSheet();
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 50,
-              height: 5,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Ask Malabar (AI Chat)',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: _wmNavTextActive,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Ask about products, orders, deals or recipes.',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              decoration: InputDecoration(
-                hintText: 'e.g., Find Kerala snacks under £5',
-                prefixIcon: const Icon(Icons.chat_bubble_outline),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: _wmNavBorder),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: _wmNavBorder),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: _wmNavPrimary),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                Haptic.heavy(context);
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _wmNavPrimary,
-                foregroundColor: Colors.white,
-                minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              icon: const Icon(Icons.close),
-              label: const Text('Close'),
-            ),
-          ],
         ),
       ),
     );

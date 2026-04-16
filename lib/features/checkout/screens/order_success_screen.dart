@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:western_malabar/shared/widgets/mh_monogram_animation.dart';
 
 const _wmSuccessBg = Color(0xFFF7F7F7);
@@ -26,18 +25,19 @@ class OrderSuccessScreen extends StatelessWidget {
     required this.orderNumber,
   });
 
-  String get qrCodeValue => 'WM|ORDER|$orderId|$orderNumber';
-
   @override
   Widget build(BuildContext context) {
+    final safeOrderNumber =
+        orderNumber.trim().isEmpty ? 'Order created' : orderNumber.trim();
+
     return Scaffold(
       backgroundColor: _wmSuccessBg,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
           child: Column(
             children: [
-              const SizedBox(height: 20),
+              const SizedBox(height: 8),
               MhMonogramAnimation(
                 size: 100,
                 backgroundColor: Colors.transparent,
@@ -45,7 +45,7 @@ class OrderSuccessScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               const Text(
-                'Order Placed Successfully',
+                'Order placed successfully',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 24,
@@ -69,7 +69,7 @@ class OrderSuccessScreen extends StatelessWidget {
               const _SuccessStatusBanner(
                 icon: Icons.verified_outlined,
                 text:
-                    'Your order has been created successfully. You can use the order number and QR code for tracking and store operations.',
+                    'Your order has been received successfully. Please keep your order number for tracking and support.',
               ),
               const SizedBox(height: 18),
               _InfoCard(
@@ -83,115 +83,38 @@ class OrderSuccessScreen extends StatelessWidget {
                         color: _wmSuccessTextSoft,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      orderNumber,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 19,
-                        fontWeight: FontWeight.w900,
-                        color: _wmSuccessPrimary,
-                        letterSpacing: -0.2,
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 18,
                       ),
-                    ),
-                    const SizedBox(height: 14),
-                    const Divider(height: 1, color: _wmSuccessBorder),
-                    const SizedBox(height: 14),
-                    const Align(
-                      alignment: Alignment.centerLeft,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9FAFB),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: _wmSuccessBorder),
+                      ),
                       child: Text(
-                        'Internal Order ID',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: _wmSuccessTextMuted,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF9FAFB),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: _wmSuccessBorder),
-                      ),
-                      child: SelectableText(
-                        orderId,
+                        safeOrderNumber,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: _wmSuccessTextSoft,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: _wmSuccessPrimary,
+                          letterSpacing: -0.25,
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-              _InfoCard(
-                child: Column(
-                  children: [
+                    const SizedBox(height: 12),
                     const Text(
-                      'Order QR',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        color: _wmSuccessTextStrong,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'This QR code is used across packing, admin scanning, and delivery verification.',
+                      'You can find this again later in My Orders.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.w600,
-                        color: _wmSuccessTextSoft,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: _wmSuccessSurface,
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: _wmSuccessBorder),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x08000000),
-                            blurRadius: 10,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: QrImageView(
-                        data: qrCodeValue,
-                        version: QrVersions.auto,
-                        size: 220,
-                        backgroundColor: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF9FAFB),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: _wmSuccessBorder),
-                      ),
-                      child: SelectableText(
-                        qrCodeValue,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: _wmSuccessTextSoft,
-                        ),
+                        color: _wmSuccessTextMuted,
+                        height: 1.35,
                       ),
                     ),
                   ],
@@ -224,19 +147,74 @@ class OrderSuccessScreen extends StatelessWidget {
                     _NextStepRow(
                       title: 'Order confirmation',
                       subtitle:
-                          'Your order is now recorded in the system and ready for the next processing step.',
+                          'Your order is now recorded and ready for processing.',
                     ),
                     SizedBox(height: 10),
                     _NextStepRow(
-                      title: 'Store processing',
+                      title: 'Store preparation',
                       subtitle:
-                          'The team will prepare, pack, and verify items using the same order QR.',
+                          'Our team will review, prepare, and pack your items.',
                     ),
                     SizedBox(height: 10),
                     _NextStepRow(
-                      title: 'Delivery or collection',
+                      title: 'Delivery or collection update',
                       subtitle:
-                          'You can use your order details later for delivery tracking or pickup verification.',
+                          'You can check progress anytime from your order history.',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              _InfoCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(
+                          Icons.support_agent_rounded,
+                          size: 18,
+                          color: _wmSuccessPrimary,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Need help later?',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            color: _wmSuccessTextStrong,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'If you contact support about this purchase, share your order number below.',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: _wmSuccessTextSoft,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9FAFB),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: _wmSuccessBorder),
+                      ),
+                      child: Text(
+                        safeOrderNumber,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: _wmSuccessPrimaryDark,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -255,6 +233,7 @@ class OrderSuccessScreen extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
+                    elevation: 0,
                   ),
                   child: const Text(
                     'Back to Home',

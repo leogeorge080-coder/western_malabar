@@ -13,7 +13,6 @@ import 'package:western_malabar/app/env.dart';
 import 'package:western_malabar/app/app_shell.dart';
 import 'package:western_malabar/app/auth_session_guard.dart';
 import 'package:western_malabar/shared/theme/theme.dart';
-import 'package:western_malabar/shared/screens/splash_screen.dart';
 
 Future<void> main() async {
   FlutterError.onError = (FlutterErrorDetails details) {
@@ -77,55 +76,38 @@ class WMApp extends StatelessWidget {
         theme: wmLightTheme,
         themeMode: ThemeMode.light,
         scrollBehavior: const _WMScrollBehavior(),
-        home: const _StartupGate(),
+        home: const _AppBootstrap(),
       ),
     );
   }
 }
 
-class _StartupGate extends StatefulWidget {
-  const _StartupGate();
+class _AppBootstrap extends StatefulWidget {
+  const _AppBootstrap();
 
   @override
-  State<_StartupGate> createState() => _StartupGateState();
+  State<_AppBootstrap> createState() => _AppBootstrapState();
 }
 
-class _StartupGateState extends State<_StartupGate> {
-  bool _ready = false;
-  bool _didKickAuth = false;
+class _AppBootstrapState extends State<_AppBootstrap> {
+  bool _started = false;
 
   @override
-  void initState() {
-    super.initState();
-    _boot();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _kickAnonymousAuthInBackground();
+    });
   }
 
-  Future<void> _boot() async {
-    final splashMin = Future<void>.delayed(const Duration(milliseconds: 1200));
-
-    _kickAnonymousAuthInBackground();
-
-    await splashMin;
-
-    if (!mounted) return;
-    setState(() => _ready = true);
-  }
-
-  void _kickAnonymousAuthInBackground() {
-    if (_didKickAuth) return;
-    _didKickAuth = true;
-
-    unawaited(_ensureAnonymousSession());
-  }
-
-  Future<void> _ensureAnonymousSession() async {
+  Future<void> _kickAnonymousAuthInBackground() async {
     try {
       final supabase = Supabase.instance.client;
       if (supabase.auth.currentUser == null) {
-        final res = await supabase.auth.signInAnonymously();
-        debugPrint('Anonymous login: ${res.user?.id}');
-      } else {
-        debugPrint('Existing user: ${supabase.auth.currentUser?.id}');
+        await supabase.auth.signInAnonymously();
       }
     } catch (e, st) {
       debugPrint('❌ Background anonymous auth failed: $e\n$st');
@@ -134,9 +116,6 @@ class _StartupGateState extends State<_StartupGate> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_ready) {
-      return const SplashScreen();
-    }
     return const AppShell();
   }
 }

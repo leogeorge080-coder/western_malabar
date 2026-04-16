@@ -243,7 +243,7 @@ class _SearchCardPrice extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w900,
-                color: Color(0xFF5A2D82),
+                color: Color(0xFF15803D),
                 height: 1.0,
                 letterSpacing: -0.2,
               ),
@@ -282,7 +282,7 @@ class _SearchCardAddControl extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    const purple = Color(0xFF5A2D82);
+    const buttonColor = Color(0xFF2A2F3A);
 
     final cart = ref.watch(cartProvider);
     final item = cart.where((e) => e.product.id == product.id).firstOrNull;
@@ -300,7 +300,7 @@ class _SearchCardAddControl extends ConsumerWidget {
           style: ElevatedButton.styleFrom(
             elevation: 0,
             padding: EdgeInsets.zero,
-            backgroundColor: purple,
+            backgroundColor: buttonColor,
             foregroundColor: Colors.white,
             minimumSize: const Size(44, 44),
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -319,7 +319,7 @@ class _SearchCardAddControl extends ConsumerWidget {
     return Container(
       height: 40,
       decoration: BoxDecoration(
-        color: purple,
+        color: buttonColor,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(

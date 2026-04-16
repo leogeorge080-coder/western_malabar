@@ -31,21 +31,19 @@ const _wmTextMuted = Color(0xFF9CA3AF);
 const _wmBorder = Color(0xFFE5E7EB);
 const _wmBorderSoft = Color(0xFFF1F5F9);
 
-const _wmLavender = Color(0xFFF3F4F6);
-const _wmLavenderSoft = Color(0xFFF8FAFC);
-
 const _wmSuccess = Color(0xFF15803D);
 const _wmDeal = Color(0xFFF59E0B);
-const _wmReward = Color(0xFFD97706);
 const _wmGold = Color(0xFFF59E0B);
 
 const _wmSectionNeutral = Color(0xFF111827);
 
 String _gbp(int cents) => '£${(cents / 100.0).toStringAsFixed(2)}';
-String _moneyShort(int cents) => '£${(cents / 100).toStringAsFixed(2)}';
 
 double _lerp(double a, double b, double t) => a + (b - a) * t;
 double _clamp01(num v) => v.clamp(0.0, 1.0).toDouble();
+
+final addingProductIdsProvider =
+    StateProvider<Set<String>>((ref) => <String>{});
 
 class WmProduct {
   final String id;
@@ -91,22 +89,20 @@ class WmProduct {
 
 class _HomeRailBundle {
   final List<WmProduct> buyItAgain;
-  final List<WmProduct> runningLow;
   final List<WmProduct> weeklyEssentials;
   final List<WmProduct> weeklyDeals;
+  final List<WmProduct> newInStore;
   final List<WmProduct> popularThisWeek;
   final List<WmProduct> frozenFavourites;
-  final List<WmProduct> newInStore;
   final List<CategoryModel> categories;
 
   const _HomeRailBundle({
     required this.buyItAgain,
-    required this.runningLow,
     required this.weeklyEssentials,
     required this.weeklyDeals,
+    required this.newInStore,
     required this.popularThisWeek,
     required this.frozenFavourites,
-    required this.newInStore,
     required this.categories,
   });
 }
@@ -181,44 +177,38 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
   final _productSvc = ProductService();
 
   final _buyItAgainKey = GlobalKey();
-  final _runningLowKey = GlobalKey();
   final _weeklyEssentialsKey = GlobalKey();
-  final _weeklyDealsKey = GlobalKey();
-  final _frozenFavouritesKey = GlobalKey();
   final _newInStoreKey = GlobalKey();
   final _popularThisWeekKey = GlobalKey();
+  final _frozenFavouritesKey = GlobalKey();
+
   final GlobalKey<_SearchFieldState> _searchKey =
       GlobalKey<_SearchFieldState>();
 
-  List<String> _searchHints = const [
-    'Search your weekly essentials…',
+  final List<String> _searchHints = const [
+    'Search products',
+    'Reorder your favourites',
+    'Find rice, masala, snacks...',
   ];
+
   int _hintIndex = 0;
   Timer? _hintTimer;
+  bool _freezeHint = true;
 
   @override
   void initState() {
     super.initState();
     _c = ScrollController();
     _startHintLoop();
+    _homeFuture = _loadHomeBundle();
 
-    _homeFuture = Future<_HomeRailBundle>.value(
-      const _HomeRailBundle(
-        buyItAgain: <WmProduct>[],
-        runningLow: <WmProduct>[],
-        weeklyEssentials: <WmProduct>[],
-        weeklyDeals: <WmProduct>[],
-        popularThisWeek: <WmProduct>[],
-        frozenFavourites: <WmProduct>[],
-        newInStore: <WmProduct>[],
-        categories: <CategoryModel>[],
-      ),
-    );
+    _homeFuture.whenComplete(() {
+      if (!mounted) return;
+      setState(() => _freezeHint = false);
+    });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-
-      setState(_reloadHome);
       ref.read(searchProvider.notifier).hydrate();
     });
   }
@@ -238,11 +228,26 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
       filtered.add(row);
     }
 
-    if (filtered.length < minItemsToShow) {
-      return const <WmProduct>[];
-    }
+    if (filtered.length < minItemsToShow) return const <WmProduct>[];
 
     excluded.addAll(filtered.map((e) => e.id));
+    return filtered.map(_mapDtoToProduct).toList();
+  }
+
+  List<WmProduct> _softRail(
+    List<WmProductDto> rows, {
+    int minItemsToShow = 1,
+  }) {
+    final localSeen = <String>{};
+    final filtered = <WmProductDto>[];
+
+    for (final row in rows) {
+      if (row.id.isEmpty) continue;
+      if (!localSeen.add(row.id)) continue;
+      filtered.add(row);
+    }
+
+    if (filtered.length < minItemsToShow) return const <WmProduct>[];
     return filtered.map(_mapDtoToProduct).toList();
   }
 
@@ -253,7 +258,6 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
   Future<_HomeRailBundle> _loadHomeBundle() async {
     final results = await Future.wait<dynamic>([
       _productSvc.fetchBuyItAgain(limit: 12),
-      _productSvc.fetchRunningLow(limit: 10),
       _productSvc.fetchWeeklyEssentials(limit: 12),
       _productSvc.fetchWeeklyDeals(limit: 12),
       _productSvc.fetchPopularThisWeek(limit: 12),
@@ -263,13 +267,12 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
     ]);
 
     final buyAgainRows = results[0] as List<WmProductDto>;
-    final runningLowRows = results[1] as List<WmProductDto>;
-    final essentialsRows = results[2] as List<WmProductDto>;
-    final dealsRows = results[3] as List<WmProductDto>;
-    final popularRows = results[4] as List<WmProductDto>;
-    final frozenRows = results[5] as List<WmProductDto>;
-    final newRows = results[6] as List<WmProductDto>;
-    final categories = results[7] as List<CategoryModel>;
+    final essentialsRows = results[1] as List<WmProductDto>;
+    final dealsRows = results[2] as List<WmProductDto>;
+    final popularRows = results[3] as List<WmProductDto>;
+    final frozenRows = results[4] as List<WmProductDto>;
+    final newRows = results[5] as List<WmProductDto>;
+    final categories = results[6] as List<CategoryModel>;
 
     final priorityExcluded = <String>{};
 
@@ -279,49 +282,19 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
       minItemsToShow: 3,
     );
 
-    final runningLow = _uniqueRailProducts(
-      runningLowRows,
-      priorityExcluded,
-      minItemsToShow: 4,
-    );
-
     final weeklyEssentials = _uniqueRailProducts(
       essentialsRows,
       priorityExcluded,
       minItemsToShow: 1,
     );
 
-    List<WmProduct> softRail(List<WmProductDto> rows,
-        {int minItemsToShow = 1}) {
-      final localSeen = <String>{};
-      final filtered = <WmProductDto>[];
-
-      for (final row in rows) {
-        if (row.id.isEmpty) continue;
-        if (!localSeen.add(row.id)) continue;
-        filtered.add(row);
-      }
-
-      if (filtered.length < minItemsToShow) {
-        return const <WmProduct>[];
-      }
-
-      return filtered.map(_mapDtoToProduct).toList();
-    }
-
-    final weeklyDeals = softRail(dealsRows, minItemsToShow: 1);
-    final popularThisWeek = softRail(popularRows, minItemsToShow: 1);
-    final frozenFavourites = softRail(frozenRows, minItemsToShow: 1);
-    final newInStore = softRail(newRows, minItemsToShow: 1);
-
     return _HomeRailBundle(
       buyItAgain: buyItAgain,
-      runningLow: runningLow,
       weeklyEssentials: weeklyEssentials,
-      weeklyDeals: weeklyDeals,
-      popularThisWeek: popularThisWeek,
-      frozenFavourites: frozenFavourites,
-      newInStore: newInStore,
+      weeklyDeals: _softRail(dealsRows),
+      newInStore: _softRail(newRows),
+      popularThisWeek: _softRail(popularRows),
+      frozenFavourites: _softRail(frozenRows),
       categories: categories,
     );
   }
@@ -336,20 +309,9 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
     if (_searchHints.length <= 1) return;
 
     _hintTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (!mounted) return;
+      if (!mounted || _freezeHint) return;
       setState(() => _hintIndex = (_hintIndex + 1) % _searchHints.length);
     });
-  }
-
-  Future<void> _scrollToSection(GlobalKey key) async {
-    final ctx = key.currentContext;
-    if (ctx == null) return;
-    await Scrollable.ensureVisible(
-      ctx,
-      duration: const Duration(milliseconds: 350),
-      curve: Curves.easeOutCubic,
-      alignment: 0.05,
-    );
   }
 
   String _homeAddressLabel(AddressModel? address) {
@@ -366,11 +328,9 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
     if (primary.isNotEmpty && secondary.isNotEmpty) {
       return 'Deliver to $primary, $secondary';
     }
-
     if (primary.isNotEmpty) {
       return 'Deliver to $primary';
     }
-
     return 'Choose delivery address';
   }
 
@@ -406,14 +366,12 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final topPad = MediaQuery.of(context).padding.top;
-    const double expandedHeight = 166;
+    const double expandedHeight = 176;
     const double collapsedHeight = 64;
+
     final cartItems = ref.watch(cartProvider);
     final cartCount = cartItems.fold<int>(0, (sum, item) => sum + item.qty);
     final defaultAddressAsync = ref.watch(defaultAddressProvider);
-    final homeAsync = _homeFuture;
-
-    final double headerBgHeight = topPad + expandedHeight + 110;
 
     return Scaffold(
       backgroundColor: _wmCanvas,
@@ -421,17 +379,6 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
         children: [
           const Positioned.fill(
             child: ColoredBox(color: _wmCanvas),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            height: headerBgHeight,
-            child: Container(
-              decoration: const BoxDecoration(
-                color: _wmCanvas,
-              ),
-            ),
           ),
           RefreshIndicator(
             onRefresh: _refresh,
@@ -461,9 +408,9 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
                                 (expandedHeight - kToolbarHeight - topPad)),
                       );
 
-                      const searchHExpanded = 48.0;
-                      const searchHCollapsed = 40.0;
-                      final searchTopExpanded = topPad + 44;
+                      const searchHExpanded = 52.0;
+                      const searchHCollapsed = 42.0;
+                      final searchTopExpanded = topPad + 42;
                       final searchTopCollapsed =
                           topPad + (kToolbarHeight - searchHCollapsed) / 2;
 
@@ -472,16 +419,12 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
                       final searchH =
                           _lerp(searchHExpanded, searchHCollapsed, t);
 
-                      final shadow = (t > 0.02)
-                          ? 0.14 * ((t - 0.02) / .30).clamp(0.0, 1.0)
-                          : 0.0;
-
                       return Stack(
                         fit: StackFit.expand,
                         children: [
                           ClipRect(
                             child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                               child: const SizedBox.expand(),
                             ),
                           ),
@@ -491,45 +434,52 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
                                 duration: const Duration(milliseconds: 180),
                                 curve: Curves.easeOut,
                                 color: const Color(0xFFF7F7F7)
-                                    .withOpacity(_lerp(0.0, 0.94, t)),
+                                    .withValues(alpha: _lerp(0.0, 0.96, t)),
                               ),
                             ),
                           ),
                           AnimatedPositioned(
                             duration: const Duration(milliseconds: 140),
-                            curve: Curves.easeOut,
+                            curve: Curves.easeOutCubic,
                             left: 16,
                             right: 16,
                             top: searchTop,
                             height: searchH,
-                            child: Container(
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 160),
+                              curve: Curves.easeOutCubic,
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(
-                                  _lerp(0.98, 1.0, t),
+                                color: const Color(0xFFF3F4F6),
+                                borderRadius: BorderRadius.circular(28),
+                                border: Border.all(
+                                  color: t > 0.55
+                                      ? const Color(0xFFD5DAE1)
+                                      : _wmBorder,
+                                  width: 1,
                                 ),
-                                borderRadius: BorderRadius.circular(24),
-                                border: Border.all(color: _wmBorder),
                                 boxShadow: const [
                                   BoxShadow(
                                     color: Color(0x0A000000),
-                                    blurRadius: 12,
-                                    offset: Offset(0, 4),
+                                    blurRadius: 8,
+                                    offset: Offset(0, 2),
                                   ),
                                 ],
                               ),
                               padding:
-                                  const EdgeInsets.symmetric(horizontal: 12),
+                                  const EdgeInsets.symmetric(horizontal: 14),
                               alignment: Alignment.centerLeft,
                               child: _SearchField(
                                 key: _searchKey,
-                                hint: _searchHints[_hintIndex],
+                                hint: _freezeHint
+                                    ? _searchHints.first
+                                    : _searchHints[_hintIndex],
                               ),
                             ),
                           ),
                           Positioned(
                             left: 16,
                             right: 16,
-                            top: searchTop + searchH + _lerp(10, 0, t),
+                            top: searchTop + searchH + _lerp(12, 0, t),
                             child: Opacity(
                               opacity: (1 - t).clamp(0.0, 1.0),
                               child: _LocationPill(
@@ -543,26 +493,6 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
                               ),
                             ),
                           ),
-                          Positioned(
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            child: IgnorePointer(
-                              child: Container(
-                                height: 10,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      Colors.black.withOpacity(shadow),
-                                      Colors.transparent,
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
                         ],
                       );
                     },
@@ -570,23 +500,41 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 SliverToBoxAdapter(
                   child: FutureBuilder<_HomeRailBundle>(
-                    future: homeAsync,
+                    future: _homeFuture,
                     builder: (context, snap) {
                       final waiting =
                           snap.connectionState == ConnectionState.waiting;
                       final data = snap.data;
 
                       if (waiting && data == null) {
-                        return Column(
-                          children: const [
-                            Padding(
-                              padding: EdgeInsets.fromLTRB(16, 10, 16, 8),
-                              child: _CartMomentumCard(),
-                            ),
-                            _HomeSectionSkeleton(title: 'Buy it again'),
-                            _HomeSectionSkeleton(title: 'Weekly essentials'),
-                            SizedBox(height: 12),
-                          ],
+                        return AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 260),
+                          child: Column(
+                            key: const ValueKey('home_loading'),
+                            children: const [
+                              Padding(
+                                padding: EdgeInsets.fromLTRB(16, 10, 16, 12),
+                                child: _CategoryRowSkeleton(),
+                              ),
+                              Padding(
+                                padding: EdgeInsets.fromLTRB(16, 6, 16, 10),
+                                child: _PromoSkeleton(),
+                              ),
+                              _HomeSectionSkeleton(
+                                title: 'Weekly essentials',
+                                subtitleWidth: 220,
+                              ),
+                              _HomeSectionSkeleton(
+                                title: 'New in store',
+                                subtitleWidth: 170,
+                              ),
+                              _HomeSectionSkeleton(
+                                title: 'Popular this week',
+                                subtitleWidth: 180,
+                              ),
+                              SizedBox(height: 116),
+                            ],
+                          ),
                         );
                       }
 
@@ -596,112 +544,91 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
 
                       final bundle = data;
 
-                      return Column(
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.fromLTRB(16, 10, 16, 8),
-                            child: _CartMomentumCard(),
-                          ),
-                          _StaticProductRailSection(
-                            key: _buyItAgainKey,
-                            title: 'Buy it again',
-                            subtitle: 'Based on your previous orders',
-                            actionText: 'See all',
-                            items: bundle.buyItAgain,
-                            compact: true,
-                            prominent: true,
-                          ),
-                          _StaticProductRailSection(
-                            key: _runningLowKey,
-                            title: 'Running low',
-                            subtitle: 'Based on your usual order pattern',
-                            actionText: 'See all',
-                            items: bundle.runningLow,
-                            compact: true,
-                            prominent: true,
-                          ),
-                          _StaticProductRailSection(
-                            key: _weeklyEssentialsKey,
-                            title: 'Weekly essentials',
-                            subtitle: 'Trusted staples for your next basket.',
-                            actionText: 'See all',
-                            items: bundle.weeklyEssentials,
-                            prominent: true,
-                          ),
-                          if (bundle.categories.isNotEmpty)
-                            Padding(
-                              padding:
-                                  const EdgeInsets.fromLTRB(16, 10, 16, 12),
-                              child: _RoundedCategoryRow(
-                                items: bundle.categories
-                                    .map(
-                                      (c) => RoundedCat(
-                                        label: c.name,
-                                        icon: _iconForSlug(c.slug),
-                                        onTap: () {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                  'Open category: ${c.slug}'),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    )
-                                    .toList(),
+                      return AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 280),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeOut,
+                        child: Column(
+                          key: const ValueKey('home_loaded'),
+                          children: [
+                            if (bundle.categories.isNotEmpty)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                                child: _RoundedCategoryRow(
+                                  items: bundle.categories
+                                      .map(
+                                        (c) => RoundedCat(
+                                          label: c.name,
+                                          icon: _iconForSlug(c.slug),
+                                          onTap: () {
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  'Open category: ${c.slug}',
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      )
+                                      .toList(),
+                                ),
                               ),
+                            if (bundle.weeklyDeals.isNotEmpty)
+                              const Padding(
+                                padding: EdgeInsets.fromLTRB(16, 6, 16, 10),
+                                child: WmPromoAutoCarousel(),
+                              ),
+                            if (bundle.buyItAgain.isNotEmpty)
+                              _StaticProductRailSection(
+                                key: _buyItAgainKey,
+                                title: 'Buy it again',
+                                subtitle:
+                                    'Your usual favourites, ready faster.',
+                                actionText: 'See all',
+                                items: bundle.buyItAgain,
+                                compact: true,
+                                prominent: true,
+                              ),
+                            _StaticProductRailSection(
+                              key: _weeklyEssentialsKey,
+                              title: 'Weekly essentials',
+                              subtitle: 'Your fastest path to a great basket.',
+                              actionText: 'See all',
+                              items: bundle.weeklyEssentials,
+                              prominent: true,
                             ),
-                          const Padding(
-                            padding: EdgeInsets.fromLTRB(16, 10, 16, 8),
-                            child: WmPromoAutoCarousel(),
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
-                            child: _LoyaltyCard(
-                              miles: 120,
-                              headline: '120 Malabar Miles ready',
-                              ctaText: 'Use now',
+                            _StaticProductRailSection(
+                              key: _newInStoreKey,
+                              title: 'New in store',
+                              subtitle:
+                                  'Fresh arrivals worth trying this week.',
+                              actionText: 'See all',
+                              items: bundle.newInStore,
+                              emptyTrustLabel: 'New in store',
+                              surfaceTint: const Color(0xFFFFFBF4),
+                              badgeTextOverride: 'New',
                             ),
-                          ),
-                          _StaticProductRailSection(
-                            key: _weeklyDealsKey,
-                            title: 'Weekly deals',
-                            subtitle: 'This week’s savings picked by us.',
-                            actionText: 'See all',
-                            items: bundle.weeklyDeals,
-                            prominent: true,
-                            emphasizeDeals: true,
-                          ),
-                          _StaticProductRailSection(
-                            key: _popularThisWeekKey,
-                            title: 'Popular this week',
-                            subtitle: 'Frequently added by shoppers.',
-                            actionText: 'See all',
-                            items: bundle.popularThisWeek,
-                            prominent: false,
-                          ),
-                          _StaticProductRailSection(
-                            key: _frozenFavouritesKey,
-                            title: 'Frozen favourites',
-                            subtitle: 'Easy stock-up picks for the week.',
-                            actionText: 'See all',
-                            items: bundle.frozenFavourites,
-                            prominent: false,
-                          ),
-                          _StaticProductRailSection(
-                            key: _newInStoreKey,
-                            title: 'New in store',
-                            subtitle: 'Fresh arrivals worth trying.',
-                            actionText: 'See all',
-                            items: bundle.newInStore,
-                            emptyTrustLabel: 'New in store',
-                            surfaceTint: const Color(0xFFFFFBF4),
-                            badgeTextOverride: '🆕 New',
-                            prominent: false,
-                          ),
-                          const SizedBox(height: 116),
-                        ],
+                            _StaticProductRailSection(
+                              key: _popularThisWeekKey,
+                              title: 'Popular this week',
+                              subtitle: 'Shoppers are adding these most.',
+                              actionText: 'See all',
+                              items: bundle.popularThisWeek,
+                            ),
+                            if (bundle.frozenFavourites.isNotEmpty)
+                              _StaticProductRailSection(
+                                key: _frozenFavouritesKey,
+                                title: 'Frozen favourites',
+                                subtitle: 'Easy stock-up picks for busy weeks.',
+                                actionText: 'See all',
+                                items: bundle.frozenFavourites,
+                              ),
+                            const SizedBox(height: 116),
+                          ],
+                        ),
                       );
                     },
                   ),
@@ -843,20 +770,22 @@ class _SectionHeader extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   color: _wmSectionNeutral,
-                  fontSize: 22,
+                  fontSize: prominent ? 24 : 22,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: -0.3,
+                  letterSpacing: -0.4,
+                  height: 1.05,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 5),
               Text(
                 subtitle,
                 style: const TextStyle(
                   color: _wmTextSoft,
-                  fontSize: 13,
+                  fontSize: 13.25,
                   fontWeight: FontWeight.w600,
+                  height: 1.2,
                 ),
               ),
             ],
@@ -867,177 +796,17 @@ class _SectionHeader extends StatelessWidget {
             onPressed: onAction,
             style: TextButton.styleFrom(
               foregroundColor: _wmTextStrong,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             ),
             child: Text(
               actionText!,
-              style: const TextStyle(fontWeight: FontWeight.w800),
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 14,
+              ),
             ),
           ),
       ],
-    );
-  }
-}
-
-class _CartMomentumCard extends ConsumerWidget {
-  const _CartMomentumCard();
-
-  static const int _freeDeliveryThresholdCents = 3000;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final cartItems = ref.watch(cartProvider);
-
-    final subtotalCents = cartItems.fold<int>(
-      0,
-      (sum, item) => sum + ((item.product.priceCents ?? 0) * item.qty),
-    );
-
-    final remaining =
-        (_freeDeliveryThresholdCents - subtotalCents).clamp(0, 1 << 30);
-    final progress =
-        (subtotalCents / _freeDeliveryThresholdCents).clamp(0.0, 1.0);
-
-    if (subtotalCents <= 0) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: _wmSurface,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: _wmBorder),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x0D000000),
-              blurRadius: 8,
-              offset: Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              height: 52,
-              width: 52,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              alignment: Alignment.center,
-              child: const Icon(Icons.shopping_bag_outlined, color: _wmPrimary),
-            ),
-            const SizedBox(width: 14),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Start your weekly shop',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      color: _wmTextStrong,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Add essentials first. We’ll suggest the rest.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: _wmTextSoft,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    final headline = remaining > 0
-        ? 'You’re ${_moneyShort(remaining)} away from free delivery'
-        : 'Free delivery unlocked';
-
-    final subtitle = remaining > 0
-        ? 'Add one more favourite and save on delivery'
-        : 'Nice — your basket just got better value';
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _wmSurface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color:
-              remaining > 0 ? const Color(0xFFE5E7EB) : const Color(0xFFD1FAE5),
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0D000000),
-            blurRadius: 8,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            height: 52,
-            width: 52,
-            decoration: BoxDecoration(
-              color: remaining > 0
-                  ? const Color(0xFFF3F4F6)
-                  : const Color(0xFFECFDF5),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            alignment: Alignment.center,
-            child: Icon(
-              Icons.local_shipping_outlined,
-              color: remaining > 0 ? _wmPrimary : _wmSuccess,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  headline,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                    color: _wmTextStrong,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: _wmTextSoft,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 8,
-                    backgroundColor: remaining > 0
-                        ? const Color(0xFFE5E7EB)
-                        : const Color(0xFFDCFCE7),
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      remaining > 0 ? _wmPrimary : _wmSuccess,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -1072,16 +841,16 @@ class _StaticProductRailSection extends StatelessWidget {
   Widget build(BuildContext context) {
     if (items.isEmpty) return const SizedBox.shrink();
 
-    final railHeight = compact ? 286.0 : 306.0;
+    final railHeight = compact ? 286.0 : 308.0;
     final cardWidth = compact ? 168.0 : 176.0;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 10, 0, 6),
+      padding: EdgeInsets.fromLTRB(0, prominent ? 12 : 10, 0, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: _SectionHeader(
               title: title,
               subtitle: subtitle,
@@ -1125,147 +894,24 @@ class _StaticProductRailSection extends StatelessWidget {
   }
 }
 
-class _ProductRailSection extends StatelessWidget {
-  const _ProductRailSection({
-    super.key,
-    required this.title,
-    required this.subtitle,
-    required this.future,
-    this.actionText,
-    this.onAction,
-    this.compact = false,
-    this.emptyTrustLabel,
-    this.surfaceTint,
-    this.badgeTextOverride,
-  });
-
-  final String title;
-  final String subtitle;
-  final Future<List<WmProduct>> future;
-  final String? actionText;
-  final VoidCallback? onAction;
-  final bool compact;
-  final String? emptyTrustLabel;
-  final Color? surfaceTint;
-  final String? badgeTextOverride;
-
-  @override
-  Widget build(BuildContext context) {
-    final railHeight = compact ? 286.0 : 306.0;
-    final cardWidth = compact ? 168.0 : 176.0;
-
-    return FutureBuilder<List<WmProduct>>(
-      future: future,
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(0, 10, 0, 6),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                  child: _SectionHeader(
-                    title: title,
-                    subtitle: subtitle,
-                    actionText: actionText,
-                    onAction: onAction,
-                  ),
-                ),
-                SizedBox(
-                  height: railHeight,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    scrollDirection: Axis.horizontal,
-                    physics: const ClampingScrollPhysics(),
-                    itemBuilder: (_, __) => SizedBox(
-                      width: cardWidth,
-                      child: const _RailProductSkeleton(),
-                    ),
-                    separatorBuilder: (_, __) => const SizedBox(width: 14),
-                    itemCount: 4,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        if (snap.hasError) {
-          return const SizedBox.shrink();
-        }
-
-        final items = snap.data ?? const <WmProduct>[];
-        if (items.isEmpty) {
-          return const SizedBox.shrink();
-        }
-
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(0, 10, 0, 6),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                child: _SectionHeader(
-                  title: title,
-                  subtitle: subtitle,
-                  actionText: actionText,
-                  onAction: onAction,
-                ),
-              ),
-              SizedBox(
-                height: railHeight,
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  scrollDirection: Axis.horizontal,
-                  physics: const ClampingScrollPhysics(),
-                  itemCount: items.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 14),
-                  itemBuilder: (_, i) {
-                    final p = items[i];
-                    return SizedBox(
-                      width: cardWidth,
-                      child: _ProductTile(
-                        product: p,
-                        compact: compact,
-                        emptyTrustLabel: emptyTrustLabel,
-                        surfaceTint: surfaceTint,
-                        badgeTextOverride: badgeTextOverride,
-                        onTap: (_) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Open ${p.name}')),
-                          );
-                        },
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
 class _HomeSectionSkeleton extends StatelessWidget {
   const _HomeSectionSkeleton({
     required this.title,
+    this.subtitleWidth = 180,
   });
 
   final String title;
+  final double subtitleWidth;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 10, 0, 6),
+      padding: const EdgeInsets.fromLTRB(0, 12, 0, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1273,14 +919,14 @@ class _HomeSectionSkeleton extends StatelessWidget {
                   title,
                   style: const TextStyle(
                     color: _wmSectionNeutral,
-                    fontSize: 22,
+                    fontSize: 24,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: -0.3,
+                    letterSpacing: -0.4,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 5),
                 Container(
-                  width: 180,
+                  width: subtitleWidth,
                   height: 12,
                   decoration: BoxDecoration(
                     color: _wmBorderSoft,
@@ -1291,7 +937,7 @@ class _HomeSectionSkeleton extends StatelessWidget {
             ),
           ),
           SizedBox(
-            height: 286,
+            height: 308,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               scrollDirection: Axis.horizontal,
@@ -1299,7 +945,7 @@ class _HomeSectionSkeleton extends StatelessWidget {
               itemCount: 2,
               separatorBuilder: (_, __) => const SizedBox(width: 14),
               itemBuilder: (_, __) => const SizedBox(
-                width: 168,
+                width: 176,
                 child: _RailProductSkeleton(),
               ),
             ),
@@ -1331,7 +977,7 @@ class _RailProductSkeleton extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            height: 138,
+            height: 150,
             decoration: const BoxDecoration(
               color: Color(0xFFF3F4F6),
               borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -1411,28 +1057,55 @@ class _SearchFieldState extends ConsumerState<_SearchField> {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(24),
-      onTap: _openSearch,
-      child: IgnorePointer(
-        child: TextField(
-          decoration: InputDecoration(
-            hintText: widget.hint,
-            hintStyle: const TextStyle(
-              color: _wmTextSoft,
-              fontWeight: FontWeight.w600,
-            ),
-            prefixIcon: const Icon(Icons.search, color: _wmPrimary),
-            suffixIcon: IconButton(
-              onPressed: null,
-              icon: const Icon(Icons.camera_alt_outlined, color: _wmPrimary),
-            ),
-            border: InputBorder.none,
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 8,
-              vertical: 10,
-            ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: _openSearch,
+        child: SizedBox(
+          height: double.infinity,
+          child: Row(
+            children: [
+              const SizedBox(width: 2),
+              const Icon(
+                Icons.search_rounded,
+                color: Color(0xFF202124),
+                size: 22,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeOutCubic,
+                  transitionBuilder: (child, animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0, 0.08),
+                          end: Offset.zero,
+                        ).animate(animation),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: Text(
+                    widget.hint,
+                    key: ValueKey(widget.hint),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: _wmTextSoft,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.1,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+            ],
           ),
         ),
       ),
@@ -1494,8 +1167,8 @@ class _ProductTileState extends ConsumerState<_ProductTile> {
       for (var i = 0; i < addCount; i++) {
         ref.read(cartProvider.notifier).add(full);
       }
-      Haptic.medium(context);
 
+      Haptic.medium(context);
       await Future<void>.delayed(const Duration(milliseconds: 30));
 
       await flyToCart(
@@ -1505,8 +1178,8 @@ class _ProductTileState extends ConsumerState<_ProductTile> {
       );
     } finally {
       if (mounted) {
-        final addingIds = ref.read(addingProductIdsProvider);
-        final updated = {...addingIds}..remove(p.id);
+        final ids = ref.read(addingProductIdsProvider);
+        final updated = {...ids}..remove(p.id);
         ref.read(addingProductIdsProvider.notifier).state = updated;
       }
     }
@@ -2013,7 +1686,7 @@ class _RoundedCategoryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 108,
+      height: 112,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: items.length,
@@ -2047,7 +1720,7 @@ class _CategoryQuickTileState extends State<_CategoryQuickTile> {
       onTapUp: (_) => setState(() => _pressed = false),
       child: AnimatedScale(
         duration: const Duration(milliseconds: 120),
-        scale: _pressed ? 0.96 : 1,
+        scale: _pressed ? 0.97 : 1,
         child: Material(
           color: Colors.transparent,
           child: InkWell(
@@ -2056,8 +1729,8 @@ class _CategoryQuickTileState extends State<_CategoryQuickTile> {
             child: Column(
               children: [
                 Container(
-                  height: 64,
-                  width: 64,
+                  height: 68,
+                  width: 68,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(18),
@@ -2075,7 +1748,7 @@ class _CategoryQuickTileState extends State<_CategoryQuickTile> {
                 ),
                 const SizedBox(height: 6),
                 SizedBox(
-                  width: 92,
+                  width: 96,
                   child: Text(
                     it.label,
                     maxLines: 2,
@@ -2112,21 +1785,21 @@ class _WmPromoAutoCarouselState extends State<WmPromoAutoCarousel> {
 
   final _items = const <_PromoItem>[
     _PromoItem(
-      title: 'Free Delivery over £30',
-      subtitle: 'Build your basket smarter this week',
+      title: 'Offers of the week',
+      subtitle: 'Build your basket smarter and unlock free delivery over £30.',
       icon: Icons.local_shipping_outlined,
-      colors: [Color(0xFF111827), Color(0xFF374151)],
+      colors: [Color(0xFF111827), Color(0xFF334155)],
     ),
     _PromoItem(
       title: 'Best value this week',
-      subtitle: 'Savings worth adding to your basket now',
+      subtitle: 'Sharp pricing on staples without the bargain-bin feel.',
       icon: Icons.local_offer_outlined,
       colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
     ),
     _PromoItem(
-      title: 'Rewards ready to use',
-      subtitle: 'Turn your points into value on your next order',
-      icon: Icons.card_giftcard_outlined,
+      title: 'Kitchen staples to start with',
+      subtitle: 'A strong first basket starts with the right essentials.',
+      icon: Icons.shopping_basket_outlined,
       colors: [Color(0xFF4B5563), Color(0xFF6B7280)],
     ),
   ];
@@ -2157,7 +1830,7 @@ class _WmPromoAutoCarouselState extends State<WmPromoAutoCarousel> {
     return Column(
       children: [
         SizedBox(
-          height: 136,
+          height: 148,
           child: PageView.builder(
             controller: _ctrl,
             itemCount: _items.length,
@@ -2196,35 +1869,35 @@ class _PromoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: item.colors,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x0D000000),
-            blurRadius: 8,
-            offset: Offset(0, 3),
+            color: Color(0x12000000),
+            blurRadius: 12,
+            offset: Offset(0, 6),
           ),
         ],
       ),
       child: Row(
         children: [
           Container(
-            height: 56,
-            width: 56,
+            height: 58,
+            width: 58,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(.18),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withOpacity(.30)),
+              color: Colors.white.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
             ),
             child: Icon(item.icon, color: Colors.white, size: 28),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -2237,17 +1910,20 @@ class _PromoCard extends StatelessWidget {
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w900,
-                    fontSize: 17,
+                    fontSize: 19,
+                    letterSpacing: -0.3,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 5),
                 Text(
                   item.subtitle,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w500,
+                    color: Color(0xFFE5E7EB),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    height: 1.25,
                   ),
                 ),
               ],
@@ -2282,6 +1958,61 @@ class _Dots extends StatelessWidget {
             borderRadius: BorderRadius.circular(999),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _CategoryRowSkeleton extends StatelessWidget {
+  const _CategoryRowSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 112,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 4,
+        separatorBuilder: (_, __) => const SizedBox(width: 14),
+        itemBuilder: (_, __) => Column(
+          children: [
+            Container(
+              height: 68,
+              width: 68,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: _wmBorder),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              width: 76,
+              height: 10,
+              decoration: BoxDecoration(
+                color: _wmBorderSoft,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PromoSkeleton extends StatelessWidget {
+  const _PromoSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 148,
+      decoration: BoxDecoration(
+        color: const Color(0xFFEDEFF3),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _wmBorder),
       ),
     );
   }
@@ -2347,9 +2078,9 @@ class _ShimmerState extends State<_Shimmer>
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
               colors: [
-                widget.baseColor.withOpacity(.18),
-                widget.highlightColor.withOpacity(.45),
-                widget.baseColor.withOpacity(.18),
+                widget.baseColor.withValues(alpha: 0.18),
+                widget.highlightColor.withValues(alpha: 0.45),
+                widget.baseColor.withValues(alpha: 0.18),
               ],
               stops: const [0.35, 0.5, 0.65],
               transform: _SlidingGradientTransform(t),
@@ -2359,107 +2090,6 @@ class _ShimmerState extends State<_Shimmer>
           child: widget.child,
         );
       },
-    );
-  }
-}
-
-class _LoyaltyCard extends StatelessWidget {
-  const _LoyaltyCard({
-    required this.miles,
-    this.headline = 'Malabar Miles',
-    this.ctaText = 'View',
-  });
-
-  final int miles;
-  final String headline;
-  final String ctaText;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 64,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: const LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [Color(0xFFFFFFFF), Color(0xFFF9FAFB)],
-        ),
-        border: Border.all(color: Color(0xFFE5E7EB)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x06000000),
-            blurRadius: 4,
-            offset: Offset(0, 1),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
-        children: [
-          Container(
-            height: 38,
-            width: 38,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF7ED),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFFED7AA)),
-            ),
-            alignment: Alignment.center,
-            child: const Icon(Icons.loyalty, color: _wmReward, size: 18),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  headline,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 13,
-                    color: _wmTextStrong,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Use on your next basket',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 11.5,
-                    color: _wmTextSoft,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          TextButton(
-            style: TextButton.styleFrom(
-              foregroundColor: _wmPrimary,
-              backgroundColor: const Color(0xFFF9FAFB),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Open Rewards')),
-              );
-            },
-            child: Text(
-              ctaText,
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
