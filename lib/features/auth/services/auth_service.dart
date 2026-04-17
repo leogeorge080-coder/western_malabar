@@ -59,7 +59,6 @@ class AuthService {
       await supabase.auth.signInWithIdToken(
         provider: OAuthProvider.google,
         idToken: idToken,
-        accessToken: accessToken,
       );
 
       final currentUser = supabase.auth.currentUser;
