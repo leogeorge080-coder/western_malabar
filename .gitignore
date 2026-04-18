@@ -48,3 +48,14 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+# Local secrets / environment
+.env
+.env.*
+.env.local
+supabase/functions/.env
+supabase/functions/.env.local
+# Node modules
+node_modules/
+
+# Print server output
+print_jobs/
