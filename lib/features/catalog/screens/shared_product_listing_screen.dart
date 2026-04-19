@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:western_malabar/features/catalog/models/product_model.dart';
+import 'package:western_malabar/shared/navigation/product_navigation.dart';
 import 'package:western_malabar/shared/theme/wm_gradients.dart';
 import 'package:western_malabar/shared/widgets/product_card.dart';
 import 'package:western_malabar/features/cart/widgets/sticky_cart_bar.dart';
@@ -45,8 +46,10 @@ class SharedProductListingScreen extends ConsumerWidget {
                     p: p,
                     compact: true,
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Open "${p.name}"')),
+                      openProductDetail(
+                        context,
+                        productId: p.id,
+                        initialProduct: p,
                       );
                     },
                     onAdd: () {},
@@ -169,7 +172,3 @@ class _ListingEmptyState extends StatelessWidget {
     );
   }
 }
-
-
-
-

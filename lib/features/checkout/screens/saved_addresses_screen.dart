@@ -254,7 +254,9 @@ class _SavedAddressesHeader extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            onPressed: () => Navigator.maybePop(context),
+            onPressed: () {
+              Navigator.of(context, rootNavigator: true).pop();
+            },
             icon: const Icon(
               Icons.arrow_back_ios_new_rounded,
               color: _wmAddrPrimary,

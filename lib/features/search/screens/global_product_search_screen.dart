@@ -3,26 +3,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:western_malabar/features/cart/providers/cart_provider.dart';
 import 'package:western_malabar/features/catalog/models/category_model.dart';
 import 'package:western_malabar/features/catalog/models/product_model.dart';
-import 'package:western_malabar/features/catalog/screens/subcategory_screen.dart';
 import 'package:western_malabar/features/catalog/services/product_service.dart';
+import 'package:western_malabar/shared/navigation/product_navigation.dart';
+import 'package:western_malabar/features/catalog/screens/subcategory_screen.dart';
 import 'package:western_malabar/features/search/providers/search_controller.dart';
-import 'package:western_malabar/features/search/widgets/search_result_product_card.dart';
 import 'package:western_malabar/features/search/widgets/search_amazon_result_tile.dart';
 import 'package:western_malabar/shared/widgets/wm_product_image.dart';
 
 const _wmSearchBg = Color(0xFFF7F7F7);
 const _wmSearchSurface = Colors.white;
-const _wmSearchSurfaceSoft = Color(0xFFF3F4F6);
 const _wmSearchBorder = Color(0xFFD5DAE1);
 
 const _wmSearchTextStrong = Color(0xFF111827);
 const _wmSearchTextSoft = Color(0xFF6B7280);
 const _wmSearchTextMuted = Color(0xFF9CA3AF);
 
-const _wmSearchPrimary = Color(0xFF2A2F3A);
-const _wmSearchPrimaryDark = Color(0xFF171A20);
-
-const _wmSearchAmberSoft = Color(0xFFFFF7ED);
+const _wmSearchPrimary = Color(0xFF202531);
+const _wmSearchPrimaryDark = Color(0xFF121722);
+const _wmSearchCta = Color(0xFFF4B400);
+const _wmSearchCtaText = Color(0xFF111827);
 
 class GlobalProductSearchScreen extends ConsumerStatefulWidget {
   const GlobalProductSearchScreen({
@@ -90,16 +89,12 @@ class _GlobalProductSearchScreenState
       if (!mounted) return;
 
       final notifier = ref.read(searchProvider.notifier);
-
       await notifier.hydrate();
-      notifier.enterSearchScreen(
-        initialQuery: widget.initialQuery,
-      );
+      notifier.enterSearchScreen(initialQuery: widget.initialQuery);
 
       if (!mounted) return;
 
       final state = ref.read(searchProvider);
-
       if (state.shouldRequestFocus) {
         _focusNode.requestFocus();
       }
@@ -107,7 +102,6 @@ class _GlobalProductSearchScreenState
       if (state.resultScrollOffset > 0 && _scrollController.hasClients) {
         await Future<void>.delayed(const Duration(milliseconds: 80));
         if (!mounted || !_scrollController.hasClients) return;
-
         final max = _scrollController.position.maxScrollExtent;
         final target = state.resultScrollOffset.clamp(0.0, max);
         _scrollController.jumpTo(target);
@@ -152,9 +146,7 @@ class _GlobalProductSearchScreenState
     Future<void>.delayed(const Duration(milliseconds: 1150), () {
       if (!mounted) return;
       if (_addedToast?.key == toastKey) {
-        setState(() {
-          _addedToast = null;
-        });
+        setState(() => _addedToast = null);
       }
     });
   }
@@ -166,19 +158,16 @@ class _GlobalProductSearchScreenState
     final visibleItems = state.visibleResults;
 
     final cartSummary = ref.watch(
-      cartProvider.select(
-        (cart) {
-          final qty = cart.fold<int>(0, (sum, e) => sum + e.qty);
-          final totalCents = cart.fold<int>(
-            0,
-            (sum, e) =>
-                sum +
-                ((e.product.salePriceCents ?? e.product.priceCents ?? 0) *
-                    e.qty),
-          );
-          return (qty: qty, totalCents: totalCents);
-        },
-      ),
+      cartProvider.select((cart) {
+        final qty = cart.fold<int>(0, (sum, e) => sum + e.qty);
+        final totalCents = cart.fold<int>(
+          0,
+          (sum, e) =>
+              sum +
+              ((e.product.salePriceCents ?? e.product.priceCents ?? 0) * e.qty),
+        );
+        return (qty: qty, totalCents: totalCents);
+      }),
     );
 
     final cartQty = cartSummary.qty;
@@ -368,16 +357,14 @@ class _GlobalProductSearchScreenState
         key: const PageStorageKey('search_loading_list'),
         controller: _scrollController,
         physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
+            parent: AlwaysScrollableScrollPhysics()),
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         cacheExtent: 900,
         padding: EdgeInsets.fromLTRB(12, 4, 12, bottomInset),
         itemCount: 6,
         separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (_, __) => const RepaintBoundary(
-          child: _SearchResultSkeleton(),
-        ),
+        itemBuilder: (_, __) =>
+            const RepaintBoundary(child: _SearchResultSkeleton()),
       );
     }
 
@@ -391,8 +378,7 @@ class _GlobalProductSearchScreenState
           key: const PageStorageKey('search_results_list'),
           controller: _scrollController,
           physics: const BouncingScrollPhysics(
-            parent: AlwaysScrollableScrollPhysics(),
-          ),
+              parent: AlwaysScrollableScrollPhysics()),
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           cacheExtent: 1200,
           padding: EdgeInsets.fromLTRB(12, 4, 12, bottomInset),
@@ -400,15 +386,18 @@ class _GlobalProductSearchScreenState
           separatorBuilder: (_, __) => const SizedBox(height: 10),
           itemBuilder: (context, i) {
             final p = visibleItems[i];
-
             return RepaintBoundary(
               child: SearchAmazonResultTile(
                 key: ValueKey(p.id),
                 product: p,
-                onTap: () {},
-                onAdded: () {
-                  _showAddedToBasketToast(p.name);
+                onTap: () {
+                  ProductNavigation.open(
+                    context,
+                    productId: p.id,
+                    initialProduct: p,
+                  );
                 },
+                onAdded: () => _showAddedToBasketToast(p.name),
               ),
             );
           },
@@ -453,20 +442,14 @@ class _SearchHeaderBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 52,
+      height: 54,
       decoration: BoxDecoration(
         color: _wmSearchSurface,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(
-          color: const Color(0xFFBFC7D1),
-          width: 1.2,
-        ),
+        borderRadius: BorderRadius.circular(27),
+        border: Border.all(color: const Color(0xFFCCD3DC), width: 1.1),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x08000000),
-            blurRadius: 4,
-            offset: Offset(0, 1),
-          ),
+              color: Color(0x08000000), blurRadius: 6, offset: Offset(0, 2)),
         ],
       ),
       child: Row(
@@ -476,17 +459,10 @@ class _SearchHeaderBar extends StatelessWidget {
             onPressed: onBack,
             splashRadius: 18,
             visualDensity: VisualDensity.compact,
-            icon: const Icon(
-              Icons.arrow_back_rounded,
-              color: Color(0xFF111827),
-              size: 24,
-            ),
+            icon: const Icon(Icons.arrow_back_rounded,
+                color: Color(0xFF111827), size: 24),
           ),
-          const Icon(
-            Icons.search_rounded,
-            color: Color(0xFF111827),
-            size: 23,
-          ),
+          const Icon(Icons.search_rounded, color: Color(0xFF374151), size: 22),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
@@ -512,7 +488,7 @@ class _SearchHeaderBar extends StatelessWidget {
               style: const TextStyle(
                 color: Color(0xFF111827),
                 fontSize: 15.5,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
                 height: 1.1,
                 letterSpacing: -0.1,
               ),
@@ -522,24 +498,16 @@ class _SearchHeaderBar extends StatelessWidget {
           ),
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 120),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeInCubic,
             child: hasText
                 ? IconButton(
                     key: const ValueKey('clear_action'),
                     onPressed: onClear,
                     splashRadius: 18,
                     visualDensity: VisualDensity.compact,
-                    icon: const Icon(
-                      Icons.close_rounded,
-                      color: Color(0xFF6B7280),
-                      size: 24,
-                    ),
+                    icon: const Icon(Icons.close_rounded,
+                        color: Color(0xFF6B7280), size: 24),
                   )
-                : const SizedBox(
-                    key: ValueKey('empty_tail_space'),
-                    width: 12,
-                  ),
+                : const SizedBox(key: ValueKey('empty_tail_space'), width: 12),
           ),
           const SizedBox(width: 6),
         ],
@@ -570,10 +538,9 @@ class _SearchTypingBody extends ConsumerWidget {
             child: Text(
               'Searching...',
               style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: _wmSearchTextSoft,
-              ),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: _wmSearchTextSoft),
             ),
           ),
           const _SuggestionSkeletonList(),
@@ -585,19 +552,15 @@ class _SearchTypingBody extends ConsumerWidget {
             child: Text(
               'Top results',
               style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: _wmSearchTextSoft,
-              ),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: _wmSearchTextSoft),
             ),
           ),
-          ...List.generate(products.length, (i) {
-            final p = products[i];
-            return _LiveProductSuggestionTile(
-              product: p,
-              isTopMatch: i == 0,
-            );
-          }),
+          ...List.generate(
+              products.length,
+              (i) => _LiveProductSuggestionTile(
+                  product: products[i], isTopMatch: i == 0)),
           const SizedBox(height: 10),
         ],
         if (categories.isNotEmpty) ...[
@@ -606,10 +569,9 @@ class _SearchTypingBody extends ConsumerWidget {
             child: Text(
               'Categories',
               style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: _wmSearchTextSoft,
-              ),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: _wmSearchTextSoft),
             ),
           ),
           ...categories.map((c) => _CategorySuggestionTile(category: c)),
@@ -617,26 +579,21 @@ class _SearchTypingBody extends ConsumerWidget {
         ],
         if (trimmedQuery.isNotEmpty)
           Container(
+            margin: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
               color: _wmSearchSurface,
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: _wmSearchBorder),
             ),
             child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 2,
-              ),
-              leading: const Icon(
-                Icons.search_rounded,
-                color: _wmSearchPrimary,
-              ),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+              leading:
+                  const Icon(Icons.search_rounded, color: _wmSearchPrimary),
               title: Text(
                 'Search all products for "$trimmedQuery"',
                 style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  color: _wmSearchTextStrong,
-                ),
+                    fontWeight: FontWeight.w800, color: _wmSearchTextStrong),
               ),
               onTap: () async {
                 FocusScope.of(context).unfocus();
@@ -652,10 +609,8 @@ class _SearchTypingBody extends ConsumerWidget {
 }
 
 class _LiveProductSuggestionTile extends ConsumerWidget {
-  const _LiveProductSuggestionTile({
-    required this.product,
-    this.isTopMatch = false,
-  });
+  const _LiveProductSuggestionTile(
+      {required this.product, this.isTopMatch = false});
 
   final WmProductDto product;
   final bool isTopMatch;
@@ -680,12 +635,8 @@ class _LiveProductSuggestionTile extends ConsumerWidget {
           height: 84,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: const BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: Color(0xFFE6E6E6),
-                width: 1,
-              ),
-            ),
+            border:
+                Border(bottom: BorderSide(color: Color(0xFFE6E6E6), width: 1)),
           ),
           child: Row(
             children: [
@@ -703,11 +654,10 @@ class _LiveProductSuggestionTile extends ConsumerWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 14.6,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF111111),
-                          height: 1.15,
-                        ),
+                            fontSize: 14.6,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF111111),
+                            height: 1.15),
                       ),
                       const SizedBox(height: 4),
                       Row(
@@ -719,11 +669,10 @@ class _LiveProductSuggestionTile extends ConsumerWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
-                                  fontSize: 12.4,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF6B7280),
-                                  height: 1.1,
-                                ),
+                                    fontSize: 12.4,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFF6B7280),
+                                    height: 1.1),
                               ),
                             )
                           else
@@ -732,11 +681,10 @@ class _LiveProductSuggestionTile extends ConsumerWidget {
                           Text(
                             price,
                             style: const TextStyle(
-                              fontSize: 13.6,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF111111),
-                              height: 1.0,
-                            ),
+                                fontSize: 13.6,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF111111),
+                                height: 1.0),
                           ),
                         ],
                       ),
@@ -747,34 +695,26 @@ class _LiveProductSuggestionTile extends ConsumerWidget {
               if (isTopMatch) ...[
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFF7E6),
                     borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: const Color(0xFFF0D9A7),
-                    ),
+                    border: Border.all(color: const Color(0xFFF0D9A7)),
                   ),
                   child: const Text(
                     'Top',
                     style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF7C5A00),
-                      height: 1,
-                    ),
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF7C5A00),
+                        height: 1),
                   ),
                 ),
               ],
               const SizedBox(width: 10),
-              const Icon(
-                Icons.arrow_outward_rounded,
-                size: 20,
-                color: Color(0xFF9CA3AF),
-              ),
+              const Icon(Icons.arrow_outward_rounded,
+                  size: 20, color: Color(0xFF9CA3AF)),
             ],
           ),
         ),
@@ -798,18 +738,10 @@ class _AmazonSuggestionImage extends StatelessWidget {
         color: const Color(0xFFF3F4F6),
         child: (imageUrl == null || imageUrl!.trim().isEmpty)
             ? const Center(
-                child: Icon(
-                  Icons.shopping_bag_outlined,
-                  size: 22,
-                  color: Color(0xFF9CA3AF),
-                ),
-              )
+                child: Icon(Icons.shopping_bag_outlined,
+                    size: 22, color: Color(0xFF9CA3AF)))
             : WmProductImage(
-                imageUrl: imageUrl,
-                width: 52,
-                height: 52,
-                borderRadius: 8,
-              ),
+                imageUrl: imageUrl, width: 52, height: 52, borderRadius: 8),
       ),
     );
   }
@@ -844,10 +776,7 @@ class _SearchCartBarState extends State<_SearchCartBar>
   void initState() {
     super.initState();
     _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 320),
-    );
-
+        vsync: this, duration: const Duration(milliseconds: 320));
     _scale = TweenSequence<double>([
       TweenSequenceItem(
         tween: Tween(begin: 1.0, end: 1.035)
@@ -860,13 +789,8 @@ class _SearchCartBarState extends State<_SearchCartBar>
         weight: 45,
       ),
     ]).animate(_pulseController);
-
     _glow = Tween<double>(begin: 18, end: 24).animate(
-      CurvedAnimation(
-        parent: _pulseController,
-        curve: Curves.easeOutCubic,
-      ),
-    );
+        CurvedAnimation(parent: _pulseController, curve: Curves.easeOutCubic));
   }
 
   @override
@@ -900,11 +824,7 @@ class _SearchCartBarState extends State<_SearchCartBar>
               child: Ink(
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [
-                      _wmSearchPrimaryDark,
-                      _wmSearchPrimary,
-                    ],
-                  ),
+                      colors: [_wmSearchPrimaryDark, _wmSearchPrimary]),
                   borderRadius: BorderRadius.circular(22),
                   boxShadow: [
                     BoxShadow(
@@ -925,10 +845,8 @@ class _SearchCartBarState extends State<_SearchCartBar>
                           color: const Color(0x22FFFFFF),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: const Icon(
-                          Icons.shopping_bag_rounded,
-                          color: Colors.white,
-                        ),
+                        child: const Icon(Icons.shopping_bag_rounded,
+                            color: Colors.white),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -938,39 +856,33 @@ class _SearchCartBarState extends State<_SearchCartBar>
                             Text(
                               '${widget.itemCount} item${widget.itemCount == 1 ? '' : 's'} in basket',
                               style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w800,
-                              ),
+                                  color: Colors.white,
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w800),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               _money(widget.totalCents),
                               style: const TextStyle(
-                                color: Color(0xFFE5E7EB),
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w700,
-                              ),
+                                  color: Color(0xFFE5E7EB),
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700),
                             ),
                           ],
                         ),
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
+                            horizontal: 14, vertical: 10),
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
+                            color: _wmSearchCta,
+                            borderRadius: BorderRadius.circular(999)),
                         child: const Text(
                           'View basket',
                           style: TextStyle(
-                            color: _wmSearchPrimary,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 13,
-                          ),
+                              color: _wmSearchCtaText,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 13),
                         ),
                       ),
                     ],
@@ -1013,22 +925,18 @@ class _CategorySuggestionTile extends ConsumerWidget {
         onTap: () async {
           FocusScope.of(context).unfocus();
           ref.read(searchProvider.notifier).collapseForHome();
-
           if (!context.mounted) return;
-
           await Navigator.push(
             context,
             MaterialPageRoute<void>(
               builder: (_) => SubcategoryScreen(
-                parentName: category.name,
-                parentSlug: category.slug,
-              ),
+                  parentName: category.name, parentSlug: category.slug),
             ),
           );
         },
         borderRadius: BorderRadius.circular(18),
         child: Container(
-          margin: const EdgeInsets.only(bottom: 8),
+          margin: const EdgeInsets.only(bottom: 8, left: 12, right: 12),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: _wmSearchSurface,
@@ -1041,13 +949,10 @@ class _CategorySuggestionTile extends ConsumerWidget {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.grid_view_rounded,
-                  color: _wmSearchPrimary,
-                ),
+                    color: const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.grid_view_rounded,
+                    color: _wmSearchPrimary),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1056,16 +961,13 @@ class _CategorySuggestionTile extends ConsumerWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: _wmSearchTextStrong,
-                  ),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: _wmSearchTextStrong),
                 ),
               ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: _wmSearchTextMuted,
-              ),
+              const Icon(Icons.chevron_right_rounded,
+                  color: _wmSearchTextMuted),
             ],
           ),
         ),
@@ -1089,11 +991,11 @@ class _SearchResultSkeletonState extends State<_SearchResultSkeleton>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1100),
-      lowerBound: 0.72,
-      upperBound: 1.0,
-    )..repeat(reverse: true);
+        vsync: this,
+        duration: const Duration(milliseconds: 1100),
+        lowerBound: 0.72,
+        upperBound: 1.0)
+      ..repeat(reverse: true);
   }
 
   @override
@@ -1109,9 +1011,8 @@ class _SearchResultSkeletonState extends State<_SearchResultSkeleton>
         width: width,
         height: height,
         decoration: BoxDecoration(
-          color: const Color(0xFFE5E7EB),
-          borderRadius: BorderRadius.circular(999),
-        ),
+            color: const Color(0xFFE5E7EB),
+            borderRadius: BorderRadius.circular(999)),
       ),
     );
   }
@@ -1134,9 +1035,8 @@ class _SearchResultSkeletonState extends State<_SearchResultSkeleton>
               width: 90,
               height: double.infinity,
               decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(14),
-              ),
+                  color: const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(14)),
             ),
           ),
           const SizedBox(width: 12),
@@ -1160,107 +1060,15 @@ class _SearchResultSkeletonState extends State<_SearchResultSkeleton>
   }
 }
 
-class _SearchGridSkeleton extends StatefulWidget {
-  const _SearchGridSkeleton();
-
-  @override
-  State<_SearchGridSkeleton> createState() => _SearchGridSkeletonState();
-}
-
-class _SearchGridSkeletonState extends State<_SearchGridSkeleton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1100),
-      lowerBound: 0.72,
-      upperBound: 1.0,
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Widget _bar(double height, {double? width}) {
-    return FadeTransition(
-      opacity: _controller,
-      child: Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          color: const Color(0xFFE5E7EB),
-          borderRadius: BorderRadius.circular(999),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: _wmSearchSurface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _wmSearchBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          FadeTransition(
-            opacity: _controller,
-            child: Container(
-              height: 118,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          _bar(11, width: 86),
-          const SizedBox(height: 8),
-          _bar(15),
-          const SizedBox(height: 6),
-          _bar(15, width: 118),
-          const Spacer(),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              _bar(18, width: 76),
-              const Spacer(),
-              _bar(34, width: 72),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _StringToastData {
   final String message;
   final Key key;
 
-  const _StringToastData({
-    required this.message,
-    required this.key,
-  });
+  const _StringToastData({required this.message, required this.key});
 }
 
 class _AddedToBasketToast extends StatefulWidget {
-  const _AddedToBasketToast({
-    super.key,
-    required this.message,
-  });
+  const _AddedToBasketToast({super.key, required this.message});
 
   final String message;
 
@@ -1279,33 +1087,15 @@ class _AddedToBasketToastState extends State<_AddedToBasketToast>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 260),
-    )..forward();
-
-    _fade = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutCubic,
+        vsync: this, duration: const Duration(milliseconds: 260))
+      ..forward();
+    _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
+    _slide =
+        Tween<Offset>(begin: const Offset(0, 0.12), end: Offset.zero).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
     );
-
-    _slide = Tween<Offset>(
-      begin: const Offset(0, 0.12),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeOutCubic,
-      ),
-    );
-
-    _scale = Tween<double>(
-      begin: 0.985,
-      end: 1.0,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeOutCubic,
-      ),
+    _scale = Tween<double>(begin: 0.985, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
     );
   }
 
@@ -1327,19 +1117,16 @@ class _AddedToBasketToastState extends State<_AddedToBasketToast>
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 360),
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
                   color: const Color(0xFF111827),
                   borderRadius: BorderRadius.circular(18),
                   boxShadow: const [
                     BoxShadow(
-                      color: Color(0x26000000),
-                      blurRadius: 18,
-                      offset: Offset(0, 8),
-                    ),
+                        color: Color(0x26000000),
+                        blurRadius: 18,
+                        offset: Offset(0, 8)),
                   ],
                 ),
                 child: Row(
@@ -1352,11 +1139,8 @@ class _AddedToBasketToastState extends State<_AddedToBasketToast>
                         color: const Color(0x2215803D),
                         borderRadius: BorderRadius.circular(999),
                       ),
-                      child: const Icon(
-                        Icons.check_rounded,
-                        color: Color(0xFF86EFAC),
-                        size: 18,
-                      ),
+                      child: const Icon(Icons.check_rounded,
+                          color: Color(0xFF86EFAC), size: 18),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -1365,10 +1149,9 @@ class _AddedToBasketToastState extends State<_AddedToBasketToast>
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13.2,
-                          fontWeight: FontWeight.w800,
-                        ),
+                            color: Colors.white,
+                            fontSize: 13.2,
+                            fontWeight: FontWeight.w800),
                       ),
                     ),
                   ],
@@ -1383,11 +1166,8 @@ class _AddedToBasketToastState extends State<_AddedToBasketToast>
 }
 
 class _FilterChip extends StatelessWidget {
-  const _FilterChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
+  const _FilterChip(
+      {required this.label, required this.selected, required this.onTap});
 
   final String label;
   final bool selected;
@@ -1396,7 +1176,7 @@ class _FilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? const Color(0xFFF3F4F6) : _wmSearchSurface,
+      color: selected ? const Color(0xFFFFF7E0) : _wmSearchSurface,
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         onTap: onTap,
@@ -1406,9 +1186,8 @@ class _FilterChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 13),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: selected ? _wmSearchPrimary : _wmSearchBorder,
-            ),
+            border:
+                Border.all(color: selected ? _wmSearchCta : _wmSearchBorder),
           ),
           alignment: Alignment.center,
           child: Text(
@@ -1416,12 +1195,11 @@ class _FilterChip extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             softWrap: false,
-            style: TextStyle(
-              fontSize: 12.4,
-              fontWeight: FontWeight.w800,
-              color: selected ? _wmSearchPrimary : _wmSearchTextStrong,
-              height: 1.0,
-            ),
+            style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w800,
+                color: _wmSearchTextStrong,
+                height: 1.0),
           ),
         ),
       ),
@@ -1438,14 +1216,13 @@ class _SearchEmptyState extends ConsumerWidget {
     'Masala',
     'Tea',
     'Snacks',
-    'Oil',
+    'Oil'
   ];
-
   static const List<String> _popularLabels = [
     'Chicken',
     'Vegetables',
     'Ready meals',
-    'Biscuits',
+    'Biscuits'
   ];
 
   @override
@@ -1467,10 +1244,9 @@ class _SearchEmptyState extends ConsumerWidget {
               border: Border.all(color: _wmSearchBorder),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x05000000),
-                  blurRadius: 6,
-                  offset: Offset(0, 2),
-                ),
+                    color: Color(0x05000000),
+                    blurRadius: 6,
+                    offset: Offset(0, 2))
               ],
             ),
             clipBehavior: Clip.antiAlias,
@@ -1504,8 +1280,9 @@ class _SearchEmptyState extends ConsumerWidget {
           child: Wrap(
             spacing: 8,
             runSpacing: 8,
-            children:
-                _popularLabels.map((label) => _QuickPill(label: label)).toList(),
+            children: _popularLabels
+                .map((label) => _QuickPill(label: label))
+                .toList(),
           ),
         ),
       ],
@@ -1528,10 +1305,9 @@ class _RecentSectionHeader extends ConsumerWidget {
             child: Text(
               'Recent searches',
               style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w800,
-                color: _wmSearchTextSoft,
-              ),
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
+                  color: _wmSearchTextSoft),
             ),
           ),
           TextButton(
@@ -1547,13 +1323,8 @@ class _RecentSectionHeader extends ConsumerWidget {
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               visualDensity: VisualDensity.compact,
             ),
-            child: const Text(
-              'Clear all',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
+            child: const Text('Clear all',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
           ),
         ],
       ),
@@ -1573,20 +1344,16 @@ class _SearchSectionLabel extends StatelessWidget {
       child: Text(
         label,
         style: const TextStyle(
-          fontSize: 13.5,
-          fontWeight: FontWeight.w800,
-          color: _wmSearchTextSoft,
-        ),
+            fontSize: 13.5,
+            fontWeight: FontWeight.w800,
+            color: _wmSearchTextSoft),
       ),
     );
   }
 }
 
 class _RecentSearchRow extends ConsumerWidget {
-  const _RecentSearchRow({
-    required this.query,
-    this.isLast = false,
-  });
+  const _RecentSearchRow({required this.query, this.isLast = false});
 
   final String query;
   final bool isLast;
@@ -1607,19 +1374,12 @@ class _RecentSearchRow extends ConsumerWidget {
             border: isLast
                 ? null
                 : const Border(
-                    bottom: BorderSide(
-                      color: Color(0xFFE8E8E8),
-                      width: 1,
-                    ),
-                  ),
+                    bottom: BorderSide(color: Color(0xFFE8E8E8), width: 1)),
           ),
           child: Row(
             children: [
-              const Icon(
-                Icons.history_rounded,
-                size: 24,
-                color: Color(0xFF6B7280),
-              ),
+              const Icon(Icons.history_rounded,
+                  size: 24, color: Color(0xFF6B7280)),
               const SizedBox(width: 14),
               Expanded(
                 child: Text(
@@ -1627,26 +1387,21 @@ class _RecentSearchRow extends ConsumerWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 14.6,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF111111),
-                    height: 1.1,
-                  ),
+                      fontSize: 14.6,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF111111),
+                      height: 1.1),
                 ),
               ),
               const SizedBox(width: 8),
               IconButton(
-                onPressed: () {
-                  ref.read(searchProvider.notifier).removeRecentQuery(query);
-                },
+                onPressed: () =>
+                    ref.read(searchProvider.notifier).removeRecentQuery(query),
                 splashRadius: 18,
                 visualDensity: VisualDensity.compact,
                 padding: EdgeInsets.zero,
-                icon: const Icon(
-                  Icons.close_rounded,
-                  size: 24,
-                  color: Color(0xFF6B7280),
-                ),
+                icon: const Icon(Icons.close_rounded,
+                    size: 24, color: Color(0xFF6B7280)),
                 tooltip: 'Delete',
               ),
             ],
@@ -1675,21 +1430,24 @@ class _QuickPill extends ConsumerWidget {
         },
         borderRadius: BorderRadius.circular(999),
         child: Container(
-          height: 34,
+          height: 36,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             border: Border.all(color: _wmSearchBorder),
+            boxShadow: const [
+              BoxShadow(
+                  color: Color(0x05000000), blurRadius: 4, offset: Offset(0, 1))
+            ],
           ),
           alignment: Alignment.center,
           child: Text(
             label,
             style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: _wmSearchTextStrong,
-              height: 1.0,
-            ),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: _wmSearchTextStrong,
+                height: 1.0),
           ),
         ),
       ),
@@ -1715,39 +1473,33 @@ class _NoResults extends StatelessWidget {
             border: Border.all(color: _wmSearchBorder),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x0E000000),
-                blurRadius: 10,
-                offset: Offset(0, 5),
-              ),
+                  color: Color(0x0E000000),
+                  blurRadius: 10,
+                  offset: Offset(0, 5))
             ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
-                Icons.search_off_rounded,
-                size: 42,
-                color: _wmSearchPrimary,
-              ),
+              const Icon(Icons.search_off_rounded,
+                  size: 42, color: _wmSearchPrimary),
               const SizedBox(height: 12),
               Text(
                 'We couldn’t find a close match for "$query"',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                  color: _wmSearchTextStrong,
-                ),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: _wmSearchTextStrong),
               ),
               const SizedBox(height: 8),
               const Text(
                 'Try another name, brand, or a simpler keyword.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: _wmSearchTextSoft,
-                ),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: _wmSearchTextSoft),
               ),
             ],
           ),

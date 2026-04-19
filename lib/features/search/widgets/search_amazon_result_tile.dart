@@ -28,7 +28,8 @@ class SearchAmazonResultTile extends ConsumerWidget {
 
   int get _basePriceCents => product.priceCents ?? 0;
 
-  int get _savingCents => _hasDiscount ? (_basePriceCents - _displayPriceCents) : 0;
+  int get _savingCents =>
+      _hasDiscount ? (_basePriceCents - _displayPriceCents) : 0;
 
   String _money(int cents) => '£${(cents / 100).toStringAsFixed(2)}';
 

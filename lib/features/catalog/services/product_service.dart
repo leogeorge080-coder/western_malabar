@@ -1677,6 +1677,128 @@ class ProductService {
     }
     return null;
   }
+
+  /// 🔥 RELATED PRODUCTS - Category based fetching
+  Future<List<ProductModel>> fetchProductsByCategory(
+    String? categorySlug, {
+    int limit = 12,
+  }) async {
+    if (categorySlug == null || categorySlug.trim().isEmpty) {
+      return const <ProductModel>[];
+    }
+
+    try {
+      final data = await _sb
+          .from('products')
+          .select('$productLiteSelect,categories!inner(id,name,slug)')
+          .eq('categories.slug', categorySlug)
+          .eq('is_active', true)
+          .order('created_at', ascending: false)
+          .order('id', ascending: false)
+          .limit(limit);
+
+      final list = _mapProductsList(data);
+      if (list.isEmpty) return const <ProductModel>[];
+
+      final enriched = await _enrichProducts(list);
+
+      final categoryIds = enriched
+          .map((p) => p.categoryId)
+          .where((e) => e.trim().isNotEmpty)
+          .toSet()
+          .toList();
+
+      Map<String, Map<String, String>> categoryMap = {};
+      if (categoryIds.isNotEmpty) {
+        final res = await _sb
+            .from('categories')
+            .select('id,name,slug')
+            .inFilter('id', categoryIds);
+
+        for (final row in (res as List<dynamic>)) {
+          final m = row as Map<String, dynamic>;
+          final id = (m['id'] ?? '').toString();
+          if (id.isEmpty) continue;
+          categoryMap[id] = {
+            'name': (m['name'] ?? '').toString(),
+            'slug': (m['slug'] ?? '').toString(),
+          };
+        }
+      }
+
+      return enriched.map((p) {
+        final category = categoryMap[p.categoryId];
+        return ProductModel(
+          id: p.id,
+          name: p.name,
+          brandName: p.brandName,
+          image: p.firstImageUrl,
+          priceCents: p.originalPriceCents,
+          salePriceCents: p.displayPriceCents < p.originalPriceCents
+              ? p.displayPriceCents
+              : null,
+          avgRating: p.avgRating,
+          ratingCount: p.ratingCount,
+          categoryName: category?['name'],
+          categorySlug: category?['slug'],
+          isFrozen: p.isFrozen,
+          barcode: p.barcode,
+          sellerId: p.sellerId,
+          sellerBasePriceCents: p.sellerBasePriceCents,
+          isWeeklyDeal: p.isWeeklyDeal,
+          dealBadgeText: p.dealBadgeText,
+        );
+      }).toList();
+    } catch (_) {
+      return const <ProductModel>[];
+    }
+  }
+
+  /// 🔥 COMBO ENGINE - Rule-Based Product Suggestions
+  Future<List<ProductModel>> fetchComboProducts(ProductModel product) async {
+    final name = product.name.toLowerCase();
+
+    /// Rule-based combo suggestions
+    if (name.contains('rice')) {
+      return fetchByKeywords(['masala', 'pickle', 'dal']);
+    }
+
+    if (name.contains('tea')) {
+      return fetchByKeywords(['snacks', 'biscuits']);
+    }
+
+    if (name.contains('frozen')) {
+      return fetchByKeywords(['sauce', 'ready']);
+    }
+
+    if (name.contains('masala')) {
+      return fetchByKeywords(['rice', 'oil']);
+    }
+
+    return const <ProductModel>[];
+  }
+
+  /// Helper: Fetch products by multiple keywords
+  Future<List<ProductModel>> fetchByKeywords(List<String> keywords) async {
+    final results = <ProductModel>[];
+    final seen = <String>{};
+
+    for (final keyword in keywords) {
+      try {
+        final items = await fetchProductModelsByQuery(keyword, limit: 4);
+        for (final item in items) {
+          if (!seen.contains(item.id)) {
+            results.add(item);
+            seen.add(item.id);
+          }
+        }
+      } catch (_) {
+        // Skip on error
+      }
+    }
+
+    return results;
+  }
 }
 
 class _RepeatStats {

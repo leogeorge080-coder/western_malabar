@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:western_malabar/features/cart/services/cart_pricing.dart';
+import 'package:western_malabar/shared/navigation/product_navigation.dart';
 import 'package:western_malabar/features/checkout/screens/checkout_screen.dart';
 import 'package:western_malabar/features/catalog/models/product_model.dart';
 import 'package:western_malabar/features/catalog/services/product_service.dart';
@@ -967,8 +968,10 @@ class _YouMayAlsoLikeSectionState
                   p: p,
                   width: 176,
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Open "${p.name}"')),
+                    openProductDetail(
+                      context,
+                      productId: p.id,
+                      initialProduct: p,
                     );
                   },
                   onAdd: () {
