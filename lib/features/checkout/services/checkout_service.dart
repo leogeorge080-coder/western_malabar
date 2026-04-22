@@ -256,38 +256,22 @@ class CheckoutService {
     required String deliveryType,
     required bool useRewards,
     required List<CartItem> cartItems,
+    String? postcode,
   }) async {
-    final session = supabase.auth.currentSession;
-    final accessToken = session?.accessToken;
-
-    if (accessToken == null || accessToken.isEmpty) {
-      throw Exception('User session not available for checkout summary');
-    }
-
     final cartPayload = _buildCartPayload(cartItems);
-    final functionUrl = '${Env.supabaseUrl}/functions/v1/get-checkout-summary';
 
-    final response = await http.post(
-      Uri.parse(functionUrl),
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': Env.supabaseAnonKey,
-        'Authorization': 'Bearer $accessToken',
+    final raw = await supabase.rpc(
+      'get_checkout_summary_atomic',
+      params: {
+        'p_delivery_type': deliveryType,
+        'p_use_rewards': useRewards,
+        'p_cart_items': cartPayload,
+        'p_postcode': postcode?.trim().isEmpty ?? true ? null : postcode?.trim(),
       },
-      body: jsonEncode({
-        'delivery_type': deliveryType,
-        'use_rewards': useRewards,
-        'cart_items': cartPayload,
-      }),
     );
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('get-checkout-summary failed: ${response.body}');
-    }
-
-    final raw = jsonDecode(response.body);
     if (raw == null || raw is! Map) {
-      throw Exception('Invalid response from get-checkout-summary');
+      throw Exception('Invalid response from get_checkout_summary_atomic');
     }
 
     return Map<String, dynamic>.from(raw as Map);

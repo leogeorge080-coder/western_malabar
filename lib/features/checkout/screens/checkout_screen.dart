@@ -10,12 +10,14 @@ import 'package:western_malabar/features/admin/providers/admin_orders_provider.d
 import 'package:western_malabar/features/cart/providers/cart_provider.dart';
 import 'package:western_malabar/features/cart/services/cart_pricing.dart';
 import 'package:western_malabar/features/checkout/models/address_model.dart';
+import 'package:western_malabar/features/checkout/models/checkout_address.dart';
 import 'package:western_malabar/features/checkout/providers/address_provider.dart';
 import 'package:western_malabar/features/checkout/providers/checkout_provider.dart';
 import 'package:western_malabar/features/checkout/screens/order_success_screen.dart';
 import 'package:western_malabar/features/checkout/services/address_service.dart';
 import 'package:western_malabar/features/checkout/services/checkout_service.dart';
 import 'package:western_malabar/features/checkout/services/stripe_payment_service.dart';
+import 'package:western_malabar/features/checkout/utils/checkout_error_formatter.dart';
 import 'package:western_malabar/features/profile/models/profile_model.dart';
 import 'package:western_malabar/features/profile/providers/profile_provider.dart';
 import 'package:western_malabar/shared/services/postcode_lookup_service.dart';
@@ -29,8 +31,6 @@ const _wmCheckoutTextSoft = Color(0xFF6B7280);
 const _wmCheckoutTextMuted = Color(0xFF9CA3AF);
 
 const _wmCheckoutPrimary = Color(0xFF2A2F3A);
-const _wmCheckoutPrimaryDark = Color(0xFF171A20);
-
 const _wmCheckoutSuccess = Color(0xFF15803D);
 const _wmCheckoutSuccessSoft = Color(0xFFECFDF5);
 
@@ -548,7 +548,28 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 deliveryType: checkout.deliveryType,
                 useRewards: checkout.useRewards,
                 cartItems: cartItems,
+                postcode: checkout.deliveryType == 'home_delivery'
+                    ? (checkout.selectedSavedAddress?.postcode.isNotEmpty == true
+                        ? checkout.selectedSavedAddress?.postcode
+                        : checkout.address.postcode)
+                    : null,
               );
+
+      final blockers = (summary['blockers'] as List<dynamic>? ?? const []);
+      if ((summary['can_place_order'] == false) && blockers.isNotEmpty) {
+        final firstBlocker = blockers.first;
+        if (firstBlocker is Map<String, dynamic>) {
+          final message = firstBlocker['message']?.toString().trim();
+          if (message != null && message.isNotEmpty) {
+            throw Exception(message);
+          }
+        } else if (firstBlocker is Map) {
+          final message = firstBlocker['message']?.toString().trim();
+          if (message != null && message.isNotEmpty) {
+            throw Exception(message);
+          }
+        }
+      }
 
       final latestCheckout = ref.read(checkoutProvider);
       final latestCartItems = ref.read(cartProvider);
@@ -561,12 +582,17 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       notifier.setBackendSummary(
         subtotalCents: (summary['subtotal_cents'] as num?)?.toInt() ?? 0,
         eligibleSubtotalCents:
-            (summary['eligible_subtotal_cents'] as num?)?.toInt() ?? 0,
+            (summary['eligible_subtotal_cents'] as num?)?.toInt() ??
+                (summary['subtotal_cents'] as num?)?.toInt() ??
+                0,
         deliveryFeeCents: (summary['delivery_fee_cents'] as num?)?.toInt() ?? 0,
         rewardDiscountCents:
             (summary['reward_discount_cents'] as num?)?.toInt() ?? 0,
         totalCents: (summary['total_cents'] as num?)?.toInt() ?? 0,
-        pointsToRedeem: (summary['points_to_redeem'] as num?)?.toInt() ?? 0,
+        pointsToRedeem:
+            (summary['points_to_redeem'] as num?)?.toInt() ??
+                (summary['points_redeemed'] as num?)?.toInt() ??
+                0,
       );
     } catch (e, st) {
       if (kDebugMode) {
@@ -574,7 +600,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         debugPrint('$st');
       }
       notifier.setBackendSummaryError(
-        'Could not confirm latest checkout total right now.',
+        friendlyCheckoutError(e),
       );
     }
   }
@@ -591,7 +617,21 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     });
   }
 
-  bool _canPlaceOrder(CheckoutState checkout) {
+  CheckoutAddress _currentManualAddress() {
+    return CheckoutAddress(
+      fullName: _fullNameController.text.trim(),
+      phone: _phoneController.text.trim(),
+      addressLine1: _address1Controller.text.trim(),
+      addressLine2: _address2Controller.text.trim(),
+      city: _cityController.text.trim(),
+      postcode: _postcodeController.text.trim(),
+    );
+  }
+
+  bool _canPlaceOrder(
+    CheckoutState checkout, {
+    CheckoutAddress? manualAddress,
+  }) {
     if (!_isValidEmail(_getCheckoutEmail())) return false;
 
     if (checkout.deliveryType.isEmpty ||
@@ -608,7 +648,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       return true;
     }
 
-    return checkout.address.isValid;
+    return (manualAddress ?? checkout.address).isValid;
   }
 
   Future<void> _onPlaceOrder() async {
@@ -620,6 +660,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     final cartItems = ref.read(cartProvider);
     final selectedSavedAddress = checkout.selectedSavedAddress;
     final checkoutEmail = _getCheckoutEmail();
+    final manualAddress = _currentManualAddress();
+    final effectiveAddress =
+        selectedSavedAddress == null ? manualAddress : checkout.address;
 
     if (cartItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -638,7 +681,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       return;
     }
 
-    if (!_canPlaceOrder(checkout)) {
+    if (!_canPlaceOrder(checkout, manualAddress: manualAddress)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please complete the required checkout details'),
@@ -649,7 +692,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
     if (checkout.deliveryType == 'home_delivery' &&
         selectedSavedAddress == null &&
-        !PostcodeLookupService.isDeliveryArea(checkout.address.postcode)) {
+        !PostcodeLookupService.isDeliveryArea(manualAddress.postcode)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -676,7 +719,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       if (checkout.paymentMethod == 'card' && confirmedTotalCents > 0) {
         final paymentResult =
             await _stripePaymentService.createCheckoutPaymentIntent(
-          address: checkout.address,
+          address: effectiveAddress,
           addressId: selectedSavedAddress?.id,
           deliveryType: checkout.deliveryType,
           deliverySlot: checkout.deliverySlot,
@@ -688,7 +731,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         final placedOrder =
             await ref.read(checkoutServiceProvider).placeOrderAfterPayment(
                   paymentIntentId: paymentResult.paymentIntentId,
-                  address: checkout.address,
+                  address: effectiveAddress,
                   checkoutEmail: checkoutEmail,
                   addressId: selectedSavedAddress?.id,
                   deliveryType: checkout.deliveryType,
@@ -739,7 +782,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       final paymentStatus = confirmedTotalCents == 0 ? 'paid' : 'cod_pending';
 
       final placedOrder = await ref.read(checkoutServiceProvider).placeOrder(
-            address: checkout.address,
+            address: effectiveAddress,
             checkoutEmail: checkoutEmail,
             addressId: selectedSavedAddress?.id,
             deliveryType: checkout.deliveryType,
@@ -797,11 +840,13 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         debugPrint('Failed to place order: $e');
         debugPrint('$st');
       }
+      final friendlyMessage = friendlyCheckoutError(e);
+      ref.read(checkoutProvider.notifier).setBackendSummaryError(friendlyMessage);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Could not place your order right now. Please try again.',
+            friendlyMessage,
           ),
         ),
       );
@@ -1194,7 +1239,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               const _AmazonInfoBanner(
                 icon: Icons.info_outline_rounded,
                 text:
-                    'Enter your postcode, find your address, and confirm your delivery details.',
+                    'Search by postcode to prefill your address, then review or complete the delivery details manually below.',
               ),
             if (checkout.deliveryType == 'home_delivery') ...[
               const SizedBox(height: 14),
@@ -1211,51 +1256,96 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 onChanged: ref.read(checkoutProvider.notifier).updatePhone,
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _CheckoutTextField(
-                      label: 'Postcode',
-                      controller: _postcodeController,
-                      onChanged:
-                          ref.read(checkoutProvider.notifier).updatePostcode,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  SizedBox(
-                    height: 54,
-                    child: ElevatedButton.icon(
-                      onPressed: (checkout.isCheckingPostcode ||
-                              checkout.isLookingUpAddress)
-                          ? null
-                          : _findAddress,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _wmCheckoutPrimary,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: _wmCheckoutBorder),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(
+                          Icons.search_rounded,
+                          color: _wmCheckoutPrimary,
                         ),
-                      ),
-                      icon: (checkout.isCheckingPostcode ||
-                              checkout.isLookingUpAddress)
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.search_rounded),
-                      label: const Text(
-                        'Find Address',
-                        style: TextStyle(fontWeight: FontWeight.w800),
+                        SizedBox(width: 8),
+                        Text(
+                          'Find Address By Postcode',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            color: _wmCheckoutTextStrong,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Use postcode search for speed, or continue with manual entry below and edit anything that needs changing.',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: _wmCheckoutTextSoft,
+                        height: 1.35,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _CheckoutTextField(
+                            label: 'Postcode',
+                            controller: _postcodeController,
+                            onChanged: ref
+                                .read(checkoutProvider.notifier)
+                                .updatePostcode,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        SizedBox(
+                          height: 54,
+                          child: ElevatedButton.icon(
+                            onPressed: (checkout.isCheckingPostcode ||
+                                    checkout.isLookingUpAddress)
+                                ? null
+                                : _findAddress,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _wmCheckoutPrimary,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            icon: (checkout.isCheckingPostcode ||
+                                    checkout.isLookingUpAddress)
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.search_rounded),
+                            label: const Text(
+                              'Search',
+                              style: TextStyle(fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
               if (checkout.postcodeStatusMessage.isNotEmpty) ...[
                 const SizedBox(height: 12),
@@ -1303,11 +1393,31 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 const SizedBox(height: 12),
                 _AmazonSelectionCard(
                   icon: Icons.home_rounded,
-                  title: 'Selected Address',
-                  subtitle: checkout.selectedAddressLabel,
+                  title: 'Address Found',
+                  subtitle:
+                      '${checkout.selectedAddressLabel}\nReview the fields below before placing the order.',
                   accent: _wmCheckoutPrimary,
                 ),
               ],
+              const SizedBox(height: 14),
+              const Text(
+                'Delivery Details',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  color: _wmCheckoutTextStrong,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Manual entry is always available. Postcode search simply helps fill the address faster.',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: _wmCheckoutTextSoft,
+                  height: 1.35,
+                ),
+              ),
               const SizedBox(height: 12),
               _CheckoutTextField(
                 label: 'Address Line 1',
@@ -2200,7 +2310,7 @@ class _RewardsCheckoutCard extends StatelessWidget {
                           onChanged: canRedeem ? onToggle : null,
                           activeThumbColor: _wmCheckoutPrimary,
                           activeTrackColor:
-                              _wmCheckoutPrimary.withOpacity(0.35),
+                              _wmCheckoutPrimary.withValues(alpha: 0.35),
                         ),
                     ],
                   ),
@@ -2320,7 +2430,7 @@ class _AmazonSelectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: _wmCheckoutSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: accent.withOpacity(0.18)),
+        border: Border.all(color: accent.withValues(alpha: 0.18)),
         boxShadow: const [
           BoxShadow(
             color: Color(0x08000000),
@@ -2336,7 +2446,7 @@ class _AmazonSelectionCard extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: accent.withOpacity(0.10),
+              color: accent.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: accent),
