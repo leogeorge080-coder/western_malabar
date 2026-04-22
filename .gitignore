@@ -3,6 +3,11 @@
 *.log
 *.pyc
 *.swp
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
 .DS_Store
 .atom/
 .build/
@@ -59,3 +64,6 @@ node_modules/
 
 # Print server output
 print_jobs/
+
+# Local ad-hoc helper files
+@echo off.txt
