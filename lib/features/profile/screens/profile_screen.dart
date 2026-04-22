@@ -17,6 +17,7 @@ import 'package:western_malabar/features/checkout/screens/saved_addresses_screen
 import 'package:western_malabar/features/orders/screens/my_orders_screen.dart';
 import 'package:western_malabar/features/profile/models/profile_model.dart';
 import 'package:western_malabar/features/profile/providers/profile_provider.dart';
+import 'package:western_malabar/features/rewards/screens/rewards_screen.dart';
 import 'package:western_malabar/features/seller/providers/seller_session_provider.dart';
 import 'package:western_malabar/features/seller/screens/seller_products_screen.dart';
 
@@ -492,6 +493,14 @@ class _SignedInProfileContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isBusy = ref.watch(profileAuthBusyProvider);
     final sellerSessionAsync = ref.watch(sellerSessionProvider);
+    final hasSellerAccess = sellerSessionAsync.maybeWhen(
+      data: (session) => session.isSeller && session.isActive,
+      orElse: () => false,
+    );
+    final showWorkTools = _showAdminAccess || hasSellerAccess;
+    final heroRoleLabel = hasSellerAccess && !_showAdminAccess
+        ? 'Seller'
+        : (showWorkTools ? roleLabel : null);
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -505,20 +514,15 @@ class _SignedInProfileContent extends ConsumerWidget {
             phone: _displayPhone,
             rewardPoints: profile.rewardPoints,
             totalOrders: profile.totalOrders,
-            roleLabel: _showAdminAccess ? roleLabel : null,
+            roleLabel: heroRoleLabel,
           ),
-          if (_showAdminAccess) ...[
-            const SizedBox(height: 14),
-            _OperationsAccessCard(
-              isAdmin: isAdmin,
-              canAccessAdmin: canAccessAdmin,
-              canAccessDelivery: canAccessDelivery,
-              roleLabel: roleLabel,
-            ),
-          ],
+          const SizedBox(height: 14),
+          _RewardsCard(profile: profile),
           const SizedBox(height: 14),
           _InfoSectionCard(
             title: 'Account',
+            subtitle:
+                'Everything related to your shopping identity and preferences.',
             child: Column(
               children: [
                 _ProfileMenuTile(
@@ -571,14 +575,7 @@ class _SignedInProfileContent extends ConsumerWidget {
                 _ProfileMenuTile(
                   icon: Icons.access_time_rounded,
                   title: 'Delivery Slots',
-                  subtitle: 'Manage preferred delivery timings',
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Delivery slots screen coming soon'),
-                      ),
-                    );
-                  },
+                  subtitle: 'Preferred delivery timings coming soon',
                 ),
                 const SizedBox(height: 10),
                 _ProfileMenuTile(
@@ -587,24 +584,129 @@ class _SignedInProfileContent extends ConsumerWidget {
                   subtitle: profile.rewardWalletFormatted == '£0.00'
                       ? 'Track points and unlock offers'
                       : '${profile.rewardWalletFormatted} available',
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Open the Rewards tab below'),
-                      ),
-                    );
-                  },
+                  onTap: isBusy
+                      ? null
+                      : () async {
+                          await Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const RewardsScreen(),
+                            ),
+                          );
+                        },
                 ),
-                const SizedBox(height: 10),
-                sellerSessionAsync.when(
-                  loading: () => const SizedBox.shrink(),
-                  error: (_, __) => const SizedBox.shrink(),
-                  data: (session) {
-                    if (!session.isSeller || !session.isActive) {
-                      return const SizedBox.shrink();
-                    }
-
-                    return _ProfileMenuTile(
+              ],
+            ),
+          ),
+          if (showWorkTools) ...[
+            const SizedBox(height: 14),
+            _InfoSectionCard(
+              title: 'Work Tools',
+              subtitle:
+                  'Operational shortcuts stay separate from your customer account.',
+              child: Column(
+                children: [
+                  _WorkModeBadge(
+                    isAdmin: isAdmin,
+                    canAccessAdmin: canAccessAdmin,
+                    canAccessDelivery: canAccessDelivery,
+                    hasSellerAccess: hasSellerAccess,
+                    roleLabel: roleLabel,
+                  ),
+                  if (canAccessAdmin) ...[
+                    const SizedBox(height: 10),
+                    _ProfileMenuTile(
+                      icon: Icons.inventory_2_outlined,
+                      title: 'Admin Orders',
+                      subtitle:
+                          'Review customer orders and operational queues',
+                      onTap: isBusy
+                          ? null
+                          : () async {
+                              await Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const AdminGuard(
+                                    child: AdminOrdersScreen(),
+                                  ),
+                                ),
+                              );
+                            },
+                    ),
+                    const SizedBox(height: 10),
+                    _ProfileMenuTile(
+                      icon: Icons.shopping_cart_outlined,
+                      title: 'Product Operations',
+                      subtitle:
+                          'Manage catalog, stock, and product visibility',
+                      onTap: isBusy
+                          ? null
+                          : () async {
+                              await Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const AdminGuard(
+                                    child: AdminProductsScreen(),
+                                  ),
+                                ),
+                              );
+                            },
+                    ),
+                    const SizedBox(height: 10),
+                    _ProfileMenuTile(
+                      icon: Icons.account_balance_wallet_outlined,
+                      title: 'Finance Dashboard',
+                      subtitle:
+                          'View finance metrics and payout-relevant totals',
+                      onTap: isBusy
+                          ? null
+                          : () async {
+                              await Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const AdminGuard(
+                                    child: AdminFinanceScreen(),
+                                  ),
+                                ),
+                              );
+                            },
+                    ),
+                    const SizedBox(height: 10),
+                    _ProfileMenuTile(
+                      icon: Icons.rule_folder_outlined,
+                      title: 'Product Requests',
+                      subtitle:
+                          'Moderate catalog suggestions and supplier requests',
+                      onTap: isBusy
+                          ? null
+                          : () async {
+                              await Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const AdminGuard(
+                                    child: AdminProductRequestsScreen(),
+                                  ),
+                                ),
+                              );
+                            },
+                    ),
+                  ],
+                  if (canAccessDelivery) ...[
+                    const SizedBox(height: 10),
+                    _ProfileMenuTile(
+                      icon: Icons.local_shipping_rounded,
+                      title: 'Delivery Workflow',
+                      subtitle:
+                          'Open driver mode, delivery queues, and handoff tasks',
+                      onTap: isBusy
+                          ? null
+                          : () async {
+                              await Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const DeliveryOrdersScreen(),
+                                ),
+                              );
+                            },
+                    ),
+                  ],
+                  if (hasSellerAccess) ...[
+                    const SizedBox(height: 10),
+                    _ProfileMenuTile(
                       icon: Icons.storefront_outlined,
                       title: 'Seller Dashboard',
                       subtitle:
@@ -618,15 +720,16 @@ class _SignedInProfileContent extends ConsumerWidget {
                                 ),
                               );
                             },
-                    );
-                  },
-                ),
-              ],
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ),
+          ],
           const SizedBox(height: 14),
           const _InfoSectionCard(
             title: 'Support',
+            subtitle: 'Help, policies, and store information.',
             child: Column(
               children: [
                 _ProfileMenuTile(
@@ -1095,6 +1198,116 @@ class _ProfileHeroCard extends StatelessWidget {
   }
 }
 
+class _WorkModeBadge extends StatelessWidget {
+  const _WorkModeBadge({
+    required this.isAdmin,
+    required this.canAccessAdmin,
+    required this.canAccessDelivery,
+    required this.hasSellerAccess,
+    required this.roleLabel,
+  });
+
+  final bool isAdmin;
+  final bool canAccessAdmin;
+  final bool canAccessDelivery;
+  final bool hasSellerAccess;
+  final String roleLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = isAdmin ? 'Work mode is available' : 'Operations access enabled';
+    final subtitle = isAdmin
+        ? 'Admin tools are separated here so your account stays customer-first.'
+        : canAccessDelivery
+            ? 'Delivery workflow lives here, separate from your personal account.'
+            : 'Use this section for operational shortcuts only when you need them.';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [_wmProfilePrimaryDark, _wmProfilePrimary],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 12,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.16)),
+            ),
+            child: Icon(
+              isAdmin
+                  ? Icons.admin_panel_settings_rounded
+                  : canAccessDelivery
+                      ? Icons.local_shipping_rounded
+                      : Icons.storefront_outlined,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: Color(0xFFE5E7EB),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: Colors.white.withOpacity(0.16)),
+            ),
+            child: Text(
+              hasSellerAccess && !canAccessAdmin && !canAccessDelivery
+                  ? 'Seller'
+                  : roleLabel,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _MiniPill extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -1315,10 +1528,12 @@ class _StatChip extends StatelessWidget {
 
 class _InfoSectionCard extends StatelessWidget {
   final String title;
+  final String? subtitle;
   final Widget child;
 
   const _InfoSectionCard({
     required this.title,
+    this.subtitle,
     required this.child,
   });
 
@@ -1350,6 +1565,18 @@ class _InfoSectionCard extends StatelessWidget {
               color: _wmProfileTextStrong,
             ),
           ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle!,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: _wmProfileTextSoft,
+                height: 1.35,
+              ),
+            ),
+          ],
           const SizedBox(height: 14),
           child,
         ],
@@ -1425,8 +1652,10 @@ class _ProfileMenuTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(
-                Icons.chevron_right_rounded,
+              Icon(
+                onTap == null
+                    ? Icons.schedule_rounded
+                    : Icons.chevron_right_rounded,
                 color: _wmProfileTextMuted,
               ),
             ],

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:western_malabar/features/cart/providers/cart_provider.dart';
+import 'package:western_malabar/features/cart/screens/cart_screen.dart';
 import 'package:western_malabar/features/profile/providers/profile_provider.dart';
+import 'package:western_malabar/features/search/screens/global_product_search_screen.dart';
 
 const _wmRewardsBg = Color(0xFFF7F7F7);
 const _wmRewardsSurface = Colors.white;
@@ -22,6 +25,8 @@ const _wmRewardsSuccessSoft = Color(0xFFECFDF5);
 
 const _wmRewardsDanger = Color(0xFFDC2626);
 
+String _formatRewardMoney(int pence) => '£${(pence / 100).toStringAsFixed(2)}';
+
 class RewardsScreen extends ConsumerWidget {
   const RewardsScreen({super.key});
 
@@ -31,6 +36,8 @@ class RewardsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profileAsync = ref.watch(profileProvider);
+    final cartItems = ref.watch(cartProvider);
+    final cartCount = cartItems.fold<int>(0, (sum, item) => sum + item.qty);
 
     return Scaffold(
       backgroundColor: _wmRewardsBg,
@@ -74,14 +81,26 @@ class RewardsScreen extends ConsumerWidget {
                       children: [
                         _RewardsHeroCard(
                           data: summary,
+                          primaryCtaLabel: summary.availableRewardPence > 0
+                              ? (cartCount > 0 ? 'Use at checkout' : 'Build basket')
+                              : (cartCount > 0 ? 'Add more items' : 'Start shopping'),
                           onRedeemTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Reward redemption will be available at checkout soon.',
+                            if (cartCount > 0) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const CartScreen(),
                                 ),
-                              ),
-                            );
+                              );
+                            } else {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const GlobalProductSearchScreen(),
+                                ),
+                              );
+                            }
                           },
                           onHistoryTap: () {
                             showModalBottomSheet<void>(
@@ -106,7 +125,7 @@ class RewardsScreen extends ConsumerWidget {
                                   top: Radius.circular(24),
                                 ),
                               ),
-                              builder: (_) => const _RewardsHowItWorksSheet(),
+                              builder: (_) => const _RewardsHowItWorksModal(),
                             );
                           },
                         ),
@@ -131,28 +150,31 @@ class RewardsScreen extends ConsumerWidget {
   List<_RewardActivityItem> _demoRewardActivity(_RewardsViewData data) {
     final items = <_RewardActivityItem>[
       _RewardActivityItem(
-        title: 'Delivered order rewards',
-        subtitle: 'Points added after completed orders',
-        pointsDelta: data.availablePoints > 0 ? 24 : 0,
+        title: 'Current points balance',
+        subtitle: 'Points tracked from delivered or collected orders',
+        pointsDelta: data.availablePoints,
         type: _RewardActivityType.earned,
       ),
     ];
 
     if (data.availableRewardPence > 0) {
       items.add(
-        const _RewardActivityItem(
-          title: 'Reward unlocked',
-          subtitle: 'Your rewards are ready to use at checkout',
-          pointsDelta: 200,
+        _RewardActivityItem(
+          title: 'Reward ready to apply',
+          subtitle:
+              '${_formatRewardMoney(data.availableRewardPence)} can be used on your next checkout',
+          pointsDelta: data.pointsPerRewardBlock,
           type: _RewardActivityType.bonus,
         ),
       );
     }
 
     items.add(
-      const _RewardActivityItem(
-        title: 'Weekend bonus campaign',
-        subtitle: 'Bigger baskets may unlock rewards faster',
+      _RewardActivityItem(
+        title: 'Next unlock target',
+        subtitle: data.pointsToNextReward == 0
+            ? 'Your next reward is unlocked'
+            : '${data.pointsToNextReward} points to unlock ${_formatRewardMoney(data.rewardBlockValuePence)}',
         pointsDelta: 0,
         type: _RewardActivityType.info,
       ),
@@ -288,12 +310,14 @@ class _RewardsTopBar extends StatelessWidget {
 
 class _RewardsHeroCard extends StatelessWidget {
   final _RewardsViewData data;
+  final String primaryCtaLabel;
   final VoidCallback onRedeemTap;
   final VoidCallback onHistoryTap;
   final VoidCallback onHowItWorksTap;
 
   const _RewardsHeroCard({
     required this.data,
+    required this.primaryCtaLabel,
     required this.onRedeemTap,
     required this.onHistoryTap,
     required this.onHowItWorksTap,
@@ -302,6 +326,19 @@ class _RewardsHeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasReadyReward = data.availableRewardPence > 0;
+    final rewardValue = _formatRewardMoney(data.availableRewardPence);
+    final nextRewardValue = _formatRewardMoney(data.rewardBlockValuePence);
+    final heroTitle = hasReadyReward
+        ? '$rewardValue ready to use'
+        : 'You\'re building your first reward';
+    final heroSubtitle = hasReadyReward
+        ? 'Your next checkout can use this reward immediately.'
+        : 'Keep shopping to unlock your first reward and make the next order feel cheaper.';
+    final progressHeadline = data.pointsToNextReward == 0
+        ? 'Your next reward is unlocked'
+        : '${data.pointsToNextReward} points to unlock $nextRewardValue';
+    final progressLabel =
+        '${data.pointsIntoNext} / ${data.pointsPerRewardBlock} points toward your next reward';
 
     return Container(
       width: double.infinity,
@@ -396,7 +433,7 @@ class _RewardsHeroCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  data.heroTitle,
+                  heroTitle,
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w900,
@@ -406,7 +443,7 @@ class _RewardsHeroCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  data.heroSubtitle,
+                  heroSubtitle,
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -459,7 +496,7 @@ class _RewardsHeroCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  data.progressHeadline,
+                  progressHeadline,
                   style: const TextStyle(
                     fontSize: 17,
                     color: _wmRewardsTextStrong,
@@ -468,7 +505,7 @@ class _RewardsHeroCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  data.progressLabel,
+                  progressLabel,
                   style: const TextStyle(
                     fontSize: 12,
                     color: _wmRewardsTextSoft,
@@ -537,16 +574,14 @@ class _RewardsHeroCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: hasReadyReward ? onRedeemTap : null,
+                  onPressed: onRedeemTap,
                   icon: const Icon(Icons.local_offer_outlined, size: 18),
                   label: Text(
-                    hasReadyReward ? 'Redeem now' : 'Locked',
+                    primaryCtaLabel,
                     style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: hasReadyReward
-                        ? _wmRewardsPrimary
-                        : const Color(0xFF9CA3AF),
+                    backgroundColor: _wmRewardsPrimary,
                     foregroundColor: Colors.white,
                     minimumSize: const Size.fromHeight(48),
                     elevation: 0,
@@ -640,7 +675,7 @@ class _RewardsActivityCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Recent rewards activity',
+            'Your rewards status',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w900,
@@ -908,6 +943,45 @@ class _RewardTipRow extends StatelessWidget {
 
 class _RewardsHowItWorksSheet extends StatelessWidget {
   const _RewardsHowItWorksSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(20, 18, 20, 28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'How rewards work',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              color: _wmRewardsTextStrong,
+            ),
+          ),
+          SizedBox(height: 14),
+          Text(
+            '• Earn points after delivered or collected orders\n'
+            '• Every 200 points unlocks £2 reward value\n'
+            '• Rewards can be applied at checkout\n'
+            '• Delivery fees and refunded items do not earn points\n'
+            '• Bonus campaigns may give extra points on selected days',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: _wmRewardsTextSoft,
+              height: 1.6,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RewardsHowItWorksModal extends StatelessWidget {
+  const _RewardsHowItWorksModal();
 
   @override
   Widget build(BuildContext context) {

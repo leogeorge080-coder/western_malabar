@@ -160,7 +160,29 @@ class ProductModel {
   bool get isLowStock {
     final qty = stockQty;
     if (qty == null) return false;
-    return qty > 0 && qty <= 5;
+    return qty > 0 && qty <= 3;
+  }
+
+  bool get hasKnownStock => stockQty != null;
+
+  String? get stockStatusLabel {
+    final qty = stockQty;
+    if (qty == null) return null;
+    if (qty <= 0) return 'Out of stock';
+    if (qty <= 3) return 'Only $qty left';
+    return 'Usually in stock';
+  }
+
+  int? get maxCartQuantity {
+    final qty = stockQty;
+    if (qty == null || qty < 0) return null;
+    return qty;
+  }
+
+  bool canAddToCartQuantity(int currentQty) {
+    final maxQty = maxCartQuantity;
+    if (maxQty == null) return true;
+    return currentQty < maxQty;
   }
 
   String get effectiveBrandName {

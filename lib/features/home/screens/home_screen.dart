@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:western_malabar/features/cart/providers/cart_provider.dart';
+import 'package:western_malabar/features/cart/screens/cart_screen.dart';
 import 'package:western_malabar/features/cart/widgets/sticky_cart_bar.dart';
 import 'package:western_malabar/features/catalog/models/category_model.dart';
 import 'package:western_malabar/features/catalog/services/category_service.dart';
@@ -42,6 +43,11 @@ double _lerp(double a, double b, double t) => a + (b - a) * t;
 double _clamp01(num v) => v.clamp(0.0, 1.0).toDouble();
 String _cleanUiText(String text) =>
     text.replaceAll('Â£', '£').replaceAll('â€“', '–');
+String _compactProductLabel(String text) {
+  final words = text.trim().split(RegExp(r'\s+'));
+  if (words.length <= 2) return text.trim();
+  return '${words[0]} ${words[1]}';
+}
 
 final addingProductIdsProvider =
     StateProvider<Set<String>>((ref) => <String>{});
@@ -295,6 +301,17 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
     await _homeFuture;
   }
 
+  Future<void> _scrollToSection(GlobalKey key) async {
+    final targetContext = key.currentContext;
+    if (targetContext == null) return;
+    await Scrollable.ensureVisible(
+      targetContext,
+      duration: const Duration(milliseconds: 360),
+      curve: Curves.easeOutCubic,
+      alignment: 0.08,
+    );
+  }
+
   String _homeAddressLabel(AddressModel? address) {
     if (address == null) return 'Choose delivery address';
     final label = address.label.trim();
@@ -329,6 +346,19 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
     if (!mounted) return;
     ref.invalidate(addressesProvider);
     ref.invalidate(defaultAddressProvider);
+  }
+
+  Future<void> _openCart() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => const CartScreen(),
+      ),
+    );
+  }
+
+  void _openProduct(WmProduct product) {
+    openProductDetail(context, productId: product.id);
   }
 
   void scrollToTop() {
@@ -531,6 +561,21 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
                         );
                       }
                       final bundle = data;
+                      final buyAgainIds =
+                          bundle.buyItAgain.map((e) => e.id).toSet();
+                      final cartProductIds =
+                          cartItems.map((item) => item.product.id).toSet();
+                      final missingStaples = bundle.weeklyEssentials
+                          .where((item) => cartCount > 0
+                              ? !cartProductIds.contains(item.id)
+                              : !buyAgainIds.contains(item.id))
+                          .take(4)
+                          .toList();
+                      final quickEssentials = (cartCount > 0
+                              ? missingStaples
+                              : bundle.weeklyEssentials)
+                          .take(3)
+                          .toList();
 
                       return AnimatedSwitcher(
                         duration: const Duration(milliseconds: 280),
@@ -539,56 +584,105 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
                         child: Column(
                           key: const ValueKey('home_loaded'),
                           children: [
-                            if (bundle.categories.isNotEmpty)
+                            if (cartCount > 0)
                               Padding(
                                 padding:
-                                    const EdgeInsets.fromLTRB(16, 10, 16, 12),
-                                child: _RoundedCategoryRow(
-                                  items: bundle.categories
-                                      .map((c) => RoundedCat(
-                                             label: c.name,
-                                             icon: _iconForSlug(c.slug),
-                                             style:
-                                                _categoryStyleForSlug(c.slug),
-                                           ))
-                                       .toList(),
-                                 ),
-                              ),
-                            if (bundle.weeklyDeals.isNotEmpty)
-                              const Padding(
-                                padding: EdgeInsets.fromLTRB(16, 6, 16, 10),
-                                child: WmPromoAutoCarousel(),
-                              ),
-                             Padding(
-                               padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-                               child: _BasketProgressCard(
-                                   subtotalCents: cartSubtotalCents,
-                                   onTap: () {
-                                     _openSearch();
-                                   }),
-                              ),
-                            if (bundle.buyItAgain.isNotEmpty)
-                                _StaticProductRailSection(
-                                  key: _buyItAgainKey,
-                                  title: 'Buy it again',
-                                  subtitle:
-                                      'Your usual favourites, ready faster.',
+                                    const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                                child: _CartMomentumCard(
+                                  itemCount: cartCount,
+                                  subtotalCents: cartSubtotalCents,
+                                  cartItems: cartItems,
+                                  onPrimary: () {
+                                    _openCart();
+                                  },
+                                  onSecondary: () {
+                                    _openSearch();
+                                  },
+                                ),
+                              )
+                            else if (bundle.buyItAgain.isNotEmpty)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                                child: _ReorderHeroCard(
                                   items: bundle.buyItAgain,
-                                  compact: true,
-                                  prominent: true,
+                                  onPrimary: () {
+                                    _scrollToSection(_buyItAgainKey);
+                                  },
+                                  onSecondary: () {
+                                    _openSearch();
+                                  },
+                                  onPreviewTap: _openProduct,
+                                ),
+                              ),
+                            if (missingStaples.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                                child: _MissingStaplesCard(
+                                  items: missingStaples,
+                                  title: cartCount > 0
+                                      ? 'Finish your weekly staples'
+                                      : 'You may need these this week',
+                                  subtitle: cartCount > 0
+                                      ? 'A few staples are still missing.'
+                                      : 'Likely staples, surfaced early.',
+                                  onItemTap: _openProduct,
+                                ),
+                              ),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                              child: _BasketProgressCard(
+                                  subtotalCents: cartSubtotalCents,
+                                  suggestions: quickEssentials,
+                                  onTap: () {
+                                    if (cartCount > 0) {
+                                      _openCart();
+                                    } else {
+                                      _openSearch();
+                                    }
+                                  },
+                                  onSuggestionTap: _openProduct),
+                            ),
+                            if (bundle.buyItAgain.isNotEmpty)
+                              _StaticProductRailSection(
+                                key: _buyItAgainKey,
+                                title: 'Buy it again',
+                                subtitle: 'Your usuals, ready faster.',
+                                items: bundle.buyItAgain,
+                                compact: true,
+                                prominent: true,
                               ),
                             _StaticProductRailSection(
                               key: _weeklyEssentialsKey,
                               title: 'Weekly essentials',
-                              subtitle: 'Your fastest path to a great basket.',
+                              subtitle: 'Fast basket builders.',
                               items: bundle.weeklyEssentials,
                               prominent: true,
                             ),
+                            if (bundle.categories.isNotEmpty)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 2, 16, 12),
+                                child: _RoundedCategoryRow(
+                                  items: bundle.categories
+                                      .map((c) => RoundedCat(
+                                            label: c.name,
+                                            icon: _iconForSlug(c.slug),
+                                            style:
+                                                _categoryStyleForSlug(c.slug),
+                                          ))
+                                      .toList(),
+                                ),
+                              ),
+                            if (bundle.weeklyDeals.isNotEmpty)
+                              const Padding(
+                                padding: EdgeInsets.fromLTRB(16, 4, 16, 10),
+                                child: WmPromoAutoCarousel(),
+                              ),
                             _StaticProductRailSection(
                               key: _newInStoreKey,
                               title: 'New in store',
-                              subtitle:
-                                  'Fresh arrivals worth trying this week.',
+                              subtitle: 'Fresh arrivals.',
                               items: bundle.newInStore,
                               emptyTrustLabel: 'New in store',
                               surfaceTint: const Color(0xFFFFFBF4),
@@ -597,14 +691,14 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
                             _StaticProductRailSection(
                               key: _popularThisWeekKey,
                               title: 'Popular this week',
-                              subtitle: 'Shoppers are adding these most.',
+                              subtitle: 'Most added this week.',
                               items: bundle.popularThisWeek,
                             ),
                             if (bundle.frozenFavourites.isNotEmpty)
                               _StaticProductRailSection(
                                 key: _frozenFavouritesKey,
                                 title: 'Frozen favourites',
-                                subtitle: 'Easy stock-up picks for busy weeks.',
+                                subtitle: 'Easy stock-up picks.',
                                 items: bundle.frozenFavourites,
                               ),
                             const SizedBox(height: 116),
@@ -645,10 +739,16 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
 
 class _BasketProgressCard extends StatelessWidget {
   const _BasketProgressCard(
-      {required this.subtotalCents, this.targetCents = 3000, this.onTap});
+      {required this.subtotalCents,
+      this.targetCents = 3000,
+      this.onTap,
+      this.suggestions = const <WmProduct>[],
+      this.onSuggestionTap});
   final int subtotalCents;
   final int targetCents;
   final VoidCallback? onTap;
+  final List<WmProduct> suggestions;
+  final ValueChanged<WmProduct>? onSuggestionTap;
 
   @override
   Widget build(BuildContext context) {
@@ -721,12 +821,543 @@ class _BasketProgressCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 unlocked
-                    ? 'You can checkout with delivery benefits.'
-                    : 'Add a few more essentials to reach the threshold faster.',
+                    ? 'Ready to check out.'
+                    : 'Add a little more for free delivery.',
                 style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: _wmTextSoft),
+              ),
+              if (suggestions.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Text(
+                  'Quick picks',
+                  style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                      color: _wmTextSoft),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: suggestions
+                      .map((item) => _QuickSuggestionChip(
+                            item: item,
+                            onTap: onSuggestionTap == null
+                                ? null
+                                : () => onSuggestionTap!(item),
+                          ))
+                      .toList(),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ReorderHeroCard extends StatelessWidget {
+  const _ReorderHeroCard(
+      {required this.items,
+      required this.onPrimary,
+      required this.onSecondary,
+      required this.onPreviewTap});
+
+  final List<WmProduct> items;
+  final VoidCallback onPrimary;
+  final VoidCallback onSecondary;
+  final ValueChanged<WmProduct> onPreviewTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final previewItems = items.take(4).toList();
+    final extraCount = items.length - previewItems.length;
+    final estimatedTotal = items.fold<int>(0, (sum, item) => sum + item.priceCents);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF111827), Color(0xFF1F2937)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x18000000), blurRadius: 18, offset: Offset(0, 8))
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            ),
+            child: const Text(
+              'YOUR USUALS',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.7,
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Continue your weekly basket',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 26,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.45,
+              height: 1.05,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${items.length} items | est. ${_gbp(estimatedTotal)}',
+            style: const TextStyle(
+              color: Color(0xFFE5E7EB),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final item in previewItems)
+                _ReorderPreviewChip(item: item, onTap: () => onPreviewTap(item)),
+              if (extraCount > 0)
+                Container(
+                  width: 76,
+                  height: 88,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                    border:
+                        Border.all(color: Colors.white.withValues(alpha: 0.10)),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '+$extraCount more',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton(
+                  onPressed: onPrimary,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: _wmPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    'Resume basket',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: onSecondary,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.24)),
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    'Edit items',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CartMomentumCard extends StatelessWidget {
+  const _CartMomentumCard({
+    required this.itemCount,
+    required this.subtotalCents,
+    required this.cartItems,
+    required this.onPrimary,
+    required this.onSecondary,
+  });
+
+  final int itemCount;
+  final int subtotalCents;
+  final List<CartItem> cartItems;
+  final VoidCallback onPrimary;
+  final VoidCallback onSecondary;
+
+  @override
+  Widget build(BuildContext context) {
+    final remaining = (3000 - subtotalCents).clamp(0, 3000);
+    final readyForCheckout = remaining == 0;
+    final previewNames = cartItems
+        .map((item) => _compactProductLabel(item.product.name))
+        .toSet()
+        .take(3)
+        .toList();
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF111827), Color(0xFF1F2937)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x18000000), blurRadius: 18, offset: Offset(0, 8))
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            ),
+            child: const Text(
+              'BASKET IN PROGRESS',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.7,
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            readyForCheckout
+                ? 'You are ready to check out'
+                : 'Your basket is already in motion',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 26,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.45,
+              height: 1.05,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '$itemCount items | ${_gbp(subtotalCents)}'
+            '${readyForCheckout ? ' | ready' : ' | ${_gbp(remaining)} to free delivery'}',
+            style: const TextStyle(
+              color: Color(0xFFE5E7EB),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              height: 1.35,
+            ),
+          ),
+          if (previewNames.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: previewNames
+                  .map(
+                    (label) => Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.10)),
+                      ),
+                      child: Text(
+                        label,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton(
+                  onPressed: onPrimary,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: _wmPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    'Continue to basket',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: onSecondary,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.24)),
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    'Add missing items',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReorderPreviewChip extends StatelessWidget {
+  const _ReorderPreviewChip({required this.item, required this.onTap});
+
+  final WmProduct item;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Ink(
+          width: 76,
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+          ),
+          child: Column(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: SizedBox(
+                  height: 48,
+                  width: 48,
+                  child: item.imageUrl == null || item.imageUrl!.isEmpty
+                      ? Container(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          alignment: Alignment.center,
+                          child: const Icon(Icons.shopping_basket_outlined,
+                              color: Colors.white70, size: 22),
+                        )
+                      : CachedNetworkImage(
+                          imageUrl: item.imageUrl!,
+                          fit: BoxFit.cover,
+                          memCacheWidth: 180,
+                          fadeInDuration: const Duration(milliseconds: 100),
+                          placeholder: (_, __) => Container(
+                            color: Colors.white.withValues(alpha: 0.12),
+                          ),
+                          errorWidget: (_, __, ___) => Container(
+                            color: Colors.white.withValues(alpha: 0.12),
+                            alignment: Alignment.center,
+                            child: const Icon(Icons.shopping_basket_outlined,
+                                color: Colors.white70, size: 22),
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                item.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  height: 1.15,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MissingStaplesCard extends StatelessWidget {
+  const _MissingStaplesCard(
+      {required this.items,
+      required this.onItemTap,
+      this.title = 'You may need these this week',
+      this.subtitle = 'Likely staples, surfaced early.'});
+
+  final List<WmProduct> items;
+  final ValueChanged<WmProduct> onItemTap;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 4))
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: _wmCtaSoft,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.playlist_add_check_rounded,
+                    color: _wmDeal, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: _wmTextStrong,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              color: _wmTextSoft,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              height: 1.3,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: items
+                .map((item) => _QuickSuggestionChip(
+                      item: item,
+                      onTap: () => onItemTap(item),
+                    ))
+                .toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickSuggestionChip extends StatelessWidget {
+  const _QuickSuggestionChip({required this.item, this.onTap});
+
+  final WmProduct item;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _compactProductLabel(item.name),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    color: _wmTextStrong,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                _gbp(item.priceCents),
+                style: const TextStyle(
+                    color: _wmSuccess,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900),
               ),
             ],
           ),
@@ -1273,6 +1904,19 @@ class _ProductTileState extends ConsumerState<_ProductTile> {
   bool _pressed = false;
   final GlobalKey _imageKey = GlobalKey();
 
+  void _showStockLimitMessage(int? qty) {
+    if (!mounted) return;
+    final message =
+        qty != null && qty > 0 ? 'Only $qty left' : 'No more stock available';
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   Future<void> _handleAdd(WmProduct p, {int quantity = 1}) async {
     final addingIds = ref.read(addingProductIdsProvider);
     if (addingIds.contains(p.id)) return;
@@ -1288,9 +1932,23 @@ class _ProductTileState extends ConsumerState<_ProductTile> {
             behavior: SnackBarBehavior.floating));
         return;
       }
-      final addCount = quantity < 1 ? 1 : quantity;
+      final cartState = ref.read(cartProvider.notifier);
+      final currentQty = cartState.quantityFor(full.id);
+      final maxQty = full.maxCartQuantity;
+      final remainingQty = maxQty == null ? quantity : (maxQty - currentQty);
+      if (remainingQty <= 0) {
+        _showStockLimitMessage(full.stockQty);
+        return;
+      }
+      final addCount = maxQty == null
+          ? (quantity < 1 ? 1 : quantity)
+          : (quantity < 1 ? 1 : quantity).clamp(1, remainingQty);
       for (var i = 0; i < addCount; i++) {
-        ref.read(cartProvider.notifier).add(full);
+        final added = cartState.add(full);
+        if (!added) {
+          _showStockLimitMessage(full.stockQty);
+          break;
+        }
       }
       Haptic.medium(context);
       await Future<void>.delayed(const Duration(milliseconds: 30));
@@ -1312,6 +1970,10 @@ class _ProductTileState extends ConsumerState<_ProductTile> {
     final matches = cart.where((e) => e.product.id == p.id);
     final item = matches.isNotEmpty ? matches.first : null;
     final qty = item?.qty ?? 0;
+    final maxQty = item?.product.maxCartQuantity;
+    final canIncrease = item == null
+        ? true
+        : item.product.canAddToCartQuantity(qty);
 
     if (qty == 0) {
       final suggestedQty = ((p.rememberedQty ?? 1).clamp(1, 6)) as int;
@@ -1372,8 +2034,15 @@ class _ProductTileState extends ConsumerState<_ProductTile> {
               padding: EdgeInsets.zero,
               icon: const Icon(Icons.add, size: 16, color: Colors.white),
               onPressed: () {
+                if (!canIncrease) {
+                  _showStockLimitMessage(maxQty);
+                  return;
+                }
                 Haptic.light(context);
-                ref.read(cartProvider.notifier).inc(item!.product);
+                final added = ref.read(cartProvider.notifier).inc(item!.product);
+                if (!added) {
+                  _showStockLimitMessage(maxQty);
+                }
               },
             ),
           ),

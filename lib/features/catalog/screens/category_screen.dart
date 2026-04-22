@@ -234,26 +234,69 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                      child: _HeroBrowseCard(
-                        onSearchTap: () => _openGlobalSearch(),
+                      child: _ShopMomentumCard(
+                        cartCount: cartCount,
+                        onPrimaryTap: () {
+                          if (cartCount > 0) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const CartScreen(),
+                              ),
+                            );
+                          } else {
+                            _openGlobalSearch();
+                          }
+                        },
+                        onSecondaryTap: () => _openGlobalSearch(),
                       ),
                     ),
                   ),
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+                      child: const _SectionHeading(
+                        title: 'Frequent aisles',
+                        subtitle: 'Jump into the sections most shoppers revisit.',
+                      ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 0, 0),
+                      child: _AisleStrip(
+                        items: _prioritizedCategories(
+                          _query.isEmpty ? _all : items,
+                          limit: 6,
+                        ),
+                        onTap: _onCategoryTap,
+                        colorFor: _colorFor,
+                      ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+                      child: const _SectionHeading(
+                        title: 'Shop by need',
+                        subtitle: 'Fast routes for weekly grocery missions.',
+                      ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
                       child: Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children:
-                            (_query.isEmpty ? _all.take(8) : items.take(8))
-                                .map(
-                                  (c) => _QuickChip(
-                                    label: c.name,
-                                    onTap: () => _onCategoryTap(c),
-                                  ),
-                                )
-                                .toList(),
+                        children: _missionCategories(_query.isEmpty ? _all : items)
+                            .map(
+                              (c) => _QuickChip(
+                                label: _missionLabel(c.name),
+                                onTap: () => _onCategoryTap(c),
+                              ),
+                            )
+                            .toList(),
                       ),
                     ),
                   ),
@@ -262,8 +305,8 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                       child: Text(
                         _query.isEmpty
-                            ? 'All Categories'
-                            : 'Matching Categories',
+                            ? 'All aisles'
+                            : 'Matching aisles',
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w900,
@@ -333,6 +376,60 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
     final h = s.toLowerCase().hashCode;
     return palette[h.abs() % palette.length];
   }
+
+  List<CategoryModel> _prioritizedCategories(
+    List<CategoryModel> source, {
+    int limit = 6,
+  }) {
+    if (source.isEmpty) return const [];
+    final priorityTerms = [
+      'rice',
+      'atta',
+      'flour',
+      'fresh',
+      'vegetable',
+      'frozen',
+      'snack',
+      'dairy',
+      'spice',
+      'masala',
+      'tea',
+      'beverage',
+    ];
+    final ranked = [...source];
+    ranked.sort((a, b) {
+      final ai = priorityTerms.indexWhere(
+        (term) => a.name.toLowerCase().contains(term),
+      );
+      final bi = priorityTerms.indexWhere(
+        (term) => b.name.toLowerCase().contains(term),
+      );
+      final ar = ai == -1 ? 999 : ai;
+      final br = bi == -1 ? 999 : bi;
+      if (ar != br) return ar.compareTo(br);
+      return a.name.compareTo(b.name);
+    });
+    return ranked.take(limit).toList();
+  }
+
+  List<CategoryModel> _missionCategories(List<CategoryModel> source) {
+    return _prioritizedCategories(source, limit: 8);
+  }
+
+  String _missionLabel(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('rice') || n.contains('atta') || n.contains('flour')) {
+      return 'Staples';
+    }
+    if (n.contains('vegetable') || n.contains('fresh')) return 'Fresh picks';
+    if (n.contains('frozen')) return 'Quick dinners';
+    if (n.contains('snack') || n.contains('sweet')) return 'Snack run';
+    if (n.contains('masala') || n.contains('spice')) return 'Cook tonight';
+    if (n.contains('tea') || n.contains('coffee') || n.contains('beverage')) {
+      return 'Tea break';
+    }
+    return name;
+  }
 }
 
 class _SearchLaunchField extends StatelessWidget {
@@ -393,13 +490,56 @@ class _SearchLaunchField extends StatelessWidget {
   }
 }
 
-class _HeroBrowseCard extends StatelessWidget {
-  const _HeroBrowseCard({required this.onSearchTap});
+class _SectionHeading extends StatelessWidget {
+  const _SectionHeading({
+    required this.title,
+    required this.subtitle,
+  });
 
-  final VoidCallback onSearchTap;
+  final String title;
+  final String subtitle;
 
   @override
   Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w900,
+            color: _wmCategoryTextStrong,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: _wmCategoryTextSoft,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ShopMomentumCard extends StatelessWidget {
+  const _ShopMomentumCard({
+    required this.cartCount,
+    required this.onPrimaryTap,
+    required this.onSecondaryTap,
+  });
+
+  final int cartCount;
+  final VoidCallback onPrimaryTap;
+  final VoidCallback onSecondaryTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasCart = cartCount > 0;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -426,29 +566,33 @@ class _HeroBrowseCard extends StatelessWidget {
               color: Colors.white.withOpacity(0.12),
               borderRadius: BorderRadius.circular(18),
             ),
-            child: const Icon(
-              Icons.storefront_rounded,
+            child: Icon(
+              hasCart ? Icons.shopping_bag_rounded : Icons.storefront_rounded,
               color: Colors.white,
               size: 30,
             ),
           ),
           const SizedBox(width: 14),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Shop by category or search everything',
-                  style: TextStyle(
+                  hasCart
+                      ? 'Your basket is already in motion'
+                      : 'Start with the aisle you know',
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 17,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                SizedBox(height: 6),
+                const SizedBox(height: 6),
                 Text(
-                  'Rice, masala, frozen foods, snacks, tea, and more.',
-                  style: TextStyle(
+                  hasCart
+                      ? '$cartCount items added. Keep the momentum and finish your order faster.'
+                      : 'Jump into staples, fresh picks, frozen foods, snacks, tea, and more.',
+                  style: const TextStyle(
                     color: Color(0xFFE5E7EB),
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -459,17 +603,116 @@ class _HeroBrowseCard extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           TextButton(
-            onPressed: onSearchTap,
+            onPressed: onPrimaryTap,
             style: TextButton.styleFrom(
               foregroundColor: _wmCategoryPrimary,
               backgroundColor: Colors.white,
             ),
-            child: const Text(
-              'Search',
-              style: TextStyle(fontWeight: FontWeight.w800),
+            child: Text(
+              hasCart ? 'Continue' : 'Start',
+              style: const TextStyle(fontWeight: FontWeight.w800),
             ),
           ),
+          if (!hasCart)
+            TextButton(
+              onPressed: onSecondaryTap,
+              style: TextButton.styleFrom(foregroundColor: Colors.white),
+              child: const Text(
+                'Search',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
         ],
+      ),
+    );
+  }
+}
+
+class _AisleStrip extends StatelessWidget {
+  const _AisleStrip({
+    required this.items,
+    required this.onTap,
+    required this.colorFor,
+  });
+
+  final List<CategoryModel> items;
+  final ValueChanged<CategoryModel> onTap;
+  final Color Function(String name) colorFor;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 114,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.only(right: 16),
+        itemBuilder: (context, index) {
+          final item = items[index];
+          return _AisleMiniCard(
+            name: item.name,
+            accentColor: colorFor(item.name),
+            onTap: () => onTap(item),
+          );
+        },
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemCount: items.length,
+      ),
+    );
+  }
+}
+
+class _AisleMiniCard extends StatelessWidget {
+  const _AisleMiniCard({
+    required this.name,
+    required this.accentColor,
+    required this.onTap,
+  });
+
+  final String name;
+  final Color accentColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        width: 132,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: _wmCategorySurface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: _wmCategoryBorder),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0A000000),
+              blurRadius: 8,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _GlassIcon(
+              accentColor: accentColor,
+              icon: _iconForCategory(name),
+            ),
+            const Spacer(),
+            Text(
+              name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: _wmCategoryTextStrong,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -527,7 +770,7 @@ class _CategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final emoji = _pickEmoji(name);
+    final icon = _iconForCategory(name);
 
     return InkWell(
       onTap: onTap,
@@ -549,7 +792,7 @@ class _CategoryCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _GlassIcon(accentColor: accentColor, emoji: emoji),
+            _GlassIcon(accentColor: accentColor, icon: icon),
             const Spacer(),
             Text(
               name,
@@ -594,14 +837,33 @@ class _CategoryCard extends StatelessWidget {
   }
 }
 
+IconData _iconForCategory(String name) {
+  final n = name.toLowerCase();
+  if (n.contains('rice') || n.contains('grain')) return Icons.rice_bowl_outlined;
+  if (n.contains('masala') || n.contains('spice')) return Icons.spa_outlined;
+  if (n.contains('frozen')) return Icons.ac_unit_rounded;
+  if (n.contains('snack')) return Icons.cookie_outlined;
+  if (n.contains('beverage') || n.contains('coffee') || n.contains('tea')) {
+    return Icons.local_cafe_outlined;
+  }
+  if (n.contains('dairy')) return Icons.egg_alt_outlined;
+  if (n.contains('vegetable') || n.contains('veg') || n.contains('fresh')) {
+    return Icons.eco_outlined;
+  }
+  if (n.contains('sweet')) return Icons.icecream_outlined;
+  return Icons.shopping_basket_outlined;
+}
+
 class _GlassIcon extends StatelessWidget {
   const _GlassIcon({
     required this.accentColor,
-    required this.emoji,
+    this.emoji,
+    this.icon,
   });
 
   final Color accentColor;
-  final String emoji;
+  final String? emoji;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -614,7 +876,9 @@ class _GlassIcon extends StatelessWidget {
         border: Border.all(color: accentColor.withOpacity(0.18)),
       ),
       alignment: Alignment.center,
-      child: Text(emoji, style: const TextStyle(fontSize: 28)),
+      child: icon != null
+          ? Icon(icon, size: 26, color: accentColor)
+          : Text(emoji ?? '', style: const TextStyle(fontSize: 28)),
     );
   }
 }

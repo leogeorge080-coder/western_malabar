@@ -36,7 +36,7 @@ class StickyCartBar extends ConsumerWidget {
       totalCents += cents * e.qty;
     }
 
-    final totalText = '£${(totalCents / 100).toStringAsFixed(2)}';
+    final totalText = '\u00A3${(totalCents / 100).toStringAsFixed(2)}';
     final itemText = cartCount == 1 ? '1 item' : '$cartCount items';
 
     return Positioned(
@@ -105,7 +105,7 @@ class StickyCartBar extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '$totalText • View basket',
+                        '$totalText | View basket',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(

@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:western_malabar/features/cart/providers/cart_provider.dart';
+import 'package:western_malabar/features/cart/screens/cart_screen.dart';
 import 'package:western_malabar/features/catalog/models/category_model.dart';
 import 'package:western_malabar/features/catalog/models/product_model.dart';
 import 'package:western_malabar/features/catalog/services/product_service.dart';
 import 'package:western_malabar/shared/navigation/product_navigation.dart';
 import 'package:western_malabar/features/catalog/screens/subcategory_screen.dart';
 import 'package:western_malabar/features/search/providers/search_controller.dart';
-import 'package:western_malabar/features/search/widgets/search_amazon_result_tile.dart';
+import 'package:western_malabar/features/search/widgets/search_advanced_result_tile.dart';
+import 'package:western_malabar/shared/utils/cart_fly_target.dart';
+import 'package:western_malabar/shared/utils/fly_to_cart.dart';
+import 'package:western_malabar/shared/utils/haptic.dart';
 import 'package:western_malabar/shared/widgets/wm_product_image.dart';
 
 const _wmSearchBg = Color(0xFFF7F7F7);
@@ -149,6 +153,29 @@ class _GlobalProductSearchScreenState
         setState(() => _addedToast = null);
       }
     });
+  }
+
+  Future<void> _handleAddedToBasket(
+      String productName, GlobalKey imageKey) async {
+    Haptic.medium(context);
+    _showAddedToBasketToast(productName);
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+    if (!mounted) return;
+    await flyToCart(
+      context: context,
+      cartKey: wmBottomCartNavKey,
+      imageKey: imageKey,
+    );
+  }
+
+  Future<void> _openCart() async {
+    FocusScope.of(context).unfocus();
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => const CartScreen(),
+      ),
+    );
   }
 
   @override
@@ -322,7 +349,7 @@ class _GlobalProductSearchScreenState
                       pulseTick: _cartPulseTick,
                       itemCount: cartQty,
                       totalCents: cartTotalCents,
-                      onTap: _closeSearch,
+                      onTap: _openCart,
                     ),
                   ),
               ],
@@ -387,7 +414,7 @@ class _GlobalProductSearchScreenState
           itemBuilder: (context, i) {
             final p = visibleItems[i];
             return RepaintBoundary(
-              child: SearchAmazonResultTile(
+              child: SearchAdvancedResultTile(
                 key: ValueKey(p.id),
                 product: p,
                 onTap: () {
@@ -397,7 +424,7 @@ class _GlobalProductSearchScreenState
                     initialProduct: p,
                   );
                 },
-                onAdded: () => _showAddedToBasketToast(p.name),
+                onAdded: _handleAddedToBasket,
               ),
             );
           },

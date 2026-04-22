@@ -87,6 +87,36 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
     );
   }
 
+  void _openSubcategory(CategoryModel c) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SubcategoryProductsScreen(
+          title: c.name,
+          subcategorySlug: c.slug,
+        ),
+      ),
+    );
+  }
+
+  List<CategoryModel> _topPicks(List<CategoryModel> source) {
+    return source.take(5).toList();
+  }
+
+  List<CategoryModel> _guidedChoices(List<CategoryModel> source) {
+    return source.take(6).toList();
+  }
+
+  String _choiceLabel(String name) {
+    final n = name.toLowerCase();
+    if (n.contains('rice') || n.contains('grain')) return 'Everyday staples';
+    if (n.contains('frozen')) return 'Quick meals';
+    if (n.contains('snack') || n.contains('sweet')) return 'Treats';
+    if (n.contains('spice') || n.contains('masala')) return 'Cook tonight';
+    if (n.contains('tea') || n.contains('coffee')) return 'Tea break';
+    return name;
+  }
+
   @override
   Widget build(BuildContext context) {
     final items = _filtered;
@@ -184,11 +214,64 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
                   ),
                   SliverToBoxAdapter(
                     child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                      child: _AisleHeroCard(
+                        title: widget.parentName,
+                        onSearchTap: () {
+                          if (_search.text.trim().isEmpty) {
+                            _openGlobalSearch(widget.parentName);
+                          } else {
+                            _openGlobalSearch(_search.text.trim());
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                  if (!_loading && items.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+                        child: const _SectionHeading(
+                          title: 'Top picks in this aisle',
+                          subtitle: 'Start with the most likely paths to the product you need.',
+                        ),
+                      ),
+                    ),
+                  if (!_loading && items.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 0, 0),
+                        child: _TopPickStrip(
+                          items: _topPicks(items),
+                          onTap: _openSubcategory,
+                        ),
+                      ),
+                    ),
+                  if (!_loading && items.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 18, 16, 6),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _guidedChoices(items)
+                              .map(
+                                (c) => _QuickChoiceChip(
+                                  label: _choiceLabel(c.name),
+                                  onTap: () => _openSubcategory(c),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ),
+                    ),
+                  SliverToBoxAdapter(
+                    child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                       child: Text(
                         _query.isEmpty
-                            ? 'Subcategories'
-                            : 'Matching Subcategories',
+                            ? 'All sub-aisles'
+                            : 'Matching sub-aisles',
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w900,
@@ -222,20 +305,8 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
                                     final c = items[i];
                                     return _SubcategoryCard(
                                       name: c.name,
-                                      subtitle:
-                                          'Open products in this subcategory',
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) =>
-                                                SubcategoryProductsScreen(
-                                              title: c.name,
-                                              subcategorySlug: c.slug,
-                                            ),
-                                          ),
-                                        );
-                                      },
+                                      subtitle: 'Jump straight into products in this aisle',
+                                      onTap: () => _openSubcategory(c),
                                     );
                                   },
                                   childCount: items.length,
@@ -301,6 +372,255 @@ class _SearchLaunchField extends StatelessWidget {
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 8,
             vertical: 14,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionHeading extends StatelessWidget {
+  const _SectionHeading({
+    required this.title,
+    required this.subtitle,
+  });
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w900,
+            color: _wmSubTextStrong,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: _wmSubTextSoft,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AisleHeroCard extends StatelessWidget {
+  const _AisleHeroCard({
+    required this.title,
+    required this.onSearchTap,
+  });
+
+  final String title;
+  final VoidCallback onSearchTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: const LinearGradient(
+          colors: [_wmSubPrimaryDark, _wmSubPrimary],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x18000000),
+            blurRadius: 14,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const Icon(
+              Icons.tune_rounded,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Shop $title faster',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Start with the best-known sub-aisles, then drop into products with fewer taps.',
+                  style: TextStyle(
+                    color: Color(0xFFE5E7EB),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          TextButton(
+            onPressed: onSearchTap,
+            style: TextButton.styleFrom(
+              foregroundColor: _wmSubPrimary,
+              backgroundColor: Colors.white,
+            ),
+            child: const Text(
+              'Search',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TopPickStrip extends StatelessWidget {
+  const _TopPickStrip({
+    required this.items,
+    required this.onTap,
+  });
+
+  final List<CategoryModel> items;
+  final ValueChanged<CategoryModel> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 108,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.only(right: 16),
+        itemBuilder: (context, index) {
+          final item = items[index];
+          return _TopPickCard(
+            name: item.name,
+            onTap: () => onTap(item),
+          );
+        },
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemCount: items.length,
+      ),
+    );
+  }
+}
+
+class _TopPickCard extends StatelessWidget {
+  const _TopPickCard({
+    required this.name,
+    required this.onTap,
+  });
+
+  final String name;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        width: 144,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: _wmSubSurface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: _wmSubBorder),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0A000000),
+              blurRadius: 8,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                color: const Color(0xFFF3F4F6),
+              ),
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.chevron_right_rounded,
+                color: _wmSubPrimary,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: _wmSubTextStrong,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickChoiceChip extends StatelessWidget {
+  const _QuickChoiceChip({
+    required this.label,
+    required this.onTap,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: _wmSubSurface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: _wmSubBorder),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            color: _wmSubTextStrong,
           ),
         ),
       ),

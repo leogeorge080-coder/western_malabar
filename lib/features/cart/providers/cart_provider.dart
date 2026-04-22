@@ -18,18 +18,32 @@ class CartItem {
 class CartState extends StateNotifier<List<CartItem>> {
   CartState() : super(const []);
 
-  void add(ProductModel p) {
+  int quantityFor(String productId) {
+    final item = state.where((e) => e.product.id == productId).firstOrNull;
+    return item?.qty ?? 0;
+  }
+
+  bool canAdd(ProductModel p) {
+    return p.canAddToCartQuantity(quantityFor(p.id));
+  }
+
+  bool add(ProductModel p) {
     final i = state.indexWhere((e) => e.product.id == p.id);
     if (i == -1) {
+      if (!p.canAddToCartQuantity(0)) return false;
       state = [...state, CartItem(p, 1)];
+      return true;
     } else {
+      final currentQty = state[i].qty;
+      if (!p.canAddToCartQuantity(currentQty)) return false;
       final list = [...state];
-      list[i] = list[i].copyWith(qty: list[i].qty + 1);
+      list[i] = list[i].copyWith(qty: currentQty + 1);
       state = list;
+      return true;
     }
   }
 
-  void inc(ProductModel p) => add(p);
+  bool inc(ProductModel p) => add(p);
 
   void dec(ProductModel p) {
     final i = state.indexWhere((e) => e.product.id == p.id);

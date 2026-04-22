@@ -8,6 +8,14 @@ const _wmAddPrimaryDark = Color(0xFF171A20);
 const _wmAddBorder = Color(0xFFE5E7EB);
 const _wmAddSnackBg = Color(0xFF111827);
 
+String _stockCapMessage(ProductModel product) {
+  final qty = product.stockQty;
+  if (qty != null && qty > 0) {
+    return 'Only $qty left';
+  }
+  return 'No more stock available';
+}
+
 class AddToCartControl extends ConsumerWidget {
   const AddToCartControl({
     super.key,
@@ -208,6 +216,22 @@ class _AddButtonStateState extends ConsumerState<_AddButtonState>
     );
   }
 
+  void _showStockLimit() {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 94),
+        backgroundColor: _wmAddSnackBg,
+        duration: const Duration(milliseconds: 1200),
+        content: Text(
+          _stockCapMessage(widget.product),
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
+    );
+  }
+
   Future<void> _handleTap() async {
     final effectivePrice =
         widget.product.salePriceCents ?? widget.product.priceCents ?? 0;
@@ -217,12 +241,21 @@ class _AddButtonStateState extends ConsumerState<_AddButtonState>
       return;
     }
 
+    if (!ref.read(cartProvider.notifier).canAdd(widget.product)) {
+      _showStockLimit();
+      return;
+    }
+
     await _pressController.forward();
     await _pressController.reverse();
 
     if (!mounted) return;
 
-    ref.read(cartProvider.notifier).add(widget.product);
+    final added = ref.read(cartProvider.notifier).add(widget.product);
+    if (!added) {
+      _showStockLimit();
+      return;
+    }
     widget.onAdded?.call();
   }
 
@@ -301,9 +334,26 @@ class _StepperState extends ConsumerWidget {
     );
   }
 
+  void _showStockLimit(BuildContext context) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 94),
+        backgroundColor: _wmAddSnackBg,
+        duration: const Duration(milliseconds: 1200),
+        content: Text(
+          _stockCapMessage(product),
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final effectivePrice = product.salePriceCents ?? product.priceCents ?? 0;
+    final isAtStockLimit = !product.canAddToCartQuantity(qty);
 
     return Container(
       height: config.height,
@@ -383,9 +433,14 @@ class _StepperState extends ConsumerWidget {
                   return;
                 }
 
-                ref.read(cartProvider.notifier).inc(product);
+                final added = ref.read(cartProvider.notifier).inc(product);
+                if (!added) {
+                  _showStockLimit(context);
+                  return;
+                }
                 onAdded?.call();
               },
+              disabled: isAtStockLimit,
             ),
           ),
         ],
@@ -401,6 +456,7 @@ class _StepperSideButton extends StatefulWidget {
     required this.minSize,
     required this.radius,
     required this.onTap,
+    this.disabled = false,
   });
 
   final IconData icon;
@@ -408,6 +464,7 @@ class _StepperSideButton extends StatefulWidget {
   final double minSize;
   final double radius;
   final VoidCallback onTap;
+  final bool disabled;
 
   @override
   State<_StepperSideButton> createState() => _StepperSideButtonState();
@@ -445,6 +502,7 @@ class _StepperSideButtonState extends State<_StepperSideButton>
   }
 
   Future<void> _handleTap() async {
+    if (widget.disabled) return;
     await _controller.forward();
     await _controller.reverse();
     if (!mounted) return;
@@ -458,7 +516,7 @@ class _StepperSideButtonState extends State<_StepperSideButton>
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: _handleTap,
+          onTap: widget.disabled ? null : _handleTap,
           borderRadius: BorderRadius.circular(widget.radius),
           splashColor: const Color(0x18FFFFFF),
           highlightColor: Colors.transparent,
@@ -468,7 +526,8 @@ class _StepperSideButtonState extends State<_StepperSideButton>
               child: Icon(
                 widget.icon,
                 size: widget.iconSize,
-                color: Colors.white,
+                color:
+                    widget.disabled ? const Color(0x66FFFFFF) : Colors.white,
               ),
             ),
           ),

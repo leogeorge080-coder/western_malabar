@@ -6,6 +6,7 @@ import 'package:western_malabar/features/checkout/screens/checkout_screen.dart';
 import 'package:western_malabar/features/catalog/models/product_model.dart';
 import 'package:western_malabar/features/catalog/services/product_service.dart';
 import 'package:western_malabar/features/cart/providers/cart_provider.dart';
+import 'package:western_malabar/features/search/screens/global_product_search_screen.dart';
 import 'package:western_malabar/shared/widgets/product_card.dart';
 import 'package:western_malabar/shared/widgets/wm_product_image.dart';
 
@@ -99,6 +100,7 @@ class CartScreen extends ConsumerWidget {
                               brandName: p.brandName,
                               imageUrl: p.image,
                               qty: item.qty,
+                              maxQty: p.maxCartQuantity,
                               unitCents: unitCents,
                               lineTotalCents: lineTotalCents,
                               onDec: () => cartNotifier.dec(p),
@@ -224,7 +226,13 @@ class _EmptyCartView extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () => Navigator.maybePop(context),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const GlobalProductSearchScreen(),
+                      ),
+                    );
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _wmCartPrimary,
                     foregroundColor: Colors.white,
@@ -272,6 +280,7 @@ class FreeDeliveryProgressCard extends StatelessWidget {
     return (cartTotalCents / freeDeliveryThresholdCents).clamp(0.0, 1.0);
   }
 
+  String _displayMoney(int cents) => '£${(cents / 100).toStringAsFixed(2)}';
   String _money(int cents) => '£${(cents / 100).toStringAsFixed(2)}';
 
   @override
@@ -320,7 +329,7 @@ class FreeDeliveryProgressCard extends StatelessWidget {
                 Text(
                   _unlocked
                       ? 'You’ve unlocked free delivery'
-                      : 'Add ${_money(_remainingCents)} more for free delivery',
+                      : 'Add ${_displayMoney(_remainingCents)} more for free delivery',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w900,
@@ -352,7 +361,7 @@ class FreeDeliveryProgressCard extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      _money(cartTotalCents),
+                      _displayMoney(cartTotalCents),
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
@@ -361,7 +370,7 @@ class FreeDeliveryProgressCard extends StatelessWidget {
                     ),
                     const Spacer(),
                     Text(
-                      _money(freeDeliveryThresholdCents),
+                      _displayMoney(freeDeliveryThresholdCents),
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
@@ -385,6 +394,7 @@ class _CartItemCard extends StatelessWidget {
     required this.brandName,
     required this.imageUrl,
     required this.qty,
+    required this.maxQty,
     required this.unitCents,
     required this.lineTotalCents,
     required this.onDec,
@@ -396,12 +406,14 @@ class _CartItemCard extends StatelessWidget {
   final String? brandName;
   final String? imageUrl;
   final int qty;
+  final int? maxQty;
   final int unitCents;
   final int lineTotalCents;
   final VoidCallback onDec;
   final VoidCallback onInc;
   final VoidCallback onRemove;
 
+  String _displayMoney(int cents) => '£${(cents / 100).toStringAsFixed(2)}';
   String _money(int cents) => '£${(cents / 100).toStringAsFixed(2)}';
 
   @override
@@ -466,7 +478,7 @@ class _CartItemCard extends StatelessWidget {
                   children: [
                     Text(
                       hasValidPrice
-                          ? '${_money(unitCents)} each'
+                          ? '${_displayMoney(unitCents)} each'
                           : 'Price unavailable',
                       style: TextStyle(
                         color: hasValidPrice ? _wmCartTextSoft : _wmCartDanger,
@@ -483,9 +495,7 @@ class _CartItemCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      hasValidPrice
-                          ? 'Line total ${_money(lineTotalCents)}'
-                          : 'Unavailable',
+                      hasValidPrice ? _displayMoney(lineTotalCents) : 'Unavailable',
                       style: TextStyle(
                         color: hasValidPrice ? _wmCartSuccess : _wmCartDanger,
                         fontWeight: FontWeight.w900,
@@ -499,6 +509,7 @@ class _CartItemCard extends StatelessWidget {
                   children: [
                     _QtyStepper(
                       qty: qty,
+                      maxQty: maxQty,
                       onDec: onDec,
                       onInc: onInc,
                     ),
@@ -558,11 +569,13 @@ class _CartItemImage extends StatelessWidget {
 class _QtyStepper extends StatelessWidget {
   const _QtyStepper({
     required this.qty,
+    required this.maxQty,
     required this.onDec,
     required this.onInc,
   });
 
   final int qty;
+  final int? maxQty;
   final VoidCallback onDec;
   final VoidCallback onInc;
 
@@ -599,6 +612,7 @@ class _QtyStepper extends StatelessWidget {
           _QtyIconButton(
             icon: Icons.add,
             onTap: onInc,
+            disabled: maxQty != null && qty >= maxQty!,
           ),
         ],
       ),
@@ -610,17 +624,19 @@ class _QtyIconButton extends StatelessWidget {
   const _QtyIconButton({
     required this.icon,
     required this.onTap,
+    this.disabled = false,
   });
 
   final IconData icon;
   final VoidCallback onTap;
+  final bool disabled;
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
+        onTap: disabled ? null : onTap,
         borderRadius: BorderRadius.circular(10),
         child: SizedBox(
           width: 36,
@@ -628,7 +644,7 @@ class _QtyIconButton extends StatelessWidget {
           child: Icon(
             icon,
             size: 18,
-            color: _wmCartPrimary,
+            color: disabled ? const Color(0xFF9CA3AF) : _wmCartPrimary,
           ),
         ),
       ),
@@ -656,11 +672,22 @@ class _CartTopSummaryCard extends StatelessWidget {
   final int freeDeliveryThresholdCents;
   final bool hasInvalidPricedItems;
   final VoidCallback onCheckout;
+  String _displayMoney(int cents) => '£${(cents / 100).toStringAsFixed(2)}';
 
   String _money(int cents) => '£${(cents / 100).toStringAsFixed(2)}';
 
   @override
   Widget build(BuildContext context) {
+    final remainingForFreeDelivery =
+        (freeDeliveryThresholdCents - subtotalCents).clamp(
+      0,
+      freeDeliveryThresholdCents,
+    );
+    final momentumLine = hasInvalidPricedItems
+        ? 'Fix pricing issues before checkout.'
+        : unlockedFreeDelivery
+            ? 'Ready to place your order with free delivery.'
+            : 'Add ${_displayMoney(remainingForFreeDelivery)} more for free delivery.';
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -678,8 +705,26 @@ class _CartTopSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color:
+                  unlockedFreeDelivery ? _wmCartSuccessSoft : _wmCartAmberSoft,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              unlockedFreeDelivery ? 'Ready to order' : 'Almost there',
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w900,
+                color:
+                    unlockedFreeDelivery ? _wmCartSuccess : _wmCartPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           Text(
-            'Subtotal ${_money(subtotalCents)}',
+            _displayMoney(subtotalCents),
             style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w900,
@@ -689,17 +734,18 @@ class _CartTopSummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '$totalItems item${totalItems == 1 ? '' : 's'} in your cart',
+            '$totalItems item${totalItems == 1 ? '' : 's'} • $momentumLine',
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: _wmCartTextSoft,
+              height: 1.35,
             ),
           ),
           const SizedBox(height: 14),
           if (hasInvalidPricedItems) ...[
             const Text(
-              'Some items in your basket need price correction before checkout',
+              'Some items need price correction before checkout.',
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w700,
@@ -737,31 +783,37 @@ class _CartTopSummaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: const Color(0xFFF9FAFB),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: _wmCartBorder),
             ),
-            child: Column(
+            child: Row(
               children: [
-                _SummaryRow(
-                  label: 'Items',
-                  value: _money(subtotalCents),
+                Expanded(
+                  child: _SummaryRow(
+                    label: 'Items',
+                    value: _displayMoney(subtotalCents),
+                  ),
                 ),
-                const SizedBox(height: 10),
-                _SummaryRow(
-                  label: 'Delivery',
-                  value:
-                      unlockedFreeDelivery ? 'FREE' : _money(deliveryFeeCents),
-                  valueColor:
-                      unlockedFreeDelivery ? _wmCartSuccess : _wmCartTextStrong,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _SummaryRow(
+                    label: 'Delivery',
+                    value:
+                        unlockedFreeDelivery ? 'FREE' : _displayMoney(deliveryFeeCents),
+                    valueColor:
+                        unlockedFreeDelivery ? _wmCartSuccess : _wmCartTextStrong,
+                  ),
                 ),
-                const Divider(height: 22),
-                _SummaryRow(
-                  label: 'Order Total',
-                  value: _money(totalCents),
-                  bold: true,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _SummaryRow(
+                    label: 'Total',
+                    value: _displayMoney(totalCents),
+                    bold: true,
+                  ),
                 ),
               ],
             ),
@@ -788,21 +840,22 @@ class _SummaryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final labelStyle = TextStyle(
-      fontSize: bold ? 16 : 14,
+      fontSize: 12,
       fontWeight: bold ? FontWeight.w900 : FontWeight.w700,
       color: bold ? _wmCartTextStrong : _wmCartTextSoft,
     );
 
     final valueStyle = TextStyle(
-      fontSize: bold ? 18 : 14,
+      fontSize: bold ? 17 : 13.5,
       fontWeight: bold ? FontWeight.w900 : FontWeight.w800,
       color: valueColor ?? (bold ? _wmCartPrimary : _wmCartTextStrong),
     );
 
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: labelStyle),
-        const Spacer(),
+        const SizedBox(height: 6),
         Text(value, style: valueStyle),
       ],
     );

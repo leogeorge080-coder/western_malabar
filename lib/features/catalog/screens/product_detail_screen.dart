@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:western_malabar/shared/navigation/product_navigation.dart';
+import 'package:western_malabar/shared/utils/cart_fly_target.dart';
+import 'package:western_malabar/shared/utils/fly_to_cart.dart';
 import 'package:western_malabar/shared/utils/haptic.dart';
 import 'package:western_malabar/features/catalog/models/product_model.dart';
 import 'package:western_malabar/features/catalog/providers/related_products_provider.dart';
 import 'package:western_malabar/features/catalog/services/product_service.dart';
 import 'package:western_malabar/features/cart/providers/cart_provider.dart';
+import 'package:western_malabar/features/cart/screens/cart_screen.dart';
 
 const _bg = Color(0xFFF7F7F7);
 const _surface = Colors.white;
@@ -33,11 +36,22 @@ class ProductDetailScreen extends ConsumerStatefulWidget {
 
 class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   final ProductService _productService = ProductService();
+  final GlobalKey _heroImageKey = GlobalKey();
 
   ProductModel? _product;
   bool _loading = true;
   bool _loadingMore = false;
   int qty = 1;
+
+  void _showStockLimit(ProductModel product) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        content: Text(product.stockStatusLabel ?? 'No more stock available'),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -98,16 +112,49 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     Haptic.heavy(context);
 
     final cart = ref.read(cartProvider.notifier);
+    final maxAddCount = product.maxCartQuantity;
+    final currentQty = cart.quantityFor(product.id);
+    final remainingQty = maxAddCount == null ? qty : (maxAddCount - currentQty);
 
-    for (int i = 0; i < qty; i++) {
+    if (remainingQty <= 0) {
+      _showStockLimit(product);
+      return;
+    }
+
+    final safeAddCount = maxAddCount == null ? qty : qty.clamp(1, remainingQty);
+
+    for (int i = 0; i < safeAddCount; i++) {
       cart.add(product);
     }
 
     if (!mounted) return;
 
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+    await flyToCart(
+      context: context,
+      cartKey: wmBottomCartNavKey,
+      imageKey: _heroImageKey,
+    );
+
+    if (!mounted) return;
+
+    final itemLabel =
+        safeAddCount == 1 ? '1 item added' : '$safeAddCount items added';
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${product.name} added to cart'),
+        behavior: SnackBarBehavior.floating,
+        content: Text('$itemLabel to your basket'),
+        action: SnackBarAction(
+          label: 'View basket',
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const CartScreen(),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -128,6 +175,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     }
 
     final product = _product;
+
+    final maxQty = product?.maxCartQuantity;
+    final canIncreaseQty = maxQty == null ? true : qty < maxQty;
 
     if (product == null) {
       return Scaffold(
@@ -169,14 +219,17 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     color: _surface,
                     child: Hero(
                       tag: 'product-${product.id}',
-                      child: product.hasImage
-                          ? Image.network(
-                              product.image!,
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, __, ___) =>
-                                  const Icon(Icons.image, size: 80),
-                            )
-                          : const Icon(Icons.image, size: 80),
+                      child: KeyedSubtree(
+                        key: _heroImageKey,
+                        child: product.hasImage
+                            ? Image.network(
+                                product.image!,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) =>
+                                    const Icon(Icons.image, size: 80),
+                              )
+                            : const Icon(Icons.image, size: 80),
+                      ),
                     ),
                   ),
                 ),
@@ -461,13 +514,17 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (product.isLowStock)
+                  if (product.stockStatusLabel != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Text(
-                        '⚠️ Only ${product.stockQty} left',
-                        style: const TextStyle(
-                          color: Colors.red,
+                        product.stockStatusLabel!,
+                        style: TextStyle(
+                          color: !product.inStock
+                              ? Colors.red
+                              : product.isLowStock
+                                  ? Colors.red
+                                  : Colors.green,
                           fontWeight: FontWeight.w700,
                           fontSize: 13,
                         ),
@@ -495,7 +552,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             ),
                             IconButton(
                               icon: const Icon(Icons.add),
-                              onPressed: () => setState(() => qty++),
+                              onPressed: canIncreaseQty
+                                  ? () => setState(() => qty++)
+                                  : () => _showStockLimit(product),
                             ),
                           ],
                         ),
@@ -515,7 +574,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             ),
                           ),
                           child: Text(
-                            product.inStock ? 'Add to Cart' : 'Out of Stock',
+                            product.inStock
+                                ? (qty > 1
+                                    ? 'Add $qty to basket'
+                                    : 'Add to basket')
+                                : 'Out of stock',
                             style: const TextStyle(
                               fontWeight: FontWeight.w800,
                               fontSize: 15,
