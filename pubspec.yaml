@@ -88,12 +88,12 @@ flutter:
     - assets/icon/wm_mark.png
     - assets/icon/wm_mark_mono.png
     - assets/banners/
-    - assets/flyin/appam_stew.png
-    - assets/flyin/puttu_kadala.png
-    - assets/flyin/set_dosa.png
-    - assets/flyin/grated_coconut.png
-    - assets/flyin/angamaly_mango.png
-    - assets/flyin/ulli_vada.png
+    - assets/Flyin/appam_stew.png
+    - assets/Flyin/puttu_kadala.png
+    - assets/Flyin/set_dosa.png
+    - assets/Flyin/grated_coconut.png
+    - assets/Flyin/angamaly_mango.png
+    - assets/Flyin/ulli_vada.png
     - assets/placeholders/wm_product_placeholder.png
 
 # -------------------- FLUTTER NATIVE SPLASH --------------------
