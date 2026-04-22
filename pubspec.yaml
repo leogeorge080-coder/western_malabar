@@ -52,6 +52,7 @@ dependencies:
   # Google authentication
   google_sign_in: 6.2.1  # Google Maps for location picking
   google_maps_flutter: ^2.5.0
+  geolocator: ^13.0.2
   # Environment variables
   flutter_dotenv: ^5.1.0
 

@@ -47,6 +47,8 @@
 		<true/>
 		<key>NSCameraUsageDescription</key>
 		<string>Allow camera access to scan product barcodes.</string>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Allow location access to optimize delivery routes from your current position.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>Allow photo library access to select product images.</string>
 		<key>UIStatusBarHidden</key>
