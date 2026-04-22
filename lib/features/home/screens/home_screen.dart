@@ -617,7 +617,8 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
                               ),
                             if (missingStaples.isNotEmpty)
                               Padding(
-                                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 0, 16, 10),
                                 child: _MissingStaplesCard(
                                   items: missingStaples,
                                   title: cartCount > 0
@@ -875,7 +876,8 @@ class _ReorderHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final previewItems = items.take(4).toList();
     final extraCount = items.length - previewItems.length;
-    final estimatedTotal = items.fold<int>(0, (sum, item) => sum + item.priceCents);
+    final estimatedTotal =
+        items.fold<int>(0, (sum, item) => sum + item.priceCents);
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -938,7 +940,8 @@ class _ReorderHeroCard extends StatelessWidget {
             runSpacing: 10,
             children: [
               for (final item in previewItems)
-                _ReorderPreviewChip(item: item, onTap: () => onPreviewTap(item)),
+                _ReorderPreviewChip(
+                    item: item, onTap: () => onPreviewTap(item)),
               if (extraCount > 0)
                 Container(
                   width: 76,
@@ -988,7 +991,8 @@ class _ReorderHeroCard extends StatelessWidget {
                   onPressed: onSecondary,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
-                    side: BorderSide(color: Colors.white.withValues(alpha: 0.24)),
+                    side:
+                        BorderSide(color: Colors.white.withValues(alpha: 0.24)),
                     padding: const EdgeInsets.symmetric(vertical: 15),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -1146,7 +1150,8 @@ class _CartMomentumCard extends StatelessWidget {
                   onPressed: onSecondary,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
-                    side: BorderSide(color: Colors.white.withValues(alpha: 0.24)),
+                    side:
+                        BorderSide(color: Colors.white.withValues(alpha: 0.24)),
                     padding: const EdgeInsets.symmetric(vertical: 15),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -1971,9 +1976,8 @@ class _ProductTileState extends ConsumerState<_ProductTile> {
     final item = matches.isNotEmpty ? matches.first : null;
     final qty = item?.qty ?? 0;
     final maxQty = item?.product.maxCartQuantity;
-    final canIncrease = item == null
-        ? true
-        : item.product.canAddToCartQuantity(qty);
+    final canIncrease =
+        item == null ? true : item.product.canAddToCartQuantity(qty);
 
     if (qty == 0) {
       final suggestedQty = ((p.rememberedQty ?? 1).clamp(1, 6)) as int;
@@ -2039,7 +2043,8 @@ class _ProductTileState extends ConsumerState<_ProductTile> {
                   return;
                 }
                 Haptic.light(context);
-                final added = ref.read(cartProvider.notifier).inc(item!.product);
+                final added =
+                    ref.read(cartProvider.notifier).inc(item!.product);
                 if (!added) {
                   _showStockLimitMessage(maxQty);
                 }
@@ -2411,7 +2416,8 @@ class _CategoryQuickTileState extends State<_CategoryQuickTile> {
         it.style ?? const WmCategoryStyle(bg: Colors.white, fg: _wmPrimaryDark);
     return GestureDetector(
       onTapDown: isInteractive ? (_) => setState(() => _pressed = true) : null,
-      onTapCancel: isInteractive ? () => setState(() => _pressed = false) : null,
+      onTapCancel:
+          isInteractive ? () => setState(() => _pressed = false) : null,
       onTapUp: isInteractive ? (_) => setState(() => _pressed = false) : null,
       child: AnimatedScale(
         duration: const Duration(milliseconds: 120),

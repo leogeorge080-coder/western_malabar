@@ -228,7 +228,3 @@ class _Dots extends StatelessWidget {
     );
   }
 }
-
-
-
-

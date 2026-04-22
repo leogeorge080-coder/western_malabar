@@ -37,7 +37,8 @@ void main() {
       expect(notifier.state.postcodeEligible, isTrue);
     });
 
-    test('editing postcode clears saved address selection and address details', () {
+    test('editing postcode clears saved address selection and address details',
+        () {
       notifier.applySavedAddress(buildSavedAddress());
 
       notifier.updatePostcode('E1 6AN');
@@ -51,7 +52,8 @@ void main() {
       expect(notifier.state.postcodeEligible, isFalse);
     });
 
-    test('setRewardsSummary clamps negative values and disables empty rewards', () {
+    test('setRewardsSummary clamps negative values and disables empty rewards',
+        () {
       notifier.setRewardsSummary(
         availableRewardPence: -100,
         pointsToNextReward: -20,
@@ -104,7 +106,8 @@ void main() {
 
       expect(notifier.state.backendSummaryLoaded, isFalse);
       expect(notifier.state.backendSummaryLoading, isFalse);
-      expect(notifier.state.backendSummaryError, 'Could not confirm latest basket total.');
+      expect(notifier.state.backendSummaryError,
+          'Could not confirm latest basket total.');
     });
   });
 }

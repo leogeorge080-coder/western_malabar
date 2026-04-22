@@ -89,7 +89,3 @@ class WeatherService {
     return data;
   }
 }
-
-
-
-

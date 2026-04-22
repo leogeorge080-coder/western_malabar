@@ -617,8 +617,7 @@ class _SignedInProfileContent extends ConsumerWidget {
                     _ProfileMenuTile(
                       icon: Icons.inventory_2_outlined,
                       title: 'Admin Orders',
-                      subtitle:
-                          'Review customer orders and operational queues',
+                      subtitle: 'Review customer orders and operational queues',
                       onTap: isBusy
                           ? null
                           : () async {
@@ -635,8 +634,7 @@ class _SignedInProfileContent extends ConsumerWidget {
                     _ProfileMenuTile(
                       icon: Icons.shopping_cart_outlined,
                       title: 'Product Operations',
-                      subtitle:
-                          'Manage catalog, stock, and product visibility',
+                      subtitle: 'Manage catalog, stock, and product visibility',
                       onTap: isBusy
                           ? null
                           : () async {
@@ -1215,7 +1213,8 @@ class _WorkModeBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = isAdmin ? 'Work mode is available' : 'Operations access enabled';
+    final title =
+        isAdmin ? 'Work mode is available' : 'Operations access enabled';
     final subtitle = isAdmin
         ? 'Admin tools are separated here so your account stays customer-first.'
         : canAccessDelivery

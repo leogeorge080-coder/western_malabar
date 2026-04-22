@@ -323,7 +323,8 @@ class _AdminProductsScreenState extends ConsumerState<AdminProductsScreen> {
                               SizedBox(
                                 height: 56,
                                 child: FilledButton.tonalIcon(
-                                  onPressed: () => _scanAndOpenProduct(products),
+                                  onPressed: () =>
+                                      _scanAndOpenProduct(products),
                                   icon: const Icon(
                                     Icons.qr_code_scanner_rounded,
                                   ),
@@ -419,7 +420,8 @@ class _AdminProductsScreenState extends ConsumerState<AdminProductsScreen> {
                                 _FilterChip(
                                   label: 'Hidden',
                                   count: metrics.hidden,
-                                  selected: _filter == AdminProductFilter.hidden,
+                                  selected:
+                                      _filter == AdminProductFilter.hidden,
                                   onTap: () => setState(
                                     () => _filter = AdminProductFilter.hidden,
                                   ),
@@ -1056,7 +1058,9 @@ class _ProductInventoryCard extends ConsumerWidget {
                           runSpacing: 8,
                           children: [
                             _MiniBadge(
-                              label: product.isActive ? 'Catalog live' : 'Disabled',
+                              label: product.isActive
+                                  ? 'Catalog live'
+                                  : 'Disabled',
                               background: product.isActive
                                   ? const Color(0xFFEAF8EE)
                                   : const Color(0xFFFFF1F1),

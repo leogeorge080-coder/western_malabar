@@ -219,5 +219,3 @@ class CategoryService {
     _hintCacheAt = null;
   }
 }
-
-

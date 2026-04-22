@@ -209,7 +209,3 @@ class _TasteCard {
   final String asset;
   const _TasteCard(this.title, this.subtitle, this.asset);
 }
-
-
-
-

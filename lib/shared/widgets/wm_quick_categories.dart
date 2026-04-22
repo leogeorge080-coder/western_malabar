@@ -120,7 +120,3 @@ class _CatPill extends StatelessWidget {
     );
   }
 }
-
-
-
-

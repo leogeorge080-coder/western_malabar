@@ -25,7 +25,8 @@ String extractCheckoutBackendErrorText(String raw) {
 
   final failedIndex = normalized.indexOf('failed:');
   if (failedIndex >= 0) {
-    final trailing = normalized.substring(failedIndex + 'failed:'.length).trim();
+    final trailing =
+        normalized.substring(failedIndex + 'failed:'.length).trim();
     if (trailing.isNotEmpty) {
       return extractCheckoutBackendErrorText(trailing);
     }

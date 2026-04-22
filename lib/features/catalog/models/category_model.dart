@@ -27,5 +27,3 @@ class CategoryModel {
         parentId: m['parent_id'] as String?, // NEW
       );
 }
-
-

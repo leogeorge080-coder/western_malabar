@@ -53,7 +53,3 @@ class CategoryGrid extends StatelessWidget {
     );
   }
 }
-
-
-
-

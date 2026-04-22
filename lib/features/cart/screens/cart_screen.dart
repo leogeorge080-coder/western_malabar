@@ -495,7 +495,9 @@ class _CartItemCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      hasValidPrice ? _displayMoney(lineTotalCents) : 'Unavailable',
+                      hasValidPrice
+                          ? _displayMoney(lineTotalCents)
+                          : 'Unavailable',
                       style: TextStyle(
                         color: hasValidPrice ? _wmCartSuccess : _wmCartDanger,
                         fontWeight: FontWeight.w900,
@@ -717,8 +719,7 @@ class _CartTopSummaryCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w900,
-                color:
-                    unlockedFreeDelivery ? _wmCartSuccess : _wmCartPrimary,
+                color: unlockedFreeDelivery ? _wmCartSuccess : _wmCartPrimary,
               ),
             ),
           ),
@@ -801,10 +802,12 @@ class _CartTopSummaryCard extends StatelessWidget {
                 Expanded(
                   child: _SummaryRow(
                     label: 'Delivery',
-                    value:
-                        unlockedFreeDelivery ? 'FREE' : _displayMoney(deliveryFeeCents),
-                    valueColor:
-                        unlockedFreeDelivery ? _wmCartSuccess : _wmCartTextStrong,
+                    value: unlockedFreeDelivery
+                        ? 'FREE'
+                        : _displayMoney(deliveryFeeCents),
+                    valueColor: unlockedFreeDelivery
+                        ? _wmCartSuccess
+                        : _wmCartTextStrong,
                   ),
                 ),
                 const SizedBox(width: 12),

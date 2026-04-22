@@ -184,7 +184,3 @@ class _OrderQrScanScreenState extends State<OrderQrScanScreen> {
     );
   }
 }
-
-
-
-

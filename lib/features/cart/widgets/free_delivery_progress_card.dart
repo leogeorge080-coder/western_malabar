@@ -130,5 +130,3 @@ class FreeDeliveryProgressCard extends StatelessWidget {
     );
   }
 }
-
-

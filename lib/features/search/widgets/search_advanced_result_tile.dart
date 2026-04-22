@@ -77,9 +77,7 @@ class _SearchAdvancedResultTileState
             border: Border.all(color: const Color(0xFFE6E7EB)),
             boxShadow: const [
               BoxShadow(
-                  color: Color(0x06000000),
-                  blurRadius: 8,
-                  offset: Offset(0, 3))
+                  color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 3))
             ],
           ),
           child: Row(
@@ -515,7 +513,8 @@ class _AmazonAddButton extends ConsumerWidget {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   behavior: SnackBarBehavior.floating,
-                  content: Text(product.stockStatusLabel ?? 'No more stock available'),
+                  content: Text(
+                      product.stockStatusLabel ?? 'No more stock available'),
                 ),
               );
               return;
@@ -586,7 +585,8 @@ class _AmazonAddButton extends ConsumerWidget {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     behavior: SnackBarBehavior.floating,
-                    content: Text(product.stockStatusLabel ?? 'No more stock available'),
+                    content: Text(
+                        product.stockStatusLabel ?? 'No more stock available'),
                   ),
                 );
                 return;

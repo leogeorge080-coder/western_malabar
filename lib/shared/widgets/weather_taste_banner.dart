@@ -142,7 +142,3 @@ class _BannerData {
     required this.color2,
   });
 }
-
-
-
-

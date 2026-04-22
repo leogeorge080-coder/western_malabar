@@ -266,7 +266,8 @@ class CheckoutService {
         'p_delivery_type': deliveryType,
         'p_use_rewards': useRewards,
         'p_cart_items': cartPayload,
-        'p_postcode': postcode?.trim().isEmpty ?? true ? null : postcode?.trim(),
+        'p_postcode':
+            postcode?.trim().isEmpty ?? true ? null : postcode?.trim(),
       },
     );
 

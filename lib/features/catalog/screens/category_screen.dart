@@ -257,7 +257,8 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
                       padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
                       child: const _SectionHeading(
                         title: 'Frequent aisles',
-                        subtitle: 'Jump into the sections most shoppers revisit.',
+                        subtitle:
+                            'Jump into the sections most shoppers revisit.',
                       ),
                     ),
                   ),
@@ -289,14 +290,15 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
                       child: Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: _missionCategories(_query.isEmpty ? _all : items)
-                            .map(
-                              (c) => _QuickChip(
-                                label: _missionLabel(c.name),
-                                onTap: () => _onCategoryTap(c),
-                              ),
-                            )
-                            .toList(),
+                        children:
+                            _missionCategories(_query.isEmpty ? _all : items)
+                                .map(
+                                  (c) => _QuickChip(
+                                    label: _missionLabel(c.name),
+                                    onTap: () => _onCategoryTap(c),
+                                  ),
+                                )
+                                .toList(),
                       ),
                     ),
                   ),
@@ -304,9 +306,7 @@ class _CategoryScreenState extends ConsumerState<CategoryScreen> {
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                       child: Text(
-                        _query.isEmpty
-                            ? 'All aisles'
-                            : 'Matching aisles',
+                        _query.isEmpty ? 'All aisles' : 'Matching aisles',
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w900,
@@ -839,7 +839,8 @@ class _CategoryCard extends StatelessWidget {
 
 IconData _iconForCategory(String name) {
   final n = name.toLowerCase();
-  if (n.contains('rice') || n.contains('grain')) return Icons.rice_bowl_outlined;
+  if (n.contains('rice') || n.contains('grain'))
+    return Icons.rice_bowl_outlined;
   if (n.contains('masala') || n.contains('spice')) return Icons.spa_outlined;
   if (n.contains('frozen')) return Icons.ac_unit_rounded;
   if (n.contains('snack')) return Icons.cookie_outlined;

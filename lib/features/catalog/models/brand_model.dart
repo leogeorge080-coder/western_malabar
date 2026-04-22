@@ -42,5 +42,3 @@ class BrandModel {
     return false;
   }
 }
-
-

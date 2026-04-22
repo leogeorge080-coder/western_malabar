@@ -244,7 +244,3 @@ class __ShimmerEffectState extends State<_ShimmerEffect>
     );
   }
 }
-
-
-
-

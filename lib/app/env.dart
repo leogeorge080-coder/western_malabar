@@ -8,5 +8,3 @@ class Env {
   static String get stripePublishableKey =>
       dotenv.env['STRIPE_PUBLISHABLE_KEY']!;
 }
-
-

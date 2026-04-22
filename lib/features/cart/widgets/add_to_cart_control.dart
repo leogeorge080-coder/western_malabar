@@ -526,8 +526,7 @@ class _StepperSideButtonState extends State<_StepperSideButton>
               child: Icon(
                 widget.icon,
                 size: widget.iconSize,
-                color:
-                    widget.disabled ? const Color(0x66FFFFFF) : Colors.white,
+                color: widget.disabled ? const Color(0x66FFFFFF) : Colors.white,
               ),
             ),
           ),

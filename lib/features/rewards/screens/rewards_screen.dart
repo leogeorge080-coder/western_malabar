@@ -82,8 +82,12 @@ class RewardsScreen extends ConsumerWidget {
                         _RewardsHeroCard(
                           data: summary,
                           primaryCtaLabel: summary.availableRewardPence > 0
-                              ? (cartCount > 0 ? 'Use at checkout' : 'Build basket')
-                              : (cartCount > 0 ? 'Add more items' : 'Start shopping'),
+                              ? (cartCount > 0
+                                  ? 'Use at checkout'
+                                  : 'Build basket')
+                              : (cartCount > 0
+                                  ? 'Add more items'
+                                  : 'Start shopping'),
                           onRedeemTap: () {
                             if (cartCount > 0) {
                               Navigator.push(

@@ -513,7 +513,3 @@ class _MiniSunPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _MiniSunPainter oldDelegate) => false;
 }
-
-
-
-

@@ -38,7 +38,3 @@ class WMSearchBar extends StatelessWidget {
     );
   }
 }
-
-
-
-

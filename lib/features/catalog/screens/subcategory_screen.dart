@@ -233,7 +233,8 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
                         padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
                         child: const _SectionHeading(
                           title: 'Top picks in this aisle',
-                          subtitle: 'Start with the most likely paths to the product you need.',
+                          subtitle:
+                              'Start with the most likely paths to the product you need.',
                         ),
                       ),
                     ),
@@ -305,7 +306,8 @@ class _SubcategoryScreenState extends ConsumerState<SubcategoryScreen> {
                                     final c = items[i];
                                     return _SubcategoryCard(
                                       name: c.name,
-                                      subtitle: 'Jump straight into products in this aisle',
+                                      subtitle:
+                                          'Jump straight into products in this aisle',
                                       onTap: () => _openSubcategory(c),
                                     );
                                   },

@@ -210,7 +210,8 @@ double _haversineKm(
       math.cos(_degreesToRadians(lat1)) *
           math.cos(_degreesToRadians(lat2)) *
           math.pow(math.sin(dLon / 2), 2);
-  final c = 2 * math.atan2(math.sqrt(a.toDouble()), math.sqrt(1 - a.toDouble()));
+  final c =
+      2 * math.atan2(math.sqrt(a.toDouble()), math.sqrt(1 - a.toDouble()));
   return earthRadiusKm * c;
 }
 
@@ -261,7 +262,7 @@ Future<void> openPlannedRoute(
 
   final origin = startPoint == null
       ? ''
-      : '&origin=${Uri.encodeComponent('${startPoint.latitude},${startPoint.longitude}') }';
+      : '&origin=${Uri.encodeComponent('${startPoint.latitude},${startPoint.longitude}')}';
   final destination = Uri.encodeComponent(_routeLocation(usableStops.last));
   final waypoints = usableStops.length > 1
       ? usableStops
@@ -560,7 +561,8 @@ class _RoutePlannerBodyState extends ConsumerState<_RoutePlannerBody> {
         if (!mounted) return;
         setState(() {
           _loadingLocation = false;
-          _locationNote = 'Location permission denied. Using order coordinates only.';
+          _locationNote =
+              'Location permission denied. Using order coordinates only.';
         });
         return;
       }
@@ -582,7 +584,8 @@ class _RoutePlannerBodyState extends ConsumerState<_RoutePlannerBody> {
       if (!mounted) return;
       setState(() {
         _loadingLocation = false;
-        _locationNote = 'Could not read your location. Using order coordinates only.';
+        _locationNote =
+            'Could not read your location. Using order coordinates only.';
       });
     }
   }
@@ -593,7 +596,8 @@ class _RoutePlannerBodyState extends ConsumerState<_RoutePlannerBody> {
       widget.orders,
       startPoint: _startPoint,
     );
-    final mappedCount = planned.where((order) => order.hasPinnedLocation).length;
+    final mappedCount =
+        planned.where((order) => order.hasPinnedLocation).length;
     final routeDistanceKm = estimatePlannedRouteDistanceKm(
       planned,
       startPoint: _startPoint,
@@ -964,9 +968,7 @@ class _DeliveryOrderCardState extends ConsumerState<_DeliveryOrderCard> {
         final scannedValue = await Navigator.of(context).push<String>(
           MaterialPageRoute(
             builder: (_) => OrderQrScanScreen(
-              title: order.canDeliver
-                  ? 'Scan Delivery QR'
-                  : 'Scan Dispatch QR',
+              title: order.canDeliver ? 'Scan Delivery QR' : 'Scan Dispatch QR',
               instruction: requiredScans > 1
                   ? 'Scan each printed bag label for this order'
                   : 'Align the printed order QR inside the frame',

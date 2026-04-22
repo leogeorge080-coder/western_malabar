@@ -44,7 +44,3 @@ class StarRatingBadge extends StatelessWidget {
     );
   }
 }
-
-
-
-

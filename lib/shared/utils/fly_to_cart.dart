@@ -188,7 +188,3 @@ class _FlyingCartParticleState extends State<_FlyingCartParticle>
     super.dispose();
   }
 }
-
-
-
-

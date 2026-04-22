@@ -543,17 +543,18 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     try {
       notifier.setBackendSummaryLoading(true);
 
-      final summary =
-          await ref.read(checkoutServiceProvider).getCheckoutSummary(
-                deliveryType: checkout.deliveryType,
-                useRewards: checkout.useRewards,
-                cartItems: cartItems,
-                postcode: checkout.deliveryType == 'home_delivery'
-                    ? (checkout.selectedSavedAddress?.postcode.isNotEmpty == true
-                        ? checkout.selectedSavedAddress?.postcode
-                        : checkout.address.postcode)
-                    : null,
-              );
+      final summary = await ref
+          .read(checkoutServiceProvider)
+          .getCheckoutSummary(
+            deliveryType: checkout.deliveryType,
+            useRewards: checkout.useRewards,
+            cartItems: cartItems,
+            postcode: checkout.deliveryType == 'home_delivery'
+                ? (checkout.selectedSavedAddress?.postcode.isNotEmpty == true
+                    ? checkout.selectedSavedAddress?.postcode
+                    : checkout.address.postcode)
+                : null,
+          );
 
       final blockers = (summary['blockers'] as List<dynamic>? ?? const []);
       if ((summary['can_place_order'] == false) && blockers.isNotEmpty) {
@@ -589,10 +590,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         rewardDiscountCents:
             (summary['reward_discount_cents'] as num?)?.toInt() ?? 0,
         totalCents: (summary['total_cents'] as num?)?.toInt() ?? 0,
-        pointsToRedeem:
-            (summary['points_to_redeem'] as num?)?.toInt() ??
-                (summary['points_redeemed'] as num?)?.toInt() ??
-                0,
+        pointsToRedeem: (summary['points_to_redeem'] as num?)?.toInt() ??
+            (summary['points_redeemed'] as num?)?.toInt() ??
+            0,
       );
     } catch (e, st) {
       if (kDebugMode) {
@@ -841,7 +841,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         debugPrint('$st');
       }
       final friendlyMessage = friendlyCheckoutError(e);
-      ref.read(checkoutProvider.notifier).setBackendSummaryError(friendlyMessage);
+      ref
+          .read(checkoutProvider.notifier)
+          .setBackendSummaryError(friendlyMessage);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

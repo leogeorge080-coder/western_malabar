@@ -248,7 +248,3 @@ class _CompactSearch extends StatelessWidget {
     );
   }
 }
-
-
-
-

@@ -362,8 +362,9 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
               final parsedStockQty = int.tryParse(
                 _stockQtyController.text.trim(),
               );
-              final derivedAvailableQty =
-                  parsedStockQty == null ? null : (parsedStockQty < 0 ? 0 : parsedStockQty);
+              final derivedAvailableQty = parsedStockQty == null
+                  ? null
+                  : (parsedStockQty < 0 ? 0 : parsedStockQty);
               final derivedVisibility =
                   _isActive && (derivedAvailableQty ?? 0) > 0;
 

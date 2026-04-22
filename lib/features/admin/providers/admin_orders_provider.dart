@@ -5,7 +5,3 @@ import 'package:western_malabar/features/admin/services/admin_orders_service.dar
 final adminOrdersProvider = FutureProvider<List<AdminOrderModel>>((ref) async {
   return ref.read(adminOrdersServiceProvider).fetchRecentOrders();
 });
-
-
-
-

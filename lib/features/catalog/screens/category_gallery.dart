@@ -674,7 +674,3 @@ Color _colorFor(String s) {
   final h = s.toLowerCase().hashCode;
   return palette[h % palette.length];
 }
-
-
-
-

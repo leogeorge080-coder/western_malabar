@@ -379,7 +379,3 @@ class _SunRaysPainter extends CustomPainter {
   bool shouldRepaint(covariant _SunRaysPainter old) =>
       old.phase != phase || old.opacity != opacity;
 }
-
-
-
-

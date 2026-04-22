@@ -12,7 +12,8 @@ void main() {
 
     test('maps insufficient stock errors to user-friendly copy', () {
       expect(
-        friendlyCheckoutError(Exception('Insufficient stock for: Appam Batter')),
+        friendlyCheckoutError(
+            Exception('Insufficient stock for: Appam Batter')),
         'Appam Batter is no longer available in the requested quantity. Reduce the quantity and try again.',
       );
     });
@@ -27,7 +28,8 @@ void main() {
     test('unwraps nested function failure prefixes', () {
       expect(
         friendlyCheckoutError(
-          Exception('FunctionsHttpException failed: Exception: unavailable product in cart: Banana Chips'),
+          Exception(
+              'FunctionsHttpException failed: Exception: unavailable product in cart: Banana Chips'),
         ),
         'Banana Chips is unavailable right now. Remove it to continue.',
       );

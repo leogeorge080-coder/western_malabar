@@ -119,7 +119,3 @@ class _EdgeGlowPainter extends CustomPainter {
       old.blurSigma != blurSigma ||
       old.opacity != opacity;
 }
-
-
-
-

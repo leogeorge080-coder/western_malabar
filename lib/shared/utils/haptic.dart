@@ -28,7 +28,3 @@ class Haptic {
     HapticFeedback.selectionClick();
   }
 }
-
-
-
-

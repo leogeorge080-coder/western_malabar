@@ -354,7 +354,3 @@ class _CoconutPainter extends CustomPainter {
 extension on Rect {
   Rect scaleTo(double w, double h) => Rect.fromLTWH(left, top, w, h);
 }
-
-
-
-
