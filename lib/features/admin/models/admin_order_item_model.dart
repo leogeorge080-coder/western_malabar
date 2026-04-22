@@ -11,8 +11,11 @@ class AdminOrderItemModel {
   final bool isFrozen;
   final String pickingStatus;
   final int pickedQty;
+  final int shortPickQty;
+  final String? shortPickReason;
   final int packedQty;
   final DateTime? pickedAt;
+  final DateTime? shortPickedAt;
   final DateTime? packedAt;
 
   const AdminOrderItemModel({
@@ -28,8 +31,11 @@ class AdminOrderItemModel {
     this.isFrozen = false,
     this.pickingStatus = 'pending',
     this.pickedQty = 0,
+    this.shortPickQty = 0,
+    this.shortPickReason,
     this.packedQty = 0,
     this.pickedAt,
+    this.shortPickedAt,
     this.packedAt,
   });
 
@@ -47,13 +53,24 @@ class AdminOrderItemModel {
       isFrozen: map['is_frozen'] == true,
       pickingStatus: (map['picking_status'] ?? 'pending').toString(),
       pickedQty: (map['picked_qty'] as num?)?.toInt() ?? 0,
+      shortPickQty: (map['short_pick_qty'] as num?)?.toInt() ?? 0,
+      shortPickReason: map['short_pick_reason']?.toString(),
       packedQty: (map['packed_qty'] as num?)?.toInt() ?? 0,
       pickedAt: map['picked_at'] != null
           ? DateTime.tryParse(map['picked_at'].toString())
+          : null,
+      shortPickedAt: map['short_picked_at'] != null
+          ? DateTime.tryParse(map['short_picked_at'].toString())
           : null,
       packedAt: map['packed_at'] != null
           ? DateTime.tryParse(map['packed_at'].toString())
           : null,
     );
   }
+
+  int get resolvedQty => pickedQty + shortPickQty;
+  bool get isFullyPicked => pickedQty >= qty;
+  bool get isResolved => resolvedQty >= qty;
+  bool get isPartiallyPicked => pickedQty > 0 && pickedQty < qty;
+  bool get isShortPicked => shortPickQty > 0;
 }

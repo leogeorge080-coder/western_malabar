@@ -17,10 +17,28 @@ class BarcodePickResult {
   });
 }
 
+class UndoPickResult {
+  final String message;
+  final String? orderItemId;
+
+  const UndoPickResult({
+    required this.message,
+    this.orderItemId,
+  });
+}
+
 class AdminOrdersService {
   final SupabaseClient supabase;
 
   AdminOrdersService(this.supabase);
+
+  String _normalizeBackendError(Object error) {
+    final raw = error.toString().trim();
+    if (raw.startsWith('Exception: ')) {
+      return raw.substring('Exception: '.length).trim();
+    }
+    return raw;
+  }
 
   Future<List<AdminOrderModel>> fetchRecentOrders() async {
     final rows = await supabase.from('orders').select('''
@@ -127,8 +145,11 @@ class AdminOrdersService {
           is_frozen,
           picking_status,
           picked_qty,
+          short_pick_qty,
+          short_pick_reason,
           packed_qty,
           picked_at,
+          short_picked_at,
           packed_at
         ''')
         .eq('order_id', orderId)
@@ -141,9 +162,20 @@ class AdminOrdersService {
   }
 
   Future<void> startPicking(String orderId) async {
-    await supabase.from('orders').update({
-      'admin_status': 'picking',
-    }).eq('id', orderId);
+    try {
+      final raw = await supabase.rpc(
+        'start_order_picking_atomic',
+        params: {
+          'p_order_id': orderId,
+        },
+      );
+
+      if (raw == null || raw is! Map || raw['ok'] != true) {
+        throw Exception('Could not start picking for this order');
+      }
+    } catch (e) {
+      throw Exception(_normalizeBackendError(e));
+    }
   }
 
   Future<BarcodePickResult> verifyManualBarcodeForOrder({
@@ -159,106 +191,125 @@ class AdminOrdersService {
       );
     }
 
-    final itemRows = await supabase.from('order_items').select('''
-          id,
-          order_id,
-          product_id,
-          product_name,
-          qty,
-          is_frozen,
-          picked_qty,
-          packed_qty,
-          barcode
-        ''').eq('order_id', orderId).eq('barcode', cleanBarcode).limit(1);
-
-    if ((itemRows as List).isEmpty) {
-      return const BarcodePickResult(
-        success: false,
-        message: 'This barcode does not match any item in this order',
+    try {
+      final raw = await supabase.rpc(
+        'scan_order_item_barcode_atomic',
+        params: {
+          'p_order_id': orderId,
+          'p_barcode': cleanBarcode,
+        },
       );
-    }
 
-    final item = itemRows.first;
-    final itemId = item['id'].toString();
-    final qty = (item['qty'] as num?)?.toInt() ?? 0;
-    final pickedQty = (item['picked_qty'] as num?)?.toInt() ?? 0;
-    final isFrozen = item['is_frozen'] as bool? ?? false;
-    final productName = (item['product_name'] as String?) ?? 'Unknown item';
+      if (raw == null || raw is! Map || raw['ok'] != true) {
+        return const BarcodePickResult(
+          success: false,
+          message: 'Barcode verification failed',
+        );
+      }
 
-    if (pickedQty >= qty) {
+      final itemId = raw['matched_item_id']?.toString();
+      final productName = (raw['product_name'] as String?) ?? 'Unknown item';
+      final qty = (raw['qty'] as num?)?.toInt() ?? 0;
+      final pickedQty = (raw['picked_qty'] as num?)?.toInt() ?? 0;
+      final isFrozen = raw['is_frozen'] as bool? ?? false;
+
       return BarcodePickResult(
-        success: false,
-        message: 'Required quantity already completed for $productName',
+        success: true,
+        message: isFrozen
+            ? '$productName verified and moved to freezer staging ($pickedQty / $qty)'
+            : '$productName verified and picked ($pickedQty / $qty)',
         matchedItemId: itemId,
         isFrozen: isFrozen,
       );
+    } catch (e) {
+      return BarcodePickResult(
+        success: false,
+        message: _normalizeBackendError(e),
+      );
     }
-
-    final nextPickedQty = pickedQty + 1;
-    final isComplete = nextPickedQty >= qty;
-
-    await supabase.from('order_items').update({
-      'picked_qty': nextPickedQty,
-      'picked_at': DateTime.now().toIso8601String(),
-      'picking_status': isComplete ? 'picked' : 'partial',
-    }).eq('id', itemId);
-
-    final allItems = await supabase
-        .from('order_items')
-        .select('qty, picked_qty')
-        .eq('order_id', orderId);
-
-    final allPicked = (allItems as List).every((row) {
-      final map = row as Map<String, dynamic>;
-      final qty = (map['qty'] as num?)?.toInt() ?? 0;
-      final picked = (map['picked_qty'] as num?)?.toInt() ?? 0;
-      return picked >= qty;
-    });
-
-    await supabase.from('orders').update({
-      'status': allPicked ? 'picked' : 'picking',
-      'admin_status': allPicked ? 'picked' : 'picking',
-    }).eq('id', orderId);
-
-    return BarcodePickResult(
-      success: true,
-      message: isFrozen
-          ? '$productName verified and moved to freezer staging ($nextPickedQty / $qty)'
-          : '$productName verified and picked ($nextPickedQty / $qty)',
-      matchedItemId: itemId,
-      isFrozen: isFrozen,
-    );
   }
 
   Future<void> markOrderPacked({
     required String orderId,
     required bool hasFrozenItems,
   }) async {
-    final now = DateTime.now().toIso8601String();
+    final raw = await supabase.rpc(
+      'mark_order_packed_atomic',
+      params: {
+        'p_order_id': orderId,
+      },
+    );
 
-    await supabase.from('orders').update({
-      'admin_status': hasFrozenItems ? 'frozen_staged' : 'packed',
-      'status': 'packed',
-      'packed_at': now,
-      'freezer_status':
-          hasFrozenItems ? 'moved_to_order_freezer' : 'not_required',
-    }).eq('id', orderId);
+    if (raw == null || raw is! Map || raw['ok'] != true) {
+      throw Exception('Could not mark this order as packed');
+    }
+  }
 
-    final itemRows = await supabase
-        .from('order_items')
-        .select('id, qty')
-        .eq('order_id', orderId);
+  Future<UndoPickResult> undoLastScan(String orderId) async {
+    try {
+      final raw = await supabase.rpc(
+        'undo_last_order_item_scan_atomic',
+        params: {
+          'p_order_id': orderId,
+        },
+      );
 
-    for (final row in (itemRows as List)) {
-      final map = row as Map<String, dynamic>;
-      final itemId = map['id'] as String;
-      final qty = (map['qty'] as num?)?.toInt() ?? 0;
+      if (raw == null || raw is! Map || raw['ok'] != true) {
+        throw Exception('Could not undo the last scan');
+      }
 
-      await supabase.from('order_items').update({
-        'picking_status': 'packed',
-        'packed_qty': qty,
-        'packed_at': now,
-      }).eq('id', itemId);
+      final productName = (raw['product_name'] as String?) ?? 'Item';
+      final pickedQty = (raw['picked_qty'] as num?)?.toInt() ?? 0;
+      final qty = (raw['qty'] as num?)?.toInt() ?? 0;
+
+      return UndoPickResult(
+        message: '$productName scan undone ($pickedQty / $qty)',
+        orderItemId: raw['order_item_id']?.toString(),
+      );
+    } catch (e) {
+      throw Exception(_normalizeBackendError(e));
+    }
+  }
+
+  Future<void> shortPickOrderItem({
+    required String orderId,
+    required String orderItemId,
+    required int shortPickQty,
+    required String reason,
+  }) async {
+    try {
+      final raw = await supabase.rpc(
+        'short_pick_order_item_atomic',
+        params: {
+          'p_order_id': orderId,
+          'p_order_item_id': orderItemId,
+          'p_short_pick_qty': shortPickQty,
+          'p_reason': reason,
+        },
+      );
+
+      if (raw == null || raw is! Map || raw['ok'] != true) {
+        throw Exception('Could not short-pick this item');
+      }
+    } catch (e) {
+      throw Exception(_normalizeBackendError(e));
+    }
+  }
+
+  Future<void> reopenPartiallyPickedOrder(String orderId) async {
+    try {
+      final raw = await supabase.rpc(
+        'reopen_partially_picked_order_atomic',
+        params: {
+          'p_order_id': orderId,
+        },
+      );
+
+      if (raw == null || raw is! Map || raw['ok'] != true) {
+        throw Exception('Could not reopen this picking session');
+      }
+    } catch (e) {
+      throw Exception(_normalizeBackendError(e));
     }
   }
 
@@ -271,13 +322,16 @@ class AdminOrdersService {
         .eq('id', orderId)
         .single();
 
-    final now = DateTime.now().toIso8601String();
+    final raw = await supabase.rpc(
+      'mark_order_out_for_delivery_atomic',
+      params: {
+        'p_order_id': orderId,
+      },
+    );
 
-    await supabase.from('orders').update({
-      'delivery_status': 'out_for_delivery',
-      'status': 'out_for_delivery',
-      'out_for_delivery_at': now,
-    }).eq('id', orderId);
+    if (raw == null || raw is! Map || raw['ok'] != true) {
+      throw Exception('Could not mark this order as out for delivery');
+    }
 
     final email = (order['customer_email'] as String?)?.trim();
     final customerName =
@@ -314,14 +368,16 @@ class AdminOrdersService {
         .eq('id', orderId)
         .single();
 
-    final now = DateTime.now().toIso8601String();
+    final raw = await supabase.rpc(
+      'mark_order_delivered_atomic',
+      params: {
+        'p_order_id': orderId,
+      },
+    );
 
-    await supabase.from('orders').update({
-      'delivery_status': 'delivered',
-      'status': 'delivered',
-      'admin_status': 'delivered',
-      'delivered_at': now,
-    }).eq('id', orderId);
+    if (raw == null || raw is! Map || raw['ok'] != true) {
+      throw Exception('Could not mark this order as delivered');
+    }
 
     final email = (order['customer_email'] as String?)?.trim();
     final customerName =

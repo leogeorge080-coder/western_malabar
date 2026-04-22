@@ -1,5 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:western_malabar/core/feedback/scan_feedback.dart';
@@ -34,6 +37,244 @@ Future<void> openGoogleMaps(AdminOrderModel order) async {
       'https://www.google.com/maps/search/?api=1&query=$encoded',
     );
   }
+
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+}
+
+String _routeLocation(AdminOrderModel order) {
+  if (order.latitude != null && order.longitude != null) {
+    return '${order.latitude},${order.longitude}';
+  }
+  return buildFullAddress(order);
+}
+
+class _DriverStartPoint {
+  const _DriverStartPoint({
+    required this.latitude,
+    required this.longitude,
+  });
+
+  final double latitude;
+  final double longitude;
+}
+
+List<AdminOrderModel> planDeliveryRoute(
+  List<AdminOrderModel> orders, {
+  _DriverStartPoint? startPoint,
+}) {
+  if (orders.length <= 1) return [...orders];
+
+  final prioritized = [...orders];
+  prioritized.sort((a, b) {
+    final priorityCompare = a.statusPriority.compareTo(b.statusPriority);
+    if (priorityCompare != 0) return priorityCompare;
+
+    final aSlot = (a.deliverySlot ?? '').trim().toLowerCase();
+    final bSlot = (b.deliverySlot ?? '').trim().toLowerCase();
+    final slotCompare = aSlot.compareTo(bSlot);
+    if (slotCompare != 0) return slotCompare;
+
+    final aCreated = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final bCreated = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    return aCreated.compareTo(bCreated);
+  });
+
+  final pinned = prioritized.where((o) => o.hasPinnedLocation).toList();
+  final unpinned = prioritized.where((o) => !o.hasPinnedLocation).toList();
+
+  if (pinned.length <= 1) {
+    return [...pinned, ...unpinned];
+  }
+
+  final seedIndex = _bestSeedIndex(pinned, startPoint: startPoint);
+  final planned = <AdminOrderModel>[pinned[seedIndex]];
+  final remaining = [...pinned]..removeAt(seedIndex);
+  var current = planned.first;
+
+  while (remaining.isNotEmpty) {
+    remaining.sort((a, b) {
+      final da = _distanceBetween(current, a);
+      final db = _distanceBetween(current, b);
+      return da.compareTo(db);
+    });
+    current = remaining.removeAt(0);
+    planned.add(current);
+  }
+
+  final optimizedPinned = _twoOpt(planned);
+  return [...optimizedPinned, ...unpinned];
+}
+
+double _distanceBetween(AdminOrderModel a, AdminOrderModel b) {
+  if (!a.hasPinnedLocation || !b.hasPinnedLocation) {
+    return double.infinity;
+  }
+  return _haversineKm(
+    a.latitude!,
+    a.longitude!,
+    b.latitude!,
+    b.longitude!,
+  );
+}
+
+int _bestSeedIndex(
+  List<AdminOrderModel> orders, {
+  _DriverStartPoint? startPoint,
+}) {
+  if (orders.length <= 2) return 0;
+
+  if (startPoint != null) {
+    var bestIndex = 0;
+    var bestDistance = double.infinity;
+
+    for (var i = 0; i < orders.length; i++) {
+      final order = orders[i];
+      if (!order.hasPinnedLocation) continue;
+      final distance = _haversineKm(
+        startPoint.latitude,
+        startPoint.longitude,
+        order.latitude!,
+        order.longitude!,
+      );
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestIndex = i;
+      }
+    }
+
+    return bestIndex;
+  }
+
+  var bestIndex = 0;
+  var bestScore = double.infinity;
+
+  for (var i = 0; i < orders.length; i++) {
+    var score = 0.0;
+    for (var j = 0; j < orders.length; j++) {
+      if (i == j) continue;
+      score += _distanceBetween(orders[i], orders[j]);
+    }
+    if (score < bestScore) {
+      bestScore = score;
+      bestIndex = i;
+    }
+  }
+
+  return bestIndex;
+}
+
+List<AdminOrderModel> _twoOpt(List<AdminOrderModel> route) {
+  if (route.length < 4) return [...route];
+
+  final best = [...route];
+  var improved = true;
+
+  while (improved) {
+    improved = false;
+    for (var i = 1; i < best.length - 2; i++) {
+      for (var k = i + 1; k < best.length - 1; k++) {
+        final currentDistance = _edgeDistance(best[i - 1], best[i]) +
+            _edgeDistance(best[k], best[k + 1]);
+        final candidateDistance = _edgeDistance(best[i - 1], best[k]) +
+            _edgeDistance(best[i], best[k + 1]);
+
+        if (candidateDistance + 0.001 < currentDistance) {
+          final reversed = best.sublist(i, k + 1).reversed.toList();
+          best.replaceRange(i, k + 1, reversed);
+          improved = true;
+        }
+      }
+    }
+  }
+
+  return best;
+}
+
+double _edgeDistance(AdminOrderModel a, AdminOrderModel b) {
+  final distance = _distanceBetween(a, b);
+  return distance.isFinite ? distance : 0;
+}
+
+double _haversineKm(
+  double lat1,
+  double lon1,
+  double lat2,
+  double lon2,
+) {
+  const earthRadiusKm = 6371.0;
+  final dLat = _degreesToRadians(lat2 - lat1);
+  final dLon = _degreesToRadians(lon2 - lon1);
+  final a = math.pow(math.sin(dLat / 2), 2) +
+      math.cos(_degreesToRadians(lat1)) *
+          math.cos(_degreesToRadians(lat2)) *
+          math.pow(math.sin(dLon / 2), 2);
+  final c = 2 * math.atan2(math.sqrt(a.toDouble()), math.sqrt(1 - a.toDouble()));
+  return earthRadiusKm * c;
+}
+
+double _degreesToRadians(double degrees) {
+  return degrees * (math.pi / 180.0);
+}
+
+double estimatePlannedRouteDistanceKm(
+  List<AdminOrderModel> orders, {
+  _DriverStartPoint? startPoint,
+}) {
+  if (orders.isEmpty) return 0;
+
+  final pinned = orders.where((order) => order.hasPinnedLocation).toList();
+  if (pinned.isEmpty) return 0;
+
+  var totalDistance = 0.0;
+
+  if (startPoint != null) {
+    totalDistance += _haversineKm(
+      startPoint.latitude,
+      startPoint.longitude,
+      pinned.first.latitude!,
+      pinned.first.longitude!,
+    );
+  }
+
+  for (var i = 0; i < pinned.length - 1; i++) {
+    totalDistance += _distanceBetween(pinned[i], pinned[i + 1]);
+  }
+
+  return totalDistance;
+}
+
+Future<void> openPlannedRoute(
+  List<AdminOrderModel> orders, {
+  _DriverStartPoint? startPoint,
+}) async {
+  if (orders.isEmpty) return;
+
+  final planned = planDeliveryRoute(orders, startPoint: startPoint);
+  final usableStops = planned
+      .where((order) => _routeLocation(order).trim().isNotEmpty)
+      .take(9)
+      .toList();
+
+  if (usableStops.isEmpty) return;
+
+  final origin = startPoint == null
+      ? ''
+      : '&origin=${Uri.encodeComponent('${startPoint.latitude},${startPoint.longitude}') }';
+  final destination = Uri.encodeComponent(_routeLocation(usableStops.last));
+  final waypoints = usableStops.length > 1
+      ? usableStops
+          .take(usableStops.length - 1)
+          .map((order) => Uri.encodeComponent(_routeLocation(order)))
+          .join('|')
+      : '';
+
+  final uri = Uri.parse(
+    waypoints.isEmpty
+        ? 'https://www.google.com/maps/dir/?api=1&destination=$destination$origin'
+        : 'https://www.google.com/maps/dir/?api=1&destination=$destination&waypoints=$waypoints$origin',
+  );
 
   if (await canLaunchUrl(uri)) {
     await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -122,14 +363,34 @@ class DeliveryOrdersScreen extends ConsumerWidget {
                       onRefresh: () async {
                         ref.invalidate(deliveryOrdersProvider);
                       },
-                      child: ListView.separated(
+                      child: ListView(
                         padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                        itemBuilder: (context, index) {
-                          final order = orders[index];
-                          return _DeliveryOrderCard(order: order);
-                        },
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
-                        itemCount: orders.length,
+                        children: [
+                          if (orders.length > 1) ...[
+                            _RoutePlannerOverviewCard(
+                              orders: orders,
+                              onOpenPlanner: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => _RoutePlannerScreen(
+                                      orders: orders,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 14),
+                          ],
+                          ...List.generate(orders.length, (index) {
+                            final order = orders[index];
+                            return Padding(
+                              padding: EdgeInsets.only(
+                                bottom: index == orders.length - 1 ? 0 : 12,
+                              ),
+                              child: _DeliveryOrderCard(order: order),
+                            );
+                          }),
+                        ],
                       ),
                     );
                   },
@@ -148,6 +409,492 @@ class DeliveryOrdersScreen extends ConsumerWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RoutePlannerOverviewCard extends StatelessWidget {
+  const _RoutePlannerOverviewCard({
+    required this.orders,
+    required this.onOpenPlanner,
+  });
+
+  final List<AdminOrderModel> orders;
+  final VoidCallback onOpenPlanner;
+
+  @override
+  Widget build(BuildContext context) {
+    final pinnedCount = orders.where((order) => order.hasPinnedLocation).length;
+    final readyCount = orders.where((order) => order.canDeliver).length;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12000000),
+            blurRadius: 12,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [WMTheme.royalPurple, Color(0xFF6D4AFF)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(
+              Icons.route_rounded,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Route planner ready',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${orders.length} stops • $readyCount active deliveries • $pinnedCount pinned',
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black54,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          ElevatedButton(
+            onPressed: onOpenPlanner,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: WMTheme.royalPurple,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: const Text(
+              'Plan',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoutePlannerScreen extends StatelessWidget {
+  const _RoutePlannerScreen({
+    required this.orders,
+  });
+
+  final List<AdminOrderModel> orders;
+
+  @override
+  Widget build(BuildContext context) {
+    return _RoutePlannerBody(orders: orders);
+  }
+}
+
+class _RoutePlannerBody extends ConsumerStatefulWidget {
+  const _RoutePlannerBody({
+    required this.orders,
+  });
+
+  final List<AdminOrderModel> orders;
+
+  @override
+  ConsumerState<_RoutePlannerBody> createState() => _RoutePlannerBodyState();
+}
+
+class _RoutePlannerBodyState extends ConsumerState<_RoutePlannerBody> {
+  _DriverStartPoint? _startPoint;
+  bool _loadingLocation = true;
+  String? _locationNote;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDriverLocation();
+  }
+
+  Future<void> _loadDriverLocation() async {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (!mounted) return;
+        setState(() {
+          _loadingLocation = false;
+          _locationNote = 'Location is off. Using order coordinates only.';
+        });
+        return;
+      }
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        if (!mounted) return;
+        setState(() {
+          _loadingLocation = false;
+          _locationNote = 'Location permission denied. Using order coordinates only.';
+        });
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _startPoint = _DriverStartPoint(
+          latitude: position.latitude,
+          longitude: position.longitude,
+        );
+        _loadingLocation = false;
+        _locationNote = 'Route starts from your live location.';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loadingLocation = false;
+        _locationNote = 'Could not read your location. Using order coordinates only.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final planned = planDeliveryRoute(
+      widget.orders,
+      startPoint: _startPoint,
+    );
+    final mappedCount = planned.where((order) => order.hasPinnedLocation).length;
+    final routeDistanceKm = estimatePlannedRouteDistanceKm(
+      planned,
+      startPoint: _startPoint,
+    );
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: WMGradients.pageBackground,
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.maybePop(context),
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                    ),
+                    const Expanded(
+                      child: Text(
+                        'Route Planner',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _loadingLocation ? null : _loadDriverLocation,
+                      icon: const Icon(Icons.my_location_rounded),
+                      tooltip: 'Refresh live location',
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x12000000),
+                            blurRadius: 12,
+                            offset: Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Optimized stop order',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '${planned.length} stops planned • $mappedCount pinned locations used for route ordering',
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black54,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _loadingLocation
+                                ? 'Getting your live location...'
+                                : (_locationNote ??
+                                    'Using order coordinates only.'),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black54,
+                            ),
+                          ),
+                          if (routeDistanceKm > 0) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              'Estimated mapped distance: ${routeDistanceKm.toStringAsFixed(1)} km',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: WMTheme.royalPurple,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () => openPlannedRoute(
+                                planned,
+                                startPoint: _startPoint,
+                              ),
+                              icon: const Icon(Icons.navigation_rounded),
+                              label: const Text(
+                                'Open route in Google Maps',
+                                style: TextStyle(fontWeight: FontWeight.w800),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: WMTheme.royalPurple,
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size.fromHeight(50),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Pinned stops are optimized first with live driver location when available. Stops without coordinates are appended after the optimized route.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    ...List.generate(planned.length, (index) {
+                      final order = planned[index];
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          bottom: index == planned.length - 1 ? 0 : 12,
+                        ),
+                        child: _RouteStopCard(
+                          stopNumber: index + 1,
+                          order: order,
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RouteStopCard extends StatelessWidget {
+  const _RouteStopCard({
+    required this.stopNumber,
+    required this.order,
+  });
+
+  final int stopNumber;
+  final AdminOrderModel order;
+
+  @override
+  Widget build(BuildContext context) {
+    final orderNo = order.orderNumber ?? order.id;
+    final customerName = order.customerName ?? 'Unknown customer';
+    final slot = order.deliverySlot ?? 'No slot';
+    final address = buildFullAddress(order);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12000000),
+            blurRadius: 12,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3EDFF),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '$stopNumber',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                color: WMTheme.royalPurple,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  customerName,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  orderNo,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: WMTheme.royalPurple,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _InfoRow(
+                  icon: Icons.schedule_rounded,
+                  text: slot,
+                ),
+                const SizedBox(height: 8),
+                _InfoRow(
+                  icon: Icons.location_on_rounded,
+                  text: address.isEmpty ? 'No address available' : address,
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _PlannerPill(
+                      label: order.displayStatusLabel,
+                      foreground: WMTheme.royalPurple,
+                      background: const Color(0xFFF3EDFF),
+                    ),
+                    _PlannerPill(
+                      label: order.hasPinnedLocation ? 'Pinned' : 'Approximate',
+                      foreground: order.hasPinnedLocation
+                          ? Colors.green
+                          : Colors.orange.shade800,
+                      background: order.hasPinnedLocation
+                          ? const Color(0xFFE8F5E9)
+                          : const Color(0xFFFFF3E0),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          IconButton(
+            onPressed: () => openGoogleMaps(order),
+            icon: const Icon(
+              Icons.navigation_rounded,
+              color: WMTheme.royalPurple,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlannerPill extends StatelessWidget {
+  const _PlannerPill({
+    required this.label,
+    required this.foreground,
+    required this.background,
+  });
+
+  final String label;
+  final Color foreground;
+  final Color background;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w800,
+          color: foreground,
         ),
       ),
     );
@@ -216,7 +963,23 @@ class _DeliveryOrderCardState extends ConsumerState<_DeliveryOrderCard> {
       while (scannedSet.length < requiredScans) {
         final scannedValue = await Navigator.of(context).push<String>(
           MaterialPageRoute(
-            builder: (_) => const OrderQrScanScreen(),
+            builder: (_) => OrderQrScanScreen(
+              title: order.canDeliver
+                  ? 'Scan Delivery QR'
+                  : 'Scan Dispatch QR',
+              instruction: requiredScans > 1
+                  ? 'Scan each printed bag label for this order'
+                  : 'Align the printed order QR inside the frame',
+              validator: (rawValue) {
+                if (!validCodes.contains(rawValue)) {
+                  return 'QR does not match this order';
+                }
+                if (scannedSet.contains(rawValue)) {
+                  return 'This label is already scanned';
+                }
+                return null;
+              },
+            ),
           ),
         );
 
@@ -225,34 +988,6 @@ class _DeliveryOrderCardState extends ConsumerState<_DeliveryOrderCard> {
         }
 
         final scanned = scannedValue.trim();
-
-        if (!validCodes.contains(scanned)) {
-          _setFlash(Colors.red);
-          await ScanFeedback.error();
-
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('QR does not match this order'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          continue;
-        }
-
-        if (scannedSet.contains(scanned)) {
-          _setFlash(Colors.orange);
-          await ScanFeedback.error();
-
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('This label is already scanned'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-          continue;
-        }
 
         scannedSet.add(scanned);
 

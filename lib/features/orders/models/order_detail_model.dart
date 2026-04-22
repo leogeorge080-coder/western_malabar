@@ -81,7 +81,7 @@ class OrderDetailModel {
       dispatchedAt: parseDate(map['dispatched_at']),
       outForDeliveryAt: parseDate(map['out_for_delivery_at']),
       deliveredAt: parseDate(map['delivered_at']),
-      displayStatus: (map['display_status'] ?? 'Order Placed').toString(),
+      displayStatus: (map['display_status'] ?? '').toString(),
     );
   }
 
@@ -96,9 +96,9 @@ class OrderDetailModel {
   String get paymentMethodLabel {
     switch (paymentMethod) {
       case 'cod':
-        return 'Cash on Delivery';
+        return 'Cash on delivery';
       case 'card':
-        return 'Card Payment';
+        return 'Card payment';
       default:
         return paymentMethod.isEmpty ? 'Payment' : paymentMethod;
     }
@@ -107,9 +107,9 @@ class OrderDetailModel {
   String get deliveryTypeLabel {
     switch (deliveryType) {
       case 'local_pickup':
-        return 'Local Pickup';
+        return 'Local pickup';
       case 'home_delivery':
-        return 'Home Delivery';
+        return 'Home delivery';
       default:
         return 'Delivery';
     }
@@ -127,6 +127,37 @@ class OrderDetailModel {
         return paymentStatus.isEmpty ? 'Pending' : paymentStatus;
     }
   }
+
+  String get customerDisplayStatus {
+    final s = status.trim().toLowerCase();
+    final a = adminStatus.trim().toLowerCase();
+    final d = deliveryStatus.trim().toLowerCase();
+    final isPickup = deliveryType.trim().toLowerCase() == 'local_pickup';
+
+    if (s == 'cancelled' || a == 'cancelled') {
+      return 'Cancelled';
+    }
+
+    if (isPickup) {
+      if (d == 'delivered' || d == 'collected' || s == 'collected') {
+        return 'Collected';
+      }
+      if (d == 'ready_for_pickup' || d == 'ready for pickup') {
+        return 'Ready for pickup';
+      }
+    } else {
+      if (d == 'delivered') {
+        return 'Delivered';
+      }
+      if (d == 'out_for_delivery' || d == 'out for delivery') {
+        return 'On the way';
+      }
+    }
+
+    return 'Order received';
+  }
+
+  bool get canCustomerCancel => status.trim().toLowerCase() == 'placed';
 
   String get fullAddress {
     final parts = <String>[

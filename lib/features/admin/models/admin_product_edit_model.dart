@@ -7,6 +7,7 @@ class AdminProductEditModel {
   final List<String> images;
   final String? description;
   final bool isActive;
+  final bool isAvailable;
   final bool isFrozen;
   final String? barcode;
   final bool isWeeklyDeal;
@@ -18,6 +19,8 @@ class AdminProductEditModel {
   final int? salePriceCents;
   final int? sellerBasePriceCents;
   final String? firstVariantId;
+  final int? availableQty;
+  final int? stockQty;
 
   const AdminProductEditModel({
     required this.id,
@@ -27,6 +30,7 @@ class AdminProductEditModel {
     this.categoryId,
     required this.images,
     required this.isActive,
+    required this.isAvailable,
     required this.isFrozen,
     this.description,
     this.barcode,
@@ -39,6 +43,8 @@ class AdminProductEditModel {
     this.salePriceCents,
     this.sellerBasePriceCents,
     this.firstVariantId,
+    this.availableQty,
+    this.stockQty,
   });
 
   factory AdminProductEditModel.fromMap(Map<String, dynamic> map) {
@@ -68,6 +74,7 @@ class AdminProductEditModel {
       images: parsedImages,
       description: map['description'] as String?,
       isActive: map['is_active'] as bool? ?? true,
+      isAvailable: map['is_available'] as bool? ?? true,
       isFrozen: map['is_frozen'] as bool? ?? false,
       barcode: map['barcode'] as String?,
       isWeeklyDeal: map['is_weekly_deal'] as bool? ?? false,
@@ -83,6 +90,9 @@ class AdminProductEditModel {
       salePriceCents: (firstVariant?['sale_price_cents'] as num?)?.toInt(),
       sellerBasePriceCents: fallbackBase,
       firstVariantId: firstVariant?['id']?.toString(),
+      availableQty: (map['available_qty'] as num?)?.toInt(),
+      stockQty: (map['stock_qty'] as num?)?.toInt() ??
+          (firstVariant?['stock_qty'] as num?)?.toInt(),
     );
   }
 
@@ -95,6 +105,7 @@ class AdminProductEditModel {
     List<String>? images,
     String? description,
     bool? isActive,
+    bool? isAvailable,
     bool? isFrozen,
     String? barcode,
     bool? isWeeklyDeal,
@@ -106,6 +117,8 @@ class AdminProductEditModel {
     int? salePriceCents,
     int? sellerBasePriceCents,
     String? firstVariantId,
+    int? availableQty,
+    int? stockQty,
   }) {
     return AdminProductEditModel(
       id: id ?? this.id,
@@ -116,6 +129,7 @@ class AdminProductEditModel {
       images: images ?? this.images,
       description: description ?? this.description,
       isActive: isActive ?? this.isActive,
+      isAvailable: isAvailable ?? this.isAvailable,
       isFrozen: isFrozen ?? this.isFrozen,
       barcode: barcode ?? this.barcode,
       isWeeklyDeal: isWeeklyDeal ?? this.isWeeklyDeal,
@@ -127,6 +141,8 @@ class AdminProductEditModel {
       salePriceCents: salePriceCents ?? this.salePriceCents,
       sellerBasePriceCents: sellerBasePriceCents ?? this.sellerBasePriceCents,
       firstVariantId: firstVariantId ?? this.firstVariantId,
+      availableQty: availableQty ?? this.availableQty,
+      stockQty: stockQty ?? this.stockQty,
     );
   }
 

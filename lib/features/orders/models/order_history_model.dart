@@ -57,17 +57,14 @@ class OrderHistoryModel {
 
   String get totalFormatted => '£${(totalCents / 100).toStringAsFixed(2)}';
 
-  String get itemCountLabel {
-    if (itemCount == 1) return '1 item';
-    return '$itemCount items';
-  }
+  String get itemCountLabel => itemCount == 1 ? '1 item' : '$itemCount items';
 
   String get deliveryTypeLabel {
     switch (deliveryType.trim().toLowerCase()) {
       case 'local_pickup':
         return 'Pickup';
       case 'home_delivery':
-        return 'Home Delivery';
+        return 'Home delivery';
       default:
         return 'Delivery';
     }
@@ -76,22 +73,21 @@ class OrderHistoryModel {
   String get paymentMethodLabel {
     switch (paymentMethod.trim().toLowerCase()) {
       case 'cod':
-        return 'Cash on Delivery';
+        return 'Cash on delivery';
       case 'card':
-        return 'Card Payment';
+        return 'Card payment';
       default:
         return paymentMethod.isEmpty ? 'Payment' : _titleize(paymentMethod);
     }
   }
 
-  String get normalizedDisplayStatus {
+  String get customerDisplayStatus {
     final s = status.trim().toLowerCase();
     final a = adminStatus.trim().toLowerCase();
     final d = deliveryStatus.trim().toLowerCase();
-    final p = paymentStatus.trim().toLowerCase();
     final isPickup = deliveryType.trim().toLowerCase() == 'local_pickup';
 
-    if (s == 'cancelled' || a == 'cancelled' || d == 'cancelled') {
+    if (s == 'cancelled' || a == 'cancelled') {
       return 'Cancelled';
     }
 
@@ -99,83 +95,58 @@ class OrderHistoryModel {
       if (d == 'delivered' || d == 'collected' || s == 'collected') {
         return 'Collected';
       }
-      if (d == 'ready_for_pickup' ||
-          d == 'ready for pickup' ||
-          a == 'ready_for_pickup' ||
-          a == 'ready for pickup') {
-        return 'Ready for Pickup';
+      if (d == 'ready_for_pickup' || d == 'ready for pickup') {
+        return 'Ready for pickup';
       }
     } else {
       if (d == 'delivered') {
         return 'Delivered';
       }
       if (d == 'out_for_delivery' || d == 'out for delivery') {
-        return 'Out for Delivery';
+        return 'On the way';
       }
     }
 
-    if (a == 'packed' || s == 'packed') {
-      return 'Packing';
-    }
-
-    if (a == 'preparing' || s == 'preparing') {
-      return 'Preparing';
-    }
-
-    if (a == 'confirmed' || s == 'confirmed') {
-      return 'Confirmed';
-    }
-
-    if (p == 'pending' && (s.isEmpty || s == 'placed')) {
-      return 'Payment Pending';
-    }
-
     if (displayStatus.trim().isNotEmpty) {
-      return _normalizeIncomingDisplayStatus(displayStatus);
+      final normalized = _normalizeIncomingDisplayStatus(displayStatus);
+      if (normalized.isNotEmpty) return normalized;
     }
 
-    return 'Order Placed';
+    return 'Order received';
   }
 
   bool get isCompleted {
-    final value = normalizedDisplayStatus;
+    final value = customerDisplayStatus;
     return value == 'Delivered' || value == 'Collected';
   }
 
   bool get isActive {
-    final value = normalizedDisplayStatus;
-    return value == 'Confirmed' ||
-        value == 'Preparing' ||
-        value == 'Packing' ||
-        value == 'Out for Delivery' ||
-        value == 'Ready for Pickup' ||
-        value == 'Payment Pending';
+    final value = customerDisplayStatus;
+    return value == 'Order received' ||
+        value == 'On the way' ||
+        value == 'Ready for pickup';
   }
 
-  bool get isCancelled => normalizedDisplayStatus == 'Cancelled';
+  bool get isCancelled => customerDisplayStatus == 'Cancelled';
+
+  bool get canCustomerCancel => status.trim().toLowerCase() == 'placed';
 
   String get statusMessage {
-    switch (normalizedDisplayStatus) {
+    switch (customerDisplayStatus) {
       case 'Delivered':
-        return 'This order has been delivered successfully.';
+        return 'Your order has been delivered successfully.';
       case 'Collected':
-        return 'This order was collected successfully.';
-      case 'Out for Delivery':
+        return 'Your order was collected successfully.';
+      case 'On the way':
         return 'Your order is on the way.';
-      case 'Ready for Pickup':
-        return 'Your order is ready to collect.';
-      case 'Packing':
-        return 'Your items are being packed for dispatch.';
-      case 'Preparing':
-        return 'Your order is being prepared.';
-      case 'Confirmed':
-        return 'Your order has been confirmed and will move soon.';
-      case 'Payment Pending':
-        return 'Your payment is still pending confirmation.';
+      case 'Ready for pickup':
+        return 'Your order is ready for collection.';
+      case 'Order received':
+        return 'We have received your order and will begin processing it shortly.';
       case 'Cancelled':
-        return 'This order was cancelled.';
+        return 'This order has been cancelled.';
       default:
-        return 'Tap to view full order details and updates.';
+        return 'Open this order to review items, totals, and updates.';
     }
   }
 
@@ -189,27 +160,23 @@ class OrderHistoryModel {
         return 'Collected';
       case 'out_for_delivery':
       case 'out for delivery':
-        return 'Out for Delivery';
+        return 'On the way';
       case 'ready_for_pickup':
       case 'ready for pickup':
-        return 'Ready for Pickup';
-      case 'packed':
-      case 'packing':
-        return 'Packing';
-      case 'preparing':
-        return 'Preparing';
-      case 'confirmed':
-        return 'Confirmed';
-      case 'payment_pending':
-      case 'payment pending':
-        return 'Payment Pending';
+        return 'Ready for pickup';
       case 'cancelled':
         return 'Cancelled';
       case 'order placed':
       case 'placed':
-        return 'Order Placed';
+      case 'packed':
+      case 'packing':
+      case 'preparing':
+      case 'confirmed':
+      case 'payment_pending':
+      case 'payment pending':
+        return 'Order received';
       default:
-        return _titleize(raw);
+        return '';
     }
   }
 

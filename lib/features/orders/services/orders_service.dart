@@ -86,4 +86,17 @@ class OrdersService {
 
     return list;
   }
+
+  Future<void> cancelOrder(String orderId) async {
+    final user = supabase.auth.currentUser;
+
+    if (user == null || user.isAnonymous) {
+      throw Exception('User not signed in');
+    }
+
+    await supabase.rpc(
+      'cancel_order_atomic',
+      params: {'p_order_id': orderId},
+    );
+  }
 }

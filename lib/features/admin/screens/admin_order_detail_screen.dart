@@ -77,6 +77,12 @@ class _AdminOrderDetailScreenState
     });
   }
 
+  void _refreshOrderViews(WidgetRef ref) {
+    ref.invalidate(adminOrderItemsProvider(orderId));
+    ref.invalidate(adminOrderProvider(orderId));
+    ref.invalidate(adminOrdersProvider);
+  }
+
   Future<void> _runBarcodeVerification({
     required BuildContext context,
     required WidgetRef ref,
@@ -105,9 +111,7 @@ class _AdminOrderDetailScreenState
 
       if (!mounted) return;
 
-      ref.invalidate(adminOrderItemsProvider(orderId));
-      ref.invalidate(adminOrderProvider(orderId));
-      ref.invalidate(adminOrdersProvider);
+      _refreshOrderViews(ref);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -124,6 +128,175 @@ class _AdminOrderDetailScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Barcode verification failed: $e'),
+          backgroundColor: _wmDanger,
+        ),
+      );
+    }
+  }
+
+  Future<void> _undoLastScan(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    try {
+      final result =
+          await ref.read(adminOrdersServiceProvider).undoLastScan(orderId);
+
+      if (!mounted) return;
+
+      _setFlash(_wmWarning);
+      await ScanFeedback.soft();
+
+      _refreshOrderViews(ref);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.message),
+          backgroundColor: _wmWarning,
+        ),
+      );
+    } catch (e) {
+      _setFlash(_wmDanger);
+      await ScanFeedback.error();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$e'),
+          backgroundColor: _wmDanger,
+        ),
+      );
+    }
+  }
+
+  Future<void> _showShortPickDialog(
+    BuildContext context,
+    WidgetRef ref,
+    AdminOrderItemModel item,
+  ) async {
+    final qtyController = TextEditingController(text: '1');
+    final reasonController = TextEditingController();
+
+    try {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Short Pick Item'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.productName,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: qtyController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Missing quantity',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: reasonController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Reason',
+                    hintText: 'Out of stock, damaged, not found...',
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Confirm'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (confirmed != true) return;
+
+      final shortQty = int.tryParse(qtyController.text.trim()) ?? 0;
+      final reason = reasonController.text.trim();
+
+      await ref.read(adminOrdersServiceProvider).shortPickOrderItem(
+            orderId: orderId,
+            orderItemId: item.id,
+            shortPickQty: shortQty,
+            reason: reason,
+          );
+
+      if (!mounted) return;
+
+      _setFlash(_wmWarning);
+      await ScanFeedback.soft();
+      _refreshOrderViews(ref);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${item.productName} marked as short-picked'),
+          backgroundColor: _wmWarning,
+        ),
+      );
+    } catch (e) {
+      _setFlash(_wmDanger);
+      await ScanFeedback.error();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$e'),
+          backgroundColor: _wmDanger,
+        ),
+      );
+    } finally {
+      qtyController.dispose();
+      reasonController.dispose();
+    }
+  }
+
+  Future<void> _reopenPickingSession(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    try {
+      await ref
+          .read(adminOrdersServiceProvider)
+          .reopenPartiallyPickedOrder(orderId);
+
+      if (!mounted) return;
+
+      _setFlash(_wmInfo);
+      await ScanFeedback.soft();
+      _refreshOrderViews(ref);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Picking session reset and reopened'),
+          backgroundColor: _wmInfo,
+        ),
+      );
+    } catch (e) {
+      _setFlash(_wmDanger);
+      await ScanFeedback.error();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$e'),
           backgroundColor: _wmDanger,
         ),
       );
@@ -297,36 +470,29 @@ class _AdminOrderDetailScreenState
       return;
     }
 
-    final scannedValue = await Navigator.of(context).push<String>(
-      MaterialPageRoute(
-        builder: (_) => const OrderQrScanScreen(),
-      ),
-    );
-
-    if (scannedValue == null || scannedValue.trim().isEmpty) {
-      return;
-    }
-
-    final scanned = scannedValue.trim();
     final baseQr = 'WM|ORDER|${order.id}|${order.orderNumber}';
     final normalBagQr = '$baseQr-N';
     final frozenBagQr = '$baseQr-F';
 
-    final matches =
-        scanned == baseQr || scanned == normalBagQr || scanned == frozenBagQr;
+    final scannedValue = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => OrderQrScanScreen(
+          title: 'Verify Order Bag QR',
+          instruction: 'Scan the order bag label for this order',
+          validator: (rawValue) {
+            final scanned = rawValue.trim();
+            if (scanned == baseQr ||
+                scanned == normalBagQr ||
+                scanned == frozenBagQr) {
+              return null;
+            }
+            return 'Scanned QR does not match this order';
+          },
+        ),
+      ),
+    );
 
-    if (!matches) {
-      _setFlash(_wmDanger);
-      await ScanFeedback.error();
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Scanned QR does not match this order'),
-            backgroundColor: _wmDanger,
-          ),
-        );
-      }
+    if (scannedValue == null || scannedValue.trim().isEmpty) {
       return;
     }
 
@@ -427,13 +593,13 @@ class _AdminOrderDetailScreenState
 
                             final totalQty =
                                 items.fold<int>(0, (sum, e) => sum + e.qty);
-                            final pickedQty = items.fold<int>(
+                            final resolvedQty = items.fold<int>(
                               0,
-                              (sum, e) => sum + e.pickedQty,
+                              (sum, e) => sum + e.resolvedQty,
                             );
 
                             final canPack = items.isNotEmpty &&
-                                items.every((e) => e.pickedQty >= e.qty);
+                                items.every((e) => e.isResolved);
 
                             final safeStatus =
                                 (order.status ?? '').toLowerCase();
@@ -455,7 +621,13 @@ class _AdminOrderDetailScreenState
                                     safeStatus == 'delivered' ||
                                     safeAdminStatus == 'delivered';
 
+                            final isPickingActive = order.isPending ||
+                                order.isPicking ||
+                                order.isPartiallyPicked ||
+                                order.isPicked;
+
                             final showItemScan = !_bagQrVerified &&
+                                isPickingActive &&
                                 !isAlreadyPacked &&
                                 !isOutForDelivery &&
                                 !isDelivered &&
@@ -491,7 +663,7 @@ class _AdminOrderDetailScreenState
                                     paymentStatus:
                                         order.paymentStatus ?? 'pending',
                                     adminStatus: order.displayStatusLabel,
-                                    pickedCount: pickedQty,
+                                    pickedCount: resolvedQty,
                                     totalCount: totalQty,
                                     hasFrozenItems: order.hasFrozenItems,
                                   ),
@@ -545,11 +717,7 @@ class _AdminOrderDetailScreenState
                                                   order.hasFrozenItems,
                                             );
 
-                                        ref.invalidate(
-                                            adminOrderProvider(orderId));
-                                        ref.invalidate(
-                                            adminOrderItemsProvider(orderId));
-                                        ref.invalidate(adminOrdersProvider);
+                                        _refreshOrderViews(ref);
 
                                         await ScanFeedback.success();
 
@@ -637,7 +805,21 @@ class _AdminOrderDetailScreenState
                                                 padding: const EdgeInsets.only(
                                                   bottom: 10,
                                                 ),
-                                                child: _ItemTile(item: item),
+                                                child: _ItemTile(
+                                                  item: item,
+                                                  canShortPick:
+                                                      !_bagQrVerified &&
+                                                          !isAlreadyPacked &&
+                                                          !isOutForDelivery &&
+                                                          !isDelivered &&
+                                                          !item.isResolved,
+                                                  onShortPickTap: () =>
+                                                      _showShortPickDialog(
+                                                    context,
+                                                    ref,
+                                                    item,
+                                                  ),
+                                                ),
                                               ),
                                             ),
                                           ],
@@ -671,7 +853,21 @@ class _AdminOrderDetailScreenState
                                                 padding: const EdgeInsets.only(
                                                   bottom: 10,
                                                 ),
-                                                child: _ItemTile(item: item),
+                                                child: _ItemTile(
+                                                  item: item,
+                                                  canShortPick:
+                                                      !_bagQrVerified &&
+                                                          !isAlreadyPacked &&
+                                                          !isOutForDelivery &&
+                                                          !isDelivered &&
+                                                          !item.isResolved,
+                                                  onShortPickTap: () =>
+                                                      _showShortPickDialog(
+                                                    context,
+                                                    ref,
+                                                    item,
+                                                  ),
+                                                ),
                                               ),
                                             ),
                                           ],
@@ -684,14 +880,21 @@ class _AdminOrderDetailScreenState
                                   _BottomActions(
                                     canPack: canPack,
                                     pickingComplete: canPack,
+                                    canUndo: !isAlreadyPacked &&
+                                        !isOutForDelivery &&
+                                        !isDelivered &&
+                                        items.any((e) => e.pickedQty > 0),
+                                    canReopen: order.isPartiallyPicked,
                                     onStartPicking: () async {
                                       await ref
                                           .read(adminOrdersServiceProvider)
                                           .startPicking(orderId);
-                                      ref.invalidate(
-                                          adminOrderProvider(orderId));
-                                      ref.invalidate(adminOrdersProvider);
+                                      _refreshOrderViews(ref);
                                     },
+                                    onUndoLastScan: () =>
+                                        _undoLastScan(context, ref),
+                                    onReopenPicking: () =>
+                                        _reopenPickingSession(context, ref),
                                     onMarkPacked: () async {
                                       await _scanOrderQrAndPreparePack(
                                         context,
@@ -815,7 +1018,7 @@ class _TopSummary extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '$pickedCount / $totalCount units verified',
+            '$pickedCount / $totalCount units resolved',
             style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w800,
@@ -1058,15 +1261,19 @@ class _SectionTitle extends StatelessWidget {
 
 class _ItemTile extends StatelessWidget {
   final AdminOrderItemModel item;
+  final bool canShortPick;
+  final VoidCallback? onShortPickTap;
 
   const _ItemTile({
     required this.item,
+    this.canShortPick = false,
+    this.onShortPickTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final complete = item.pickedQty >= item.qty;
-    final partial = item.pickedQty > 0 && item.pickedQty < item.qty;
+    final complete = item.isResolved;
+    final partial = item.isPartiallyPicked || item.isShortPicked;
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -1134,7 +1341,15 @@ class _ItemTile extends StatelessWidget {
                   runSpacing: 8,
                   children: [
                     _TinyBadge(label: 'Qty ${item.qty}'),
-                    _TinyBadge(label: 'Picked ${item.pickedQty}/${item.qty}'),
+                    _TinyBadge(
+                      label: 'Picked ${item.pickedQty}/${item.qty}',
+                    ),
+                    if (item.shortPickQty > 0)
+                      _TinyBadge(
+                        label: 'Short ${item.shortPickQty}/${item.qty}',
+                        background: _wmWarningBg,
+                        foreground: _wmWarning,
+                      ),
                     _TinyBadge(
                       label: item.isFrozen ? 'Frozen' : 'Non-Frozen',
                       background:
@@ -1143,6 +1358,35 @@ class _ItemTile extends StatelessWidget {
                     ),
                   ],
                 ),
+                if ((item.shortPickReason ?? '').trim().isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Reason: ${item.shortPickReason}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: _wmWarning,
+                    ),
+                  ),
+                ],
+                if (canShortPick && onShortPickTap != null) ...[
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: onShortPickTap,
+                      icon: const Icon(Icons.remove_circle_outline_rounded),
+                      label: const Text(
+                        'Short Pick / Missing',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: _wmWarning,
+                        padding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1200,13 +1444,21 @@ class _TinyBadge extends StatelessWidget {
 class _BottomActions extends StatelessWidget {
   final bool canPack;
   final bool pickingComplete;
+  final bool canUndo;
+  final bool canReopen;
   final Future<void> Function() onStartPicking;
+  final Future<void> Function() onUndoLastScan;
+  final Future<void> Function() onReopenPicking;
   final Future<void> Function() onMarkPacked;
 
   const _BottomActions({
     required this.canPack,
     required this.pickingComplete,
+    required this.canUndo,
+    required this.canReopen,
     required this.onStartPicking,
+    required this.onUndoLastScan,
+    required this.onReopenPicking,
     required this.onMarkPacked,
   });
 
@@ -1229,51 +1481,104 @@ class _BottomActions extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            if (!pickingComplete) ...[
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: onStartPicking,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: _wmPrimary,
-                    minimumSize: const Size.fromHeight(52),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+            if (canUndo || canReopen) ...[
+              Row(
+                children: [
+                  if (canUndo)
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: onUndoLastScan,
+                        icon: const Icon(Icons.undo_rounded),
+                        label: const Text(
+                          'Undo Last Scan',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _wmWarning,
+                          side: const BorderSide(color: _wmWarning),
+                          minimumSize: const Size.fromHeight(46),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
                     ),
-                    side: const BorderSide(color: _wmPrimary),
-                  ),
-                  child: const Text(
-                    'Start Picking',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
+                  if (canUndo && canReopen) const SizedBox(width: 12),
+                  if (canReopen)
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: onReopenPicking,
+                        icon: const Icon(Icons.restart_alt_rounded),
+                        label: const Text(
+                          'Reopen Picking',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _wmInfo,
+                          side: const BorderSide(color: _wmInfo),
+                          minimumSize: const Size.fromHeight(46),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+                ],
               ),
-              const SizedBox(width: 12),
+              const SizedBox(height: 12),
             ],
-            Expanded(
-              child: ElevatedButton(
-                onPressed: canPack ? onMarkPacked : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _wmPrimary,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: const Color(0xFFD6D9E0),
-                  disabledForegroundColor: const Color(0xFF7E8591),
-                  minimumSize: const Size.fromHeight(52),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+            Row(
+              children: [
+                if (!pickingComplete) ...[
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: onStartPicking,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: _wmPrimary,
+                        minimumSize: const Size.fromHeight(52),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        side: const BorderSide(color: _wmPrimary),
+                      ),
+                      child: const Text(
+                        'Start Picking',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: canPack ? onMarkPacked : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _wmPrimary,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: const Color(0xFFD6D9E0),
+                      disabledForegroundColor: const Color(0xFF7E8591),
+                      minimumSize: const Size.fromHeight(52),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: Text(
+                      canPack
+                          ? 'Verify Bag QR & Pack'
+                          : 'Resolve Items Before Packing',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
                 ),
-                child: Text(
-                  canPack ? 'Verify Bag QR & Pack' : 'Complete Item Scan First',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
+              ],
             ),
           ],
         ),

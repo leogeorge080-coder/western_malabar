@@ -30,6 +30,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
   final _salePriceController = TextEditingController();
+  final _stockQtyController = TextEditingController();
   final _dealPriceController = TextEditingController();
   final _dealBadgeController = TextEditingController();
 
@@ -56,6 +57,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     _descriptionController.dispose();
     _priceController.dispose();
     _salePriceController.dispose();
+    _stockQtyController.dispose();
     _dealPriceController.dispose();
     _dealBadgeController.dispose();
     super.dispose();
@@ -83,6 +85,8 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
     _isFrozen = product.isFrozen;
     _isActive = product.isActive;
     _isWeeklyDeal = product.isWeeklyDeal;
+    _stockQtyController.text =
+        product.stockQty != null ? product.stockQty.toString() : '';
 
     _dealPriceController.text = product.dealPriceCents != null
         ? (product.dealPriceCents! / 100).toStringAsFixed(2)
@@ -272,6 +276,20 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
       }
     }
 
+    final stockQtyRaw = _stockQtyController.text.trim();
+    final parsedStockQty =
+        stockQtyRaw.isEmpty ? null : int.tryParse(stockQtyRaw);
+    if (stockQtyRaw.isNotEmpty &&
+        (parsedStockQty == null || parsedStockQty < 0)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Enter a valid stock quantity'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     try {
       setState(() => _saving = true);
 
@@ -284,6 +302,7 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
         images: _images,
         description: _descriptionController.text.trim(),
         isActive: _isActive,
+        stockQty: parsedStockQty,
         isFrozen: _isFrozen,
         barcode: _barcodeController.text.trim(),
         priceCents: parsedBasePriceCents,
@@ -340,6 +359,13 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
           child: productAsync.when(
             data: (product) {
               _initFromProduct(product);
+              final parsedStockQty = int.tryParse(
+                _stockQtyController.text.trim(),
+              );
+              final derivedAvailableQty =
+                  parsedStockQty == null ? null : (parsedStockQty < 0 ? 0 : parsedStockQty);
+              final derivedVisibility =
+                  _isActive && (derivedAvailableQty ?? 0) > 0;
 
               return brandsAsync.when(
                 data: (brands) {
@@ -621,6 +647,59 @@ class _EditProductScreenState extends ConsumerState<EditProductScreen> {
                                             'Active Product',
                                             style: TextStyle(
                                               fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  _SectionCard(
+                                    title: 'Availability & Stock',
+                                    child: Column(
+                                      children: [
+                                        _ReadOnlyInfoTile(
+                                          label: 'Customer Visibility',
+                                          value: derivedVisibility
+                                              ? 'Visible'
+                                              : 'Hidden',
+                                          helper:
+                                              'Auto-derived from active status and stock quantity.',
+                                        ),
+                                        const SizedBox(height: 12),
+                                        _ReadOnlyInfoTile(
+                                          label: 'Available Qty',
+                                          value:
+                                              derivedAvailableQty?.toString() ??
+                                                  '-',
+                                          helper:
+                                              'Backend keeps available quantity equal to stock.',
+                                        ),
+                                        const SizedBox(height: 12),
+                                        _AppTextField(
+                                          controller: _stockQtyController,
+                                          label: 'Central Stock Qty',
+                                          keyboardType: TextInputType.number,
+                                          onChanged: (_) => setState(() {}),
+                                          validator: (value) {
+                                            final raw = (value ?? '').trim();
+                                            if (raw.isEmpty) return null;
+                                            final parsed = int.tryParse(raw);
+                                            if (parsed == null || parsed < 0) {
+                                              return 'Enter a valid non-negative stock quantity';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                        const SizedBox(height: 10),
+                                        const Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            'Product stock is the backend inventory truth. Customer visibility and available quantity are auto-synced from this value.',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.black54,
                                             ),
                                           ),
                                         ),
@@ -931,12 +1010,68 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
+class _ReadOnlyInfoTile extends StatelessWidget {
+  const _ReadOnlyInfoTile({
+    required this.label,
+    required this.value,
+    required this.helper,
+  });
+
+  final String label;
+  final String value;
+  final String helper;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9F6FC),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Colors.black54,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            helper,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.black54,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _AppTextField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
   final String? Function(String?)? validator;
   final int maxLines;
   final TextInputType? keyboardType;
+  final ValueChanged<String>? onChanged;
 
   const _AppTextField({
     required this.controller,
@@ -944,6 +1079,7 @@ class _AppTextField extends StatelessWidget {
     this.validator,
     this.maxLines = 1,
     this.keyboardType,
+    this.onChanged,
   });
 
   @override
@@ -953,6 +1089,7 @@ class _AppTextField extends StatelessWidget {
       validator: validator,
       maxLines: maxLines,
       keyboardType: keyboardType,
+      onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
         filled: true,

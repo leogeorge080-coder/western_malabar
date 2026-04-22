@@ -21,6 +21,9 @@ class AdminProductsService {
           images,
           description,
           is_active,
+          stock_qty,
+          is_available,
+          available_qty,
           is_frozen,
           barcode,
           seller_base_price_cents,
@@ -29,7 +32,7 @@ class AdminProductsService {
           deal_starts_at,
           deal_ends_at,
           deal_badge_text,
-          product_variants(id, price_cents, sale_price_cents)
+          product_variants(id, price_cents, sale_price_cents, stock_qty)
         ''').order('name', ascending: true);
 
     return (rows as List)
@@ -47,6 +50,9 @@ class AdminProductsService {
           images,
           description,
           is_active,
+          stock_qty,
+          is_available,
+          available_qty,
           is_frozen,
           barcode,
           seller_base_price_cents,
@@ -55,7 +61,7 @@ class AdminProductsService {
           deal_starts_at,
           deal_ends_at,
           deal_badge_text,
-          product_variants(id, price_cents, sale_price_cents)
+          product_variants(id, price_cents, sale_price_cents, stock_qty)
         ''').eq('id', productId).single();
 
     return AdminProductEditModel.fromMap(row);
@@ -145,6 +151,7 @@ class AdminProductsService {
     required List<String> images,
     String? description,
     required bool isActive,
+    required int? stockQty,
     required bool isFrozen,
     String? barcode,
     required int? priceCents,
@@ -176,6 +183,7 @@ class AdminProductsService {
       'images': images,
       'description': cleanedDescription,
       'is_active': isActive,
+      'stock_qty': stockQty,
       'is_frozen': isFrozen,
       'barcode': cleanedBarcode,
       'seller_base_price_cents': priceCents,
@@ -186,22 +194,10 @@ class AdminProductsService {
       'deal_badge_text': cleanedDealBadgeText,
     }).eq('id', productId);
 
-    final variantRows = await supabase
-        .from('product_variants')
-        .select('id')
-        .eq('product_id', productId)
-        .limit(1);
-
-    if (variantRows.isNotEmpty) {
-      final variantId = variantRows.first['id']?.toString();
-
-      if (variantId != null && variantId.isNotEmpty) {
-        await supabase.from('product_variants').update({
-          'price_cents': priceCents,
-          'sale_price_cents': salePriceCents,
-        }).eq('id', variantId);
-      }
-    }
+    await supabase.from('product_variants').update({
+      'price_cents': priceCents,
+      'sale_price_cents': salePriceCents,
+    }).eq('product_id', productId);
   }
 
   String buildSlugFromName(String name) {

@@ -122,14 +122,17 @@ class AdminOrderModel {
 
   bool get isPicked {
     if (isDelivered || isOutForDelivery || isPacked) return false;
-
-    return safeStatus == 'picked' || safeAdminStatus == 'picked';
+    return safeAdminStatus == 'picked' || safeStatus == 'picked';
   }
 
   bool get isPicking {
     if (isDelivered || isOutForDelivery || isPacked || isPicked) return false;
+    return safeAdminStatus == 'picking';
+  }
 
-    return safeStatus == 'picking' || safeAdminStatus == 'picking';
+  bool get isPartiallyPicked {
+    if (isDelivered || isOutForDelivery || isPacked || isPicked) return false;
+    return safeAdminStatus == 'partially_picked';
   }
 
   bool get isPending {
@@ -137,6 +140,7 @@ class AdminOrderModel {
         !isOutForDelivery &&
         !isPacked &&
         !isPicked &&
+        !isPartiallyPicked &&
         !isPicking;
   }
 
@@ -150,7 +154,8 @@ class AdminOrderModel {
     if (isDelivered) return 'DELIVERED';
     if (isOutForDelivery) return 'OUT FOR DELIVERY';
     if (isPacked) return 'PACKED';
-    if (isPicked) return 'PICKED';
+    if (isPicked) return 'FULLY PICKED';
+    if (isPartiallyPicked) return 'PARTIALLY PICKED';
     if (isPicking) return 'PICKING';
     return 'PENDING';
   }
@@ -160,6 +165,7 @@ class AdminOrderModel {
     if (isOutForDelivery) return 'out_for_delivery';
     if (isPacked) return 'packed';
     if (isPicked) return 'picked';
+    if (isPartiallyPicked) return 'partially_picked';
     if (isPicking) return 'picking';
     return 'pending';
   }
@@ -169,8 +175,9 @@ class AdminOrderModel {
     if (isOutForDelivery) return 1;
     if (isPacked) return 2;
     if (isPicked) return 3;
-    if (isPicking) return 4;
-    return 5;
+    if (isPartiallyPicked) return 4;
+    if (isPicking) return 5;
+    return 6;
   }
 
   bool get hasPinnedLocation => latitude != null && longitude != null;

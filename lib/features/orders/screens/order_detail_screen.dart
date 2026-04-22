@@ -51,6 +51,49 @@ class OrderDetailScreen extends ConsumerWidget {
       ]);
     }
 
+    Future<void> cancelOrder(OrderDetailModel order) async {
+      final confirmed = await showDialog<bool>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              title: const Text('Cancel this order?'),
+              content: const Text(
+                'Are you sure you want to cancel this order?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Keep order'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: const Text('Confirm cancellation'),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+
+      if (!confirmed) return;
+
+      try {
+        await ref.read(ordersServiceProvider).cancelOrder(order.id);
+        ref.invalidate(myOrdersProvider);
+        ref.invalidate(orderDetailProvider(orderId));
+        ref.invalidate(orderItemsProvider(orderId));
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Your order has been cancelled.')),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('We could not cancel this order: $e')),
+          );
+        }
+      }
+    }
+
     return Scaffold(
       backgroundColor: _wmOrderBg,
       body: SafeArea(
@@ -113,6 +156,12 @@ class OrderDetailScreen extends ConsumerWidget {
                               _OrderItemsCard(items: items),
                               const SizedBox(height: 14),
                               _OrderPricingCard(order: order),
+                              if (order.canCustomerCancel) ...[
+                                const SizedBox(height: 14),
+                                _CancelOrderCard(
+                                  onCancel: () => cancelOrder(order),
+                                ),
+                              ],
                               const SizedBox(height: 14),
                               _SupportCard(order: order),
                             ],
@@ -184,7 +233,7 @@ class _OrderDetailHeader extends StatelessWidget {
                 ),
                 SizedBox(height: 2),
                 Text(
-                  'Track status, items and pricing',
+                  'Review progress, items, and payment details',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -211,7 +260,7 @@ class _OrderHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final status = order.displayStatus;
+    final status = order.customerDisplayStatus;
     final statusTone = _statusTone(status);
     final isPickup = _isPickup(order);
 
@@ -380,16 +429,14 @@ class _OrderHeroCard extends StatelessWidget {
           bg: _wmOrderSuccessSoft,
           border: Color(0xFFA7F3D0),
         );
-      case 'Out for Delivery':
+      case 'On the way':
       case 'Ready for Pickup':
         return const _StatusTone(
           fg: _wmOrderInfo,
           bg: _wmOrderInfoSoft,
           border: Color(0xFFBFDBFE),
         );
-      case 'Packing':
-      case 'Preparing':
-      case 'Confirmed':
+      case 'Order received':
         return const _StatusTone(
           fg: _wmOrderWarning,
           bg: _wmOrderWarningSoft,
@@ -400,12 +447,6 @@ class _OrderHeroCard extends StatelessWidget {
           fg: _wmOrderDanger,
           bg: _wmOrderDangerSoft,
           border: Color(0xFFFECACA),
-        );
-      case 'Payment Pending':
-        return const _StatusTone(
-          fg: Color(0xFF7C3AED),
-          bg: Color(0xFFF5F3FF),
-          border: Color(0xFFDDD6FE),
         );
       default:
         return const _StatusTone(
@@ -443,7 +484,7 @@ class _OrderHeroCard extends StatelessWidget {
     final minute = dt.minute.toString().padLeft(2, '0');
     final suffix = dt.hour >= 12 ? 'PM' : 'AM';
 
-    return '${dt.day} $month ${dt.year} • $hour:$minute $suffix';
+    return '${dt.day} $month ${dt.year} - $hour:$minute $suffix';
   }
 }
 
@@ -498,19 +539,13 @@ class _OrderTimelineCard extends StatelessWidget {
 
     final steps = <_TimelineStepData>[
       _TimelineStepData(
-        label: 'Order Placed',
+        label: 'Order received',
         icon: Icons.receipt_long_rounded,
         time: order.createdAt,
         isActive: true,
       ),
       _TimelineStepData(
-        label: 'Packing',
-        icon: Icons.inventory_2_rounded,
-        time: order.packedAt,
-        isActive: order.packedAt != null,
-      ),
-      _TimelineStepData(
-        label: isPickup ? 'Ready for Pickup' : 'Out for Delivery',
+        label: isPickup ? 'Ready for Pickup' : 'On the way',
         icon: isPickup
             ? Icons.store_mall_directory_rounded
             : Icons.local_shipping_rounded,
@@ -552,7 +587,7 @@ class _OrderTimelineCard extends StatelessWidget {
               ),
               SizedBox(width: 8),
               Text(
-                'Tracking Timeline',
+                'Order Progress',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w900,
@@ -1155,6 +1190,76 @@ class _PricingRow extends StatelessWidget {
   }
 }
 
+class _CancelOrderCard extends StatelessWidget {
+  const _CancelOrderCard({
+    required this.onCancel,
+  });
+
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _wmOrderSurface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFFECACA)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0C000000),
+            blurRadius: 12,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Need to cancel this order?',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+              color: _wmOrderTextStrong,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Cancellation is available while the order is still in the received stage.',
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: _wmOrderTextSoft,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: onCancel,
+              style: FilledButton.styleFrom(
+                backgroundColor: _wmOrderDanger,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: const Text(
+                'Cancel this order',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SupportCard extends StatelessWidget {
   final OrderDetailModel order;
 
@@ -1185,7 +1290,7 @@ class _SupportCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Need Help?',
+            'Need help?',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w900,

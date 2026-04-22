@@ -32,6 +32,47 @@ class MyOrdersScreen extends ConsumerWidget {
       await ref.read(myOrdersProvider.future);
     }
 
+    Future<void> cancelOrder(OrderHistoryModel order) async {
+      final confirmed = await showDialog<bool>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              title: const Text('Cancel this order?'),
+              content: const Text(
+                'Are you sure you want to cancel this order?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Keep order'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: const Text('Confirm cancellation'),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+
+      if (!confirmed) return;
+
+      try {
+        await ref.read(ordersServiceProvider).cancelOrder(order.id);
+        ref.invalidate(myOrdersProvider);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Your order has been cancelled.')),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('We could not cancel this order: $e')),
+          );
+        }
+      }
+    }
+
     return Scaffold(
       backgroundColor: _wmOrdersBg,
       body: SafeArea(
@@ -84,6 +125,9 @@ class MyOrdersScreen extends ConsumerWidget {
                                         ),
                                       );
                                     },
+                                    onCancel: order.canCustomerCancel
+                                        ? () => cancelOrder(order)
+                                        : null,
                                   ),
                                 );
                               }),
@@ -153,7 +197,7 @@ class _OrdersHeader extends StatelessWidget {
                 ),
                 SizedBox(height: 2),
                 Text(
-                  'Track current and previous purchases',
+                  'View updates, reorder essentials, and manage recent purchases',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -180,16 +224,14 @@ class _OrdersOverviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final totalOrders = orders.length;
     final deliveredCount = orders.where((o) {
-      final status = o.normalizedDisplayStatus.trim().toLowerCase();
+      final status = o.customerDisplayStatus.trim().toLowerCase();
       return status == 'delivered' || status == 'collected';
     }).length;
 
     final activeCount = orders.where((o) {
-      final status = o.normalizedDisplayStatus.trim().toLowerCase();
-      return status == 'confirmed' ||
-          status == 'preparing' ||
-          status == 'packing' ||
-          status == 'out for delivery' ||
+      final status = o.customerDisplayStatus.trim().toLowerCase();
+      return status == 'order received' ||
+          status == 'on the way' ||
           status == 'ready for pickup';
     }).length;
 
@@ -249,7 +291,7 @@ class _OrdersOverviewCard extends StatelessWidget {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      'All your purchases in one place',
+                      'A complete view of your recent and past orders',
                       style: TextStyle(
                         color: Color(0xFFD1D5DB),
                         fontSize: 12,
@@ -341,15 +383,17 @@ class _OverviewPill extends StatelessWidget {
 class _OrderHistoryCard extends StatelessWidget {
   final OrderHistoryModel order;
   final VoidCallback onTap;
+  final VoidCallback? onCancel;
 
   const _OrderHistoryCard({
     required this.order,
     required this.onTap,
+    this.onCancel,
   });
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = _statusColor(order.normalizedDisplayStatus);
+    final statusColor = _statusColor(order.customerDisplayStatus);
     final statusBg = statusColor.withOpacity(0.10);
     final orderNumber =
         order.orderNumber.trim().isEmpty ? 'Order' : order.orderNumber.trim();
@@ -431,7 +475,7 @@ class _OrderHistoryCard extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      order.normalizedDisplayStatus,
+                      order.customerDisplayStatus,
                       style: TextStyle(
                         color: statusColor,
                         fontSize: 12,
@@ -501,7 +545,7 @@ class _OrderHistoryCard extends StatelessWidget {
                     Row(
                       children: [
                         Icon(
-                          _statusIcon(order.normalizedDisplayStatus),
+                          _statusIcon(order.customerDisplayStatus),
                           size: 18,
                           color: statusColor,
                         ),
@@ -525,6 +569,26 @@ class _OrderHistoryCard extends StatelessWidget {
               const SizedBox(height: 14),
               Row(
                 children: [
+                  if (onCancel != null) ...[
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: onCancel,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _wmOrdersDanger,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.fromHeight(48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                  ],
                   Expanded(
                     child: OutlinedButton(
                       onPressed: onTap,
@@ -578,7 +642,7 @@ class _OrderHistoryCard extends StatelessWidget {
     final minute = dt.minute.toString().padLeft(2, '0');
     final suffix = dt.hour >= 12 ? 'PM' : 'AM';
 
-    return 'Placed on ${dt.day} $month ${dt.year} • $hour:$minute $suffix';
+    return 'Placed on ${dt.day} $month ${dt.year} - $hour:$minute $suffix';
   }
 
   static Color _statusColor(String status) {
@@ -586,12 +650,10 @@ class _OrderHistoryCard extends StatelessWidget {
       case 'Delivered':
       case 'Collected':
         return _wmOrdersSuccess;
-      case 'Out for Delivery':
+      case 'On the way':
       case 'Ready for Pickup':
         return _wmOrdersInfo;
-      case 'Packing':
-      case 'Preparing':
-      case 'Confirmed':
+      case 'Order received':
         return _wmOrdersWarning;
       case 'Cancelled':
         return _wmOrdersDanger;
@@ -605,13 +667,11 @@ class _OrderHistoryCard extends StatelessWidget {
       case 'Delivered':
       case 'Collected':
         return Icons.check_circle_rounded;
-      case 'Out for Delivery':
+      case 'On the way':
         return Icons.local_shipping_rounded;
       case 'Ready for Pickup':
         return Icons.store_mall_directory_rounded;
-      case 'Packing':
-      case 'Preparing':
-      case 'Confirmed':
+      case 'Order received':
         return Icons.inventory_2_rounded;
       case 'Cancelled':
         return Icons.cancel_rounded;
@@ -621,21 +681,17 @@ class _OrderHistoryCard extends StatelessWidget {
   }
 
   static String _statusMessage(OrderHistoryModel order) {
-    switch (order.normalizedDisplayStatus) {
+    switch (order.customerDisplayStatus) {
       case 'Delivered':
         return 'This order has been delivered successfully.';
       case 'Collected':
         return 'This order was collected successfully.';
-      case 'Out for Delivery':
-        return 'Your order is on the way.';
+      case 'On the way':
+        return 'Your order is on the way to you.';
       case 'Ready for Pickup':
-        return 'Your order is ready to collect.';
-      case 'Packing':
-        return 'Your items are being packed for dispatch.';
-      case 'Preparing':
-        return 'Your order is being prepared.';
-      case 'Confirmed':
-        return 'Your order has been confirmed and will move soon.';
+        return 'Your order is ready for collection.';
+      case 'Order received':
+        return 'Your order has been received and will be processed soon.';
       case 'Cancelled':
         return 'This order was cancelled.';
       default:
