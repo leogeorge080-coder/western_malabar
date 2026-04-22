@@ -1,5 +1,15 @@
 require('dotenv').config();
 
+console.log('🚀 SERVER BOOT STEP 0: dotenv loaded');
+
+process.on('uncaughtException', (err) => {
+  console.error('💥 UNCAUGHT EXCEPTION:', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('💥 UNHANDLED REJECTION:', reason);
+});
+
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
@@ -12,6 +22,8 @@ const escpos = require('escpos');
 escpos.USB = require('escpos-usb');
 const { print } = require('pdf-to-printer');
 const { createClient } = require('@supabase/supabase-js');
+
+console.log('🚀 SERVER BOOT STEP 1: modules loaded');
 
 const app = express();
 
@@ -29,7 +41,7 @@ app.use(
         return;
       }
 
-      if (ALLOWED_ORIGINS.includes(origin)) {
+      if (ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin)) {
         callback(null, true);
         return;
       }
@@ -49,6 +61,14 @@ const PRINTER_NAME = (process.env.PRINTER_NAME || '').trim();
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
+console.log('🚀 SERVER BOOT STEP 2: env read');
+console.log('SUPABASE_URL present:', !!SUPABASE_URL);
+console.log('SUPABASE_SERVICE_ROLE_KEY present:', !!SUPABASE_SERVICE_ROLE_KEY);
+console.log('INTERNAL_API_TOKEN present:', !!INTERNAL_API_TOKEN);
+console.log('PORT:', PORT);
+console.log('BIND_HOST:', BIND_HOST);
+console.log('PRINTER_NAME:', PRINTER_NAME || 'WINDOWS_DEFAULT');
+
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !INTERNAL_API_TOKEN) {
   console.error(
     'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY or INTERNAL_API_TOKEN'
@@ -60,10 +80,14 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 });
 
+console.log('🚀 SERVER BOOT STEP 3: Supabase client created');
+
 const JOB_DIR = path.join(__dirname, 'print_jobs');
 if (!fs.existsSync(JOB_DIR)) {
   fs.mkdirSync(JOB_DIR, { recursive: true });
 }
+
+console.log('🚀 SERVER BOOT STEP 4: print_jobs dir ready ->', JOB_DIR);
 
 let isPolling = false;
 let lastPollAt = null;
@@ -234,6 +258,7 @@ function normalizeQueuedOrder(job) {
 
 async function pollAndProcessOnce() {
   if (isPolling) {
+    log('Polling skipped: already polling');
     return false;
   }
 
@@ -241,6 +266,8 @@ async function pollAndProcessOnce() {
   lastPollAt = new Date().toISOString();
 
   try {
+    log('Polling for next print job...');
+
     const { data, error } = await supabase.rpc('reserve_next_print_job');
 
     if (error) {
@@ -248,6 +275,7 @@ async function pollAndProcessOnce() {
     }
 
     if (!data) {
+      log('No pending print jobs found');
       return false;
     }
 
@@ -303,6 +331,8 @@ async function pollAndProcessOnce() {
 }
 
 function startPolling() {
+  log(`Supabase print polling started every ${PRINT_POLL_MS}ms`);
+
   setInterval(async () => {
     try {
       await pollAndProcessOnce();
@@ -310,8 +340,6 @@ function startPolling() {
       log('Polling error:', e instanceof Error ? e.message : String(e));
     }
   }, PRINT_POLL_MS);
-
-  log(`Supabase print polling started every ${PRINT_POLL_MS}ms`);
 }
 
 async function updateOrderPrintedLabelCount(orderId, count) {
@@ -575,7 +603,6 @@ async function generateLabel(order) {
     return cy;
   }
 
-  // top strip
   ctx.fillStyle = '#000000';
   ctx.font = 'bold 22px Arial';
   ctx.textAlign = 'left';
@@ -592,7 +619,6 @@ async function generateLabel(order) {
   ctx.fillStyle = isFrozenLabel ? '#FFFFFF' : '#000000';
   ctx.fillText(typeText, 705, 52);
 
-  // brand + header
   ctx.textAlign = 'left';
   ctx.fillStyle = '#000000';
   ctx.font = 'bold 30px Arial';
@@ -606,7 +632,6 @@ async function generateLabel(order) {
 
   line(28, 204, WIDTH - 28, 204, 2);
 
-  // address block
   let y = 246;
 
   ctx.font = 'bold 32px Arial';
@@ -622,7 +647,6 @@ async function generateLabel(order) {
   const cityLine = [city, postcode].filter(Boolean).join(', ');
   y = wrapText(cityLine, 36, y, 700, 40, 'bold 28px Arial', '#000000', 2);
 
-  // main QR section
   line(28, 470, WIDTH - 28, 470, 2);
 
   const bigQR = await QRCode.toDataURL(qrText, {
@@ -648,7 +672,6 @@ async function generateLabel(order) {
 
   ctx.drawImage(bigImg, 570, 500, 180, 180);
 
-  // middle strip
   rect(28, 700, 390, 78, '#000000', '#000000', 2);
   rect(418, 700, 366, 78, '#FFFFFF', '#000000', 2);
 
@@ -660,7 +683,6 @@ async function generateLabel(order) {
   ctx.fillStyle = '#000000';
   ctx.fillText(paymentText, 601, 752);
 
-  // lower section
   line(28, 846, WIDTH - 28, 846, 2);
 
   ctx.textAlign = 'left';
@@ -680,14 +702,12 @@ async function generateLabel(order) {
   ctx.drawImage(smallImg, 280, 910, 145, 145);
   ctx.drawImage(smallImg, 480, 910, 145, 145);
 
-  // bottom right type box
   rect(640, 915, 120, 135, '#FFFFFF', '#000000', 2);
   ctx.textAlign = 'center';
   ctx.font = 'bold 92px Arial';
   ctx.fillStyle = '#000000';
   ctx.fillText(zoneCode, 700, 1008);
 
-  // side refs
   ctx.save();
   ctx.translate(36, 1038);
   ctx.rotate(-Math.PI / 2);
@@ -702,7 +722,6 @@ async function generateLabel(order) {
   ctx.fillText('MH4X6', 0, 0);
   ctx.restore();
 
-  // bottom left ops box
   rect(28, 1088, 160, 98, '#FFFFFF', '#000000', 2);
 
   ctx.textAlign = 'left';
@@ -725,7 +744,10 @@ async function generateLabel(order) {
 }
 
 async function printBufferViaWindows(buffer, order) {
-  const fileStem = [order.order_number || order.id, order.suffix || `L${order.label_index || 1}`]
+  const fileStem = [
+    order.order_number || order.id,
+    order.suffix || `L${order.label_index || 1}`,
+  ]
     .filter(Boolean)
     .join('-');
 
@@ -762,6 +784,8 @@ async function printBufferViaWindows(buffer, order) {
 function sanitizeFileName(name) {
   return String(name).replace(/[<>:"/\\|?*]+/g, '_');
 }
+
+console.log('🚀 SERVER BOOT STEP 5: before app.listen');
 
 app.listen(PORT, BIND_HOST, () => {
   log(`Print server running on port ${PORT}`);
